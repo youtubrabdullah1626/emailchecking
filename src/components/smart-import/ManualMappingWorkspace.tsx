@@ -1,0 +1,136 @@
+"use client";
+
+import React, { useState } from "react";
+import { useImport } from "@/components/providers/ImportProvider";
+import { useWarmup } from "@/components/providers/WarmupProvider";
+import { UNIVERSAL_SCHEMA } from "@/lib/import/schema/UniversalSchema";
+import { TemplateEngine } from "@/lib/import/engines/TemplateEngine";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ArrowRight, Save, CheckCircle2, AlertCircle } from "lucide-react";
+
+export function ManualMappingWorkspace() {
+  const { parsedHeaders, mappingConfig, updateMapping, applyMappingConfig, setMappingConfig, startSequenceBuild, startScheduling, approveImport } = useImport() as any; 
+  const { status: warmupStatus, settings: warmupSettings } = useWarmup();
+  const [templateName, setTemplateName] = useState("");
+  const [isFastTracking, setIsFastTracking] = useState(false);
+  const templateEngine = new TemplateEngine();
+
+  const handleFastTrack = async () => {
+    setIsFastTracking(true);
+    try {
+      await applyMappingConfig();
+      const config = {
+        id: "default_fast_track",
+        name: "Fast Track Campaign",
+        timezone: "America/New_York",
+        sendWindow: { start: "09:00", end: "17:00", days: [1,2,3,4,5] },
+        startDate: new Date().toISOString().split('T')[0] // Provide valid startDate to prevent parsing errors
+      };
+      await startSequenceBuild(config);
+      await startScheduling(warmupStatus, warmupSettings, config);
+      await approveImport(); // which now sets to EXECUTING
+    } catch (e) {
+      setIsFastTracking(false);
+    }
+  };
+
+  const handleSaveTemplate = () => {
+    if (templateName.trim()) {
+      templateEngine.saveTemplate(templateName, mappingConfig);
+      setTemplateName("");
+      // Could show a toast here
+    }
+  };
+
+  // Check if email is mapped (required)
+  const isEmailMapped = Object.values(mappingConfig).includes("email");
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <Card className="border-border shadow-sm">
+        <CardHeader className="bg-muted/5 border-b border-border">
+          <CardTitle className="text-base font-semibold">Map Columns</CardTitle>
+          <CardDescription>
+            We&apos;ve automatically detected some columns. Please review and map the remaining fields.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader className="bg-muted/30">
+              <TableRow>
+                <TableHead className="w-[40%]">File Column Header</TableHead>
+                <TableHead className="w-[10%]"></TableHead>
+                <TableHead className="w-[50%]">Import Schema Property</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {parsedHeaders.map((header: string) => {
+                const currentMapping = mappingConfig[header] || "";
+                return (
+                  <TableRow key={header}>
+                    <TableCell className="font-medium text-sm text-foreground">{header}</TableCell>
+                    <TableCell className="text-muted-foreground"><ArrowRight className="h-4 w-4 mx-auto" /></TableCell>
+                    <TableCell>
+                      <Select 
+                        value={currentMapping === "" ? "custom" : currentMapping} 
+                        onValueChange={(val) => updateMapping(header, val === "custom" ? "" : val)}
+                      >
+                        <SelectTrigger className="w-full max-w-sm h-8 text-xs">
+                          <SelectValue placeholder="Do not import (Custom)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="custom" className="text-muted-foreground italic">Save as Custom Field</SelectItem>
+                          {UNIVERSAL_SCHEMA.map(schemaField => (
+                            <SelectItem key={schemaField.key} value={schemaField.key}>
+                              {schemaField.label} {schemaField.type === "required" && "*"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-2 w-full sm:max-w-xs">
+          <Input 
+            placeholder="Template Name..." 
+            className="h-9" 
+            value={templateName}
+            onChange={(e) => setTemplateName(e.target.value)}
+          />
+          <Button variant="outline" size="sm" onClick={handleSaveTemplate} className="gap-2 h-9">
+            <Save className="h-4 w-4" /> Save
+          </Button>
+        </div>
+        
+        <div className="flex flex-col items-end gap-2">
+          {!isEmailMapped && (
+            <div className="flex items-center gap-2 text-destructive text-sm font-medium">
+              <AlertCircle className="h-4 w-4" />
+              Email mapping is required
+            </div>
+          )}
+          <div className="flex items-center gap-4">
+            <Button onClick={applyMappingConfig} disabled={!isEmailMapped || isFastTracking} variant="outline" className="shadow-sm">
+              Advanced Setup
+            </Button>
+            <Button onClick={handleFastTrack} disabled={!isEmailMapped || isFastTracking} className="gap-2 shadow-md bg-emerald-600 hover:bg-emerald-700 text-white">
+              {isFastTracking ? <span className="animate-spin">⌛</span> : <span>🚀</span>}
+              {isFastTracking ? "Launching..." : "Launch Live Campaign"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

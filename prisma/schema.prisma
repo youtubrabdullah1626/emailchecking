@@ -1,0 +1,342 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// A prospect is a person being outreached.
+/// One prospect has at most one active outreach sequence.
+model Prospect {
+  id                    String                @id @default(cuid())
+  name                  String
+  company               String
+  email                 String                @unique
+  timezone              String
+  notes                 String?
+  status                ProspectStatus        @default(ACTIVE)
+  created_at            DateTime              @default(now())
+  reply_classifications ReplyClassification[]
+  sequences             Sequence[]
+
+  @@index([created_at])
+  @@index([status])
+  @@map("prospects")
+}
+
+/// A sequence belongs to exactly one prospect.
+/// A prospect can have at most one sequence (enforced by @unique on prospect_id).
+model Sequence {
+  id          String         @id @default(cuid())
+  prospect_id String         
+  status      SequenceStatus @default(DRAFT)
+  started_at  DateTime?
+  stopped_at  DateTime?
+  created_at  DateTime       @default(now())
+  steps       SequenceStep[]
+  prospect    Prospect       @relation(fields: [prospect_id], references: [id], onDelete: Cascade)
+
+  @@index([prospect_id, status])
+  @@index([created_at])
+  @@index([status])
+  @@map("sequences")
+}
+
+/// One step in an outreach sequence (Email 1, Follow-up #1, #2, #3).
+/// Timezone fields allow the scheduler to correctly fire at the right time
+/// and allow the UI to display what the user originally intended.
+model SequenceStep {
+  id                   String       @id @default(cuid())
+  sequence_id          String
+  step_number          Int
+  subject              String
+  body                 String
+  scheduled_at_utc     DateTime
+  scheduled_time_local String
+  timezone             String
+  status               StepStatus   @default(PENDING)
+  sent_at              DateTime?
+  gmail_message_id     String?
+  gmail_thread_id      String?
+  retry_count          Int          @default(0)
+  last_retry_at        DateTime?
+  delay_reason         String?
+  retry_at             DateTime?
+  email_events         EmailEvent[]
+  sequence             Sequence     @relation(fields: [sequence_id], references: [id], onDelete: Cascade)
+
+  @@unique([sequence_id, step_number])
+  @@index([gmail_thread_id])
+  @@index([status, scheduled_at_utc])
+  @@map("sequence_steps")
+}
+
+/// Immutable audit log.
+/// Every send attempt, failure, skip, or cancellation creates one record here.
+/// Records must never be deleted or mutated — they are the source of truth for
+/// what happened and when.
+model EmailEvent {
+  id               String         @id @default(cuid())
+  sequence_step_id String
+  event_type       EmailEventType
+  occurred_at      DateTime       @default(now())
+  metadata         Json?
+  step             SequenceStep   @relation(fields: [sequence_step_id], references: [id], onDelete: Cascade)
+
+  @@index([occurred_at])
+  @@map("email_events")
+}
+
+/// A classified reply from a Gmail thread.
+/// One record per Gmail message — enforced by @unique on gmail_message_id.
+/// When reply_type = REAL_REPLY, the sequence stop logic fires.
+model ReplyClassification {
+  id                 String       @id @default(cuid())
+  prospect_id        String
+  gmail_thread_id    String
+  gmail_message_id   String       @unique
+  reply_type         ReplyType
+  raw_snippet        String?
+  classified_at      DateTime     @default(now())
+  confidence         Float?
+  reason             String?
+  recommended_action String?
+  signals            Json?
+  review_status      ReviewStatus @default(PENDING)
+  reviewed_at        DateTime?
+  prospect           Prospect     @relation(fields: [prospect_id], references: [id], onDelete: Cascade)
+
+  @@index([gmail_thread_id])
+  @@index([reply_type, review_status])
+  @@map("reply_classifications")
+}
+
+/// Enterprise Error Intelligence
+/// Tracks and explains technical errors in human-readable format.
+model SystemError {
+  id             String              @id @default(cuid())
+  service        String
+  errorType      String              @map("error_type")
+  severity       SystemErrorSeverity
+  message        String
+  impact         String?
+  recommendation String?
+  count          Int                 @default(1)
+  firstSeen      DateTime            @default(now()) @map("first_seen")
+  lastSeen       DateTime            @default(now()) @map("last_seen")
+  resolved       Boolean             @default(false)
+
+  @@index([lastSeen])
+  @@map("system_errors")
+}
+
+/// Email Reputation Protection Engine
+/// Tracks sending limits and account health per email address.
+/// Multi-User Connected Email Accounts & Reputation Protection Engine
+/// Tracks OAuth tokens, sending limits, and connection health per connected mailbox.
+model EmailAccount {
+  email             String    @id
+  daily_limit       Int       @default(300)
+  hourly_limit      Int       @default(50)
+  health_score      Int       @default(100)
+  warmup_status     String    @default("COMPLETED")
+  sent_today        Int       @default(0)
+  sent_this_hour    Int       @default(0)
+  access_token      String?
+  connection_status String    @default("CONNECTED")
+  created_at        DateTime  @default(now())
+  refresh_token     String?
+  token_expires_at  DateTime?
+  updated_at        DateTime  @default(now()) @updatedAt
+  user_id           String?
+
+  @@map("email_accounts")
+}
+
+/// Enterprise Audit System
+/// Complete history of user and system actions for accountability.
+model AuditLog {
+  id          String          @id @default(cuid())
+  action_type AuditActionType
+  action      String
+  user_id     String?
+  prospect_id String?
+  sequence_id String?
+  metadata    Json?
+  created_at  DateTime        @default(now())
+
+  @@index([created_at])
+  @@map("audit_logs")
+}
+
+/// Persists the Gmail Watch registration, History API cursor, and Health State per mailbox.
+///
+/// One row per connected Gmail address (keyed by email).
+/// Supports thousands of connected Gmail accounts independently.
+model GmailWatchState {
+  /// The Gmail address this watch is registered for (e.g. "user@example.com"). Primary key.
+  email          String    @id
+  /// Last Gmail historyId successfully processed — the engine's cursor.
+  history_id     String
+  /// Unix timestamp (ms) when this Gmail Watch registration expires (max 7 days).
+  expiration     BigInt
+  /// Full Google Cloud PubSub topic name used for this watch registration.
+  topic_name     String
+  registered_at  DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+  /// Timestamp of last automatic self-healing recovery action
+  auto_healed_at DateTime?
+  /// Error counter for self-healing thresholds
+  error_count    Int       @default(0)
+  /// Operational Health Status: HEALTHY | SYNCING | EXPIRING_SOON | EXPIRED | NEEDS_RECONNECT
+  health_status  String    @default("HEALTHY")
+  /// Last operational error message (if any)
+  last_error     String?
+  /// Timestamp of last successful history delta sync
+  last_synced_at DateTime?
+
+  @@map("gmail_watch_state")
+}
+
+enum ProspectStatus {
+  ACTIVE
+  REPLIED
+  STOPPED
+  COMPLETED
+}
+
+enum SequenceStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  STOPPED
+  COMPLETED
+  FAILED
+  CANCELLED
+  ARCHIVED
+}
+
+enum StepStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  SKIPPED
+  CANCELLED
+  DELAYED
+}
+
+enum EmailEventType {
+  SENT
+  FAILED
+  SKIPPED
+  CANCELLED
+}
+
+enum ReplyType {
+  REAL_REPLY
+  AUTO_REPLY
+  SPAM
+  UNSUBSCRIBE
+  NOT_INTERESTED
+  INTERESTED
+  NEEDS_REVIEW
+}
+
+enum ReviewStatus {
+  PENDING
+  CONFIRMED_STOP
+  CONFIRMED_KEEP_ACTIVE
+  DISMISSED
+}
+
+enum SystemErrorSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AuditActionType {
+  USER_ACTION
+  SYSTEM_ACTION
+}
+
+/// Global System Settings
+model SystemSettings {
+  id                   String   @id @default("global")
+  scheduler_enabled    Boolean  @default(true)
+  scheduler_cron       String   @default("*/15 * * * *")
+  gemini_enabled       Boolean  @default(true)
+  gemini_model         String   @default("gemini-1.5-pro-latest")
+  notifications_global Boolean  @default(true)
+  notify_on_reply      Boolean  @default(true)
+  notify_on_failure    Boolean  @default(true)
+  retry_failed_emails  Boolean  @default(true)
+  max_retries          Int      @default(3)
+  auto_closer_enabled       Boolean  @default(true)
+  auto_closer_rebuttal_style String  @default("AGGRESSIVE")
+  auto_closer_auto_draft    Boolean  @default(true)
+  updated_at           DateTime @default(now()) @updatedAt
+
+  @@map("system_settings")
+}
+
+/// Enterprise Universal Email Tracking Engine
+/// A provider-agnostic representation of an outgoing email.
+model TrackedEmail {
+  id                  String    @id @default(cuid())
+  provider            String    // e.g., "GMAIL", "MS_GRAPH", "SMTP"
+  sender_email        String
+  recipient_email     String
+  subject             String?
+  
+  // Polymorphic Association
+  source_type         String    // e.g., "SEQUENCE_STEP", "MANUAL", "AI_OUTREACH"
+  source_id           String?
+
+  // External Mapping
+  provider_message_id String?   @unique
+  provider_thread_id  String?
+  
+  // State Machine Status (String to allow future extension without migrations)
+  status              String    @default("QUEUED") // QUEUED, SENT, OPENED, CLICKED, REPLIED, BOUNCED
+  
+  // Denormalized Metrics for O(1) Dashboard Queries
+  open_count          Int       @default(0)
+  click_count         Int       @default(0)
+  first_opened_at     DateTime?
+  last_opened_at      DateTime?
+  replied_at          DateTime?
+  bounced_at          DateTime?
+  
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  events              TrackingEvent[]
+
+  @@index([provider_message_id])
+  @@index([source_type, source_id])
+  @@index([status])
+  @@map("tracked_emails")
+}
+
+/// Immutable Event Log for Tracking
+model TrackingEvent {
+  id               String    @id @default(cuid())
+  tracked_email_id String
+  event_type       String    // "OPENED", "CLICKED", "DELIVERED", "BOUNCED"
+  occurred_at      DateTime  @default(now())
+  ip_address       String?
+  user_agent       String?   
+  metadata         Json?     
+  
+  tracked_email    TrackedEmail @relation(fields: [tracked_email_id], references: [id], onDelete: Cascade)
+  
+  @@index([tracked_email_id, event_type])
+  @@index([occurred_at])
+  @@map("tracking_events")
+}
