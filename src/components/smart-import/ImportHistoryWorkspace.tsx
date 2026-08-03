@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { History, Play, Trash2, CheckCircle2, Clock, AlertTriangle, Eye, Plus, MoreVertical, Edit2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,7 +51,7 @@ export function ImportHistoryWorkspace() {
   
   // Track which session is currently queued for confirmation in the AlertDialog
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
-  const [deleteProspects, setDeleteProspects] = useState(false);
+  const [prospectAction, setProspectAction] = useState<"KEEP" | "CANCEL" | "DELETE">("KEEP");
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -65,23 +67,23 @@ export function ImportHistoryWorkspace() {
     window.location.reload();
   };
 
-  const executeDelete = async (id: string, shouldDeleteProspects: boolean) => {
+  const executeDelete = async (id: string, action: "KEEP" | "CANCEL" | "DELETE") => {
     try {
-      if (shouldDeleteProspects) {
+      if (action !== "KEEP") {
         const dataset = await storage.loadHeavyDataset(id);
         if (dataset && dataset.validatedRecords && dataset.validatedRecords.length > 0) {
           const emails = dataset.validatedRecords.map((r: any) => r.email).filter(Boolean);
           if (emails.length > 0) {
-            await fetch("/api/prospects/bulk-delete", {
+            await fetch("/api/prospects/bulk-action", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ emails }),
+              body: JSON.stringify({ emails, action }),
             });
           }
         }
       }
     } catch (err) {
-      console.error("Failed to delete associated prospects", err);
+      console.error("Failed to perform prospect action", err);
     }
 
     await storage.deleteSession(id);
@@ -93,7 +95,7 @@ export function ImportHistoryWorkspace() {
     loadSessions();
   };
 
-  const handleDeleteInitiated = (id: string, shouldDeleteProspects: boolean) => {
+  const handleDeleteInitiated = (id: string, action: "KEEP" | "CANCEL" | "DELETE") => {
     // 1. Close the AlertDialog
     setSessionToDelete(null);
 
@@ -102,7 +104,7 @@ export function ImportHistoryWorkspace() {
 
     // 3. Schedule permanent delete
     const timer = setTimeout(() => {
-      executeDelete(id, shouldDeleteProspects);
+      executeDelete(id, action);
       delete deleteTimers.current[id];
     }, 6000);
     deleteTimers.current[id] = timer;
@@ -275,7 +277,7 @@ export function ImportHistoryWorkspace() {
       <AlertDialog open={!!sessionToDelete} onOpenChange={(open) => {
         if (!open) {
           setSessionToDelete(null);
-          setDeleteProspects(false); // Reset checkbox on close
+          setProspectAction("KEEP"); // Reset action on close
         }
       }}>
         <AlertDialogContent>
@@ -284,23 +286,36 @@ export function ImportHistoryWorkspace() {
             <AlertDialogDescription>
               Are you sure you want to delete this campaign? <strong>All emails scheduled in this campaign will also be deleted.</strong>
             </AlertDialogDescription>
-            <div className="flex items-start space-x-2 mt-4 bg-muted/30 p-3 rounded-md border border-border">
-              <Checkbox 
-                id="delete-prospects" 
-                checked={deleteProspects} 
-                onCheckedChange={(c) => setDeleteProspects(!!c)} 
-              />
-              <label htmlFor="delete-prospects" className="text-sm font-medium leading-none cursor-pointer">
-                Also delete all prospects imported by this campaign from the CRM
-                <p className="text-xs text-muted-foreground mt-1 font-normal">
-                  If checked, prospects imported in this CSV will be permanently removed from your Prospects page.
-                </p>
-              </label>
+            <div className="mt-4 bg-muted/30 p-4 rounded-md border border-border">
+              <h4 className="text-sm font-medium mb-3 text-foreground">What should happen to the prospects in your CRM?</h4>
+              <RadioGroup value={prospectAction} onValueChange={(val: any) => setProspectAction(val)} className="space-y-3">
+                <div className="flex items-start space-x-3">
+                  <RadioGroupItem value="KEEP" id="keep" className="mt-1" />
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="keep" className="text-sm font-medium">Keep prospects in CRM (Do nothing)</Label>
+                    <p className="text-xs text-muted-foreground">Prospects will remain active in your central database.</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <RadioGroupItem value="CANCEL" id="cancel" className="mt-1" />
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="cancel" className="text-sm font-medium">Mark as &quot;User Cancelled&quot;</Label>
+                    <p className="text-xs text-muted-foreground">Prospects stay in CRM but show a &quot;User Cancelled&quot; status.</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <RadioGroupItem value="DELETE" id="delete" className="mt-1" />
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="delete" className="text-sm font-medium text-destructive">Completely wipe from CRM</Label>
+                    <p className="text-xs text-muted-foreground">Permanently delete these prospects from your database entirely.</p>
+                  </div>
+                </div>
+              </RadioGroup>
             </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => sessionToDelete && handleDeleteInitiated(sessionToDelete, deleteProspects)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={() => sessionToDelete && handleDeleteInitiated(sessionToDelete, prospectAction)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete Campaign
             </AlertDialogAction>
           </AlertDialogFooter>

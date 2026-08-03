@@ -226,7 +226,7 @@ export default function ProspectsPage() {
                           displayStatus = 'Replied';
                         } else if (prospect.status === "STOPPED") {
                           prospectBadgeStatus = 'error';
-                          displayStatus = 'Stopped';
+                          displayStatus = 'User Cancelled';
                         } else if (prospect.status === "COMPLETED") {
                           prospectBadgeStatus = 'completed';
                           displayStatus = 'Completed';
