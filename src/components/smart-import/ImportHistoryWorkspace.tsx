@@ -14,6 +14,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 export function ImportHistoryWorkspace() {
@@ -32,16 +42,7 @@ export function ImportHistoryWorkspace() {
     loadSessions();
   }, [sessionId, loadSessions]); // Reload when current session changes
 
-  // Track hidden sessions (optimistic delete) and timers
-  const [hiddenSessions, setHiddenSessions] = useState<Set<string>>(new Set());
-  const deleteTimers = React.useRef<Record<string, NodeJS.Timeout>>({});
-
-  // Cleanup timers on unmount
-  useEffect(() => {
-    return () => {
-      Object.values(deleteTimers.current).forEach(clearTimeout);
-    };
-  }, []);
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
 
   const handleResume = (id: string) => {
     if (typeof sessionStorage !== "undefined") {
@@ -50,45 +51,13 @@ export function ImportHistoryWorkspace() {
     window.location.reload();
   };
 
-  const executeDelete = async (id: string) => {
-    await storage.deleteSession(id);
-    setHiddenSessions(prev => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-    loadSessions();
-  };
-
-  const handleDeleteInitiated = (id: string) => {
-    // Optimistic hide
-    setHiddenSessions(prev => new Set(prev).add(id));
-
-    // Schedule permanent delete
-    const timer = setTimeout(() => {
-      executeDelete(id);
-      delete deleteTimers.current[id];
-    }, 6000);
-    deleteTimers.current[id] = timer;
-
-    toast.success("Campaign deleted", {
-      description: "Scheduled emails will also be permanently deleted.",
-      action: {
-        label: "Undo",
-        onClick: () => {
-          if (deleteTimers.current[id]) {
-            clearTimeout(deleteTimers.current[id]);
-            delete deleteTimers.current[id];
-            setHiddenSessions(prev => {
-              const next = new Set(prev);
-              next.delete(id);
-              return next;
-            });
-            toast.success("Campaign restored");
-          }
-        },
-      },
-    });
+  const confirmDelete = async () => {
+    if (sessionToDelete) {
+      await storage.deleteSession(sessionToDelete);
+      loadSessions();
+      setSessionToDelete(null);
+      toast.success("Campaign and scheduled emails deleted permanently.");
+    }
   };
 
   const handleRename = (id: string, currentName: string) => {
@@ -148,7 +117,7 @@ export function ImportHistoryWorkspace() {
       </CardHeader>
       <CardContent className="p-0">
         <div className="divide-y divide-border">
-          {sessions.filter(s => !hiddenSessions.has(s.sessionId)).map(session => (
+          {sessions.map(session => (
             <div key={session.sessionId} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors">
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
@@ -223,7 +192,7 @@ export function ImportHistoryWorkspace() {
                       <Edit2 className="h-4 w-4 mr-2" />
                       Rename
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDeleteInitiated(session.sessionId)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                    <DropdownMenuItem onClick={() => setSessionToDelete(session.sessionId)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete
                     </DropdownMenuItem>
@@ -234,6 +203,23 @@ export function ImportHistoryWorkspace() {
           ))}
         </div>
       </CardContent>
+
+      <AlertDialog open={!!sessionToDelete} onOpenChange={(open) => !open && setSessionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Campaign?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this campaign? <strong>All emails scheduled in this campaign will also be deleted immediately.</strong> This action is permanent and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
