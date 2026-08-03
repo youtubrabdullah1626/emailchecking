@@ -273,8 +273,6 @@ export default function RepliesPage() {
             <TableRow>
               <TableHead>Prospect</TableHead>
               <TableHead>Sequence & Step</TableHead>
-              <TableHead>Classification</TableHead>
-              <TableHead>Confidence</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Received</TableHead>
               <TableHead className="text-right">Action</TableHead>
@@ -287,15 +285,13 @@ export default function RepliesPage() {
                   <TableCell><div className="h-8 w-48 bg-muted rounded animate-pulse" /></TableCell>
                   <TableCell><div className="h-8 w-32 bg-muted rounded animate-pulse" /></TableCell>
                   <TableCell><div className="h-6 w-24 bg-muted rounded-full animate-pulse" /></TableCell>
-                  <TableCell><div className="h-2 w-24 bg-muted rounded-full animate-pulse" /></TableCell>
-                  <TableCell><div className="h-6 w-24 bg-muted rounded-full animate-pulse" /></TableCell>
                   <TableCell><div className="h-4 w-24 bg-muted rounded animate-pulse" /></TableCell>
                   <TableCell></TableCell>
                 </TableRow>
               ))
             ) : filteredReplies.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
                   No replies match your criteria.
                 </TableCell>
               </TableRow>
@@ -326,15 +322,6 @@ export default function RepliesPage() {
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Step #{item.stepNumber}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={classificationStatus} label={classificationLabel} />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress value={item.confidence * 100} className="w-16 h-1.5" />
-                        <span className="text-xs text-muted-foreground">{Math.round(item.confidence * 100)}%</span>
                       </div>
                     </TableCell>
                     <TableCell>
