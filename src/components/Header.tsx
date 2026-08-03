@@ -14,6 +14,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { AlertCircle, MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
@@ -226,35 +231,49 @@ export function Header({ onMenuClick }: HeaderProps) {
           </DropdownMenuContent>
         </DropdownMenu>
         
-        <div className="relative ml-4 group">
-          <label htmlFor="avatar-upload" className="cursor-pointer block relative rounded-full overflow-hidden border-2 border-transparent ring-2 ring-primary/20 transition-all duration-300 hover:ring-primary/50 shadow-md hover:shadow-lg">
-            <Avatar className="h-11 w-11 border border-border/50">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt="User Avatar" className="object-cover" />}
-              <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-bold tracking-wider">
-                IQ
-              </AvatarFallback>
-            </Avatar>
-            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <Camera className="h-4 w-4 text-white" />
-            </div>
-          </label>
-          {avatarUrl && (
-            <button 
-              onClick={handleRemoveAvatar}
-              className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-red-600 shadow-sm z-10"
-              title="Remove picture"
-            >
-              <X className="h-3 w-3" />
+        <Dialog>
+          <DialogTrigger asChild>
+            <button className="relative ml-4 group block rounded-full overflow-hidden border-2 border-transparent ring-2 ring-primary/20 transition-all duration-300 hover:ring-primary/50 shadow-md hover:shadow-lg focus:outline-none">
+              <Avatar className="h-11 w-11 border border-border/50">
+                {avatarUrl && <AvatarImage src={avatarUrl} alt="User Avatar" className="object-cover" />}
+                <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-bold tracking-wider">
+                  IQ
+                </AvatarFallback>
+              </Avatar>
             </button>
-          )}
-          <input 
-            id="avatar-upload" 
-            type="file" 
-            accept="image/*" 
-            className="hidden" 
-            onChange={handleAvatarUpload} 
-          />
-        </div>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-md border-border flex flex-col items-center justify-center py-12">
+            <div className="relative group rounded-full overflow-hidden ring-4 ring-primary/20 shadow-2xl">
+              <Avatar className="h-56 w-56 border-4 border-background">
+                {avatarUrl && <AvatarImage src={avatarUrl} alt="User Avatar" className="object-cover" />}
+                <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-7xl font-bold tracking-wider">
+                  IQ
+                </AvatarFallback>
+              </Avatar>
+            </div>
+            
+            <div className="mt-8 flex gap-4 w-full px-8 justify-center">
+              <label htmlFor="avatar-upload-modal" className="cursor-pointer">
+                <div className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
+                  <Camera className="mr-2 h-4 w-4" /> Change Photo
+                </div>
+              </label>
+              {avatarUrl && (
+                <Button variant="outline" className="flex gap-2 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={handleRemoveAvatar}>
+                  <X className="h-4 w-4" /> Remove
+                </Button>
+              )}
+            </div>
+            
+            <input 
+              id="avatar-upload-modal" 
+              type="file" 
+              accept="image/*" 
+              className="hidden" 
+              onChange={handleAvatarUpload} 
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </header>
   );
