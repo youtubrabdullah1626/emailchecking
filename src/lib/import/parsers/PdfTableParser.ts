@@ -23,6 +23,7 @@ export class PdfTableParser {
       
       const records: any[] = [];
       let headers: string[] = [];
+      let headerXs: number[] = [];
 
       // Very basic tabular heuristic: group texts by their vertical 'y' coordinate
       for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
@@ -48,20 +49,39 @@ export class PdfTableParser {
           // Sort items in row left-to-right
           rowItems.sort((a, b) => a.transform[4] - b.transform[4]);
           
-          const rowTexts = rowItems.map(i => i.str.trim()).filter(Boolean);
-          if (rowTexts.length === 0) continue;
+          const validItems = rowItems.filter(i => i.str.trim());
+          if (validItems.length === 0) continue;
 
           if (headers.length === 0) {
             // Assume first row with multiple items is header
-            if (rowTexts.length > 1) {
-              headers = rowTexts;
+            if (validItems.length > 1) {
+              headers = validItems.map(i => i.str.trim());
+              headerXs = validItems.map(i => i.transform[4]);
             }
           } else {
             const record: Record<string, string> = {};
-            for (let i = 0; i < Math.min(headers.length, rowTexts.length); i++) {
-              record[headers[i]] = rowTexts[i];
+            for (const item of validItems) {
+              const x = item.transform[4];
+              // Find closest header by X coordinate
+              let closestHeaderIdx = 0;
+              let minDiff = Infinity;
+              for (let i = 0; i < headerXs.length; i++) {
+                const diff = Math.abs(x - headerXs[i]);
+                if (diff < minDiff) {
+                  minDiff = diff;
+                  closestHeaderIdx = i;
+                }
+              }
+              const hName = headers[closestHeaderIdx];
+              if (record[hName]) {
+                record[hName] += " " + item.str.trim();
+              } else {
+                record[hName] = item.str.trim();
+              }
             }
-            records.push(record);
+            if (Object.keys(record).length > 0) {
+              records.push(record);
+            }
           }
         }
       }
