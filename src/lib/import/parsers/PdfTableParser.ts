@@ -7,6 +7,7 @@
 export class PdfTableParser {
   public async parse(file: File): Promise<any[]> {
     try {
+      console.log("[DEBUG] PDF Parser v2 Loaded - X-coordinate mapping enabled");
       // Dynamically import pdfjs-dist only on the client to prevent Next.js SSR crashes ("DOMMatrix is not defined")
       const pdfjsLib = await import("pdfjs-dist");
       
