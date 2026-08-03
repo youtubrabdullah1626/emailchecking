@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Search, AlertCircle, Bot, PlayCircle, StopCircle, Send, Reply } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Progress } from "@/components/ui/progress";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
@@ -333,8 +333,13 @@ export default function RepliesPage() {
                         {actionRequired && <AlertCircle className="h-4 w-4 text-amber-500" />}
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(item.replyTime), { addSuffix: true })}
+                    <TableCell className="text-sm">
+                      <div className="font-medium text-foreground">
+                        {format(new Date(item.replyTime), "MMM d, yyyy")}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(item.replyTime), { addSuffix: true })}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm">Review</Button>
