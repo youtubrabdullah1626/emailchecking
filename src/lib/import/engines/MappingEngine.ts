@@ -13,6 +13,7 @@ export class MappingEngine {
     phone: ["phone", "phone number", "mobile", "cell", "work phone"],
     country: ["country", "nation"],
     city: ["city", "location"],
+    initialMessage: ["initial message", "email content", "message", "body", "content", "email body", "message body"],
     followUp1: ["follow up 1", "followup 1", "fu1", "reply 1", "email 2", "second email"],
     followUp2: ["follow up 2", "followup 2", "fu2", "reply 2", "email 3", "third email"],
     followUp3: ["follow up 3", "followup 3", "fu3", "reply 3", "email 4", "fourth email"],
