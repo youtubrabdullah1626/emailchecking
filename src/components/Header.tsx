@@ -22,6 +22,7 @@ import {
 import { AlertCircle, MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
+import { ImageCropper } from "./ImageCropper";
 
 export interface HeaderProps {
   onMenuClick?: () => void;
@@ -38,6 +39,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   
   const [lastClearedTime, setLastClearedTime] = useState<number>(0);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [selectedFileUrl, setSelectedFileUrl] = useState<string | null>(null);
 
   // Initialize from localStorage on mount
   React.useEffect(() => {
@@ -57,45 +59,20 @@ export function Header({ onMenuClick }: HeaderProps) {
       const reader = new FileReader();
       reader.onload = (event) => {
         const result = event.target?.result as string;
-        
-        // Resize image to prevent localStorage QuotaExceededError
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_SIZE = 256;
-          let width = img.width;
-          let height = img.height;
-          
-          if (width > height) {
-            if (width > MAX_SIZE) {
-              height *= MAX_SIZE / width;
-              width = MAX_SIZE;
-            }
-          } else {
-            if (height > MAX_SIZE) {
-              width *= MAX_SIZE / height;
-              height = MAX_SIZE;
-            }
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-            setAvatarUrl(resizedDataUrl);
-            try {
-              localStorage.setItem('user_avatar', resizedDataUrl);
-            } catch (err) {
-              console.error('Failed to save avatar', err);
-            }
-          }
-        };
-        img.src = result;
+        setSelectedFileUrl(result);
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleCropComplete = (croppedBase64: string) => {
+    setAvatarUrl(croppedBase64);
+    try {
+      localStorage.setItem('user_avatar', croppedBase64);
+    } catch (err) {
+      console.error('Failed to save avatar', err);
+    }
+    setSelectedFileUrl(null);
   };
 
   const handleRemoveAvatar = (e: React.MouseEvent) => {
@@ -274,6 +251,14 @@ export function Header({ onMenuClick }: HeaderProps) {
             />
           </DialogContent>
         </Dialog>
+
+        {selectedFileUrl && (
+          <ImageCropper 
+            imageSrc={selectedFileUrl} 
+            onCropComplete={handleCropComplete} 
+            onCancel={() => setSelectedFileUrl(null)} 
+          />
+        )}
       </div>
     </header>
   );
