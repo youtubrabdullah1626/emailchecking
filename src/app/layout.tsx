@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppShell } from "@/components/AppShell";
-
+import { Toaster } from "@/components/ui/sonner";
 export const metadata: Metadata = {
   title: {
     default: "Outreach — Personal Email Automation",
@@ -20,6 +20,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <AppShell>{children}</AppShell>
+        <Toaster />
       </body>
     </html>
   );
