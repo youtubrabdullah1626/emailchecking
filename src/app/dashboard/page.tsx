@@ -247,6 +247,9 @@ export default function DashboardPage() {
                       <p className="text-sm font-medium text-foreground">
                         {event.eventType === "SENT" ? `Sent email to ${event.prospectName}` : 
                          event.eventType === "FAILED" ? `Failed to send to ${event.prospectName}` : 
+                         event.eventType === "REPLIED" ? `Reply received from ${event.prospectName}` :
+                         event.eventType === "REPLY_CLASSIFIED" ? `Reply classified for ${event.prospectName}` :
+                         event.eventType === "AUDIT" ? event.prospectName :
                          `Event for ${event.prospectName}`}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
