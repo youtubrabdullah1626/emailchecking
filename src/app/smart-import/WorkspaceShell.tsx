@@ -24,17 +24,8 @@ export function WorkspaceShell() {
   const showBackButton = status !== "IDLE" && status !== "ERROR" && status !== "EXECUTING" && status !== "SCHEDULING" && status !== "BUILDING";
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        if (lastDeletedItem) {
-          e.preventDefault();
-          undoLastDelete();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [lastDeletedItem, undoLastDelete]);
+    // Keyboard shortcuts removed as undo functionality was requested to be permanent.
+  }, []);
 
   return (
     <div className="space-y-8 pb-20">
@@ -48,19 +39,7 @@ export function WorkspaceShell() {
         </div>
       )}
       
-      {/* Undo Delete Toast Notification */}
-      {lastDeletedItem && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <Alert className="bg-primary text-primary-foreground border-none shadow-xl flex flex-row items-center justify-between min-w-[300px] p-4">
-            <div className="flex items-center gap-3">
-              <AlertTitle className="mb-0 font-medium">Item Deleted</AlertTitle>
-            </div>
-            <Button variant="secondary" size="sm" onClick={undoLastDelete} className="bg-background text-foreground hover:bg-muted ml-4 font-semibold shrink-0">
-              Undo (Ctrl+Z)
-            </Button>
-          </Alert>
-        </div>
-      )}
+      {/* No Undo Toast - deletions are permanent */}
       
       {/* Error Message Display */}
       {status === "ERROR" && errorMessage && (

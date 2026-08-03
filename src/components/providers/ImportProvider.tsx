@@ -49,8 +49,6 @@ interface ImportContextType {
   setAppendTargetSessionId: (id: string | null) => void;
   undo: () => void;
   canUndo: boolean;
-  undoLastDelete: () => void;
-  lastDeletedItem: any | null;
 }
 
 const recoveryEngine = new SessionRecoveryEngine();
@@ -103,7 +101,6 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const [lastDeletedItem, setLastDeletedItem] = useState<{ item: ExecutionQueueItem, index: number } | null>(null);
 
   const canUndo = ["MAPPING", "REVIEW", "PLANNING", "PREVIEW", "APPROVED", "EXECUTING"].includes(status);
 
@@ -156,21 +153,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const undoLastDelete = async () => {
-    if (lastDeletedItem) {
-      // Re-insert item at its original index
-      const newQueue = [...queueRef.current];
-      newQueue.splice(lastDeletedItem.index, 0, lastDeletedItem.item);
-      queueRef.current = newQueue;
-      setLastDeletedItem(null);
-      
-      // Save checkpoint
-      await recoveryEngine.saveCheckpoint("EXECUTION_STARTED", {
-        status: status,
-        heavyData: { executionQueue: queueRef.current, queueSummary: queueSummary! }
-      });
-    }
-  };
+
 
   const importService = getImportService();
 
@@ -609,15 +592,11 @@ export function ImportProvider({ children }: { children: ReactNode }) {
   const deleteQueueItem = async (queueId: string) => {
     const itemIndex = queueRef.current.findIndex(item => item.queueId === queueId);
     if (itemIndex >= 0) {
-      setLastDeletedItem({ item: queueRef.current[itemIndex], index: itemIndex });
       queueRef.current = queueRef.current.filter(item => item.queueId !== queueId);
       await recoveryEngine.saveCheckpoint("EXECUTION_STARTED", {
         status: "EXECUTING",
         heavyData: { executionQueue: queueRef.current, queueSummary: queueSummary! }
       });
-      
-      // Auto-clear deleted item buffer after 10 seconds
-      setTimeout(() => setLastDeletedItem(null), 10000);
     }
   };
 
@@ -657,9 +636,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         appendTargetSessionId,
         setAppendTargetSessionId,
         undo,
-        canUndo,
-        undoLastDelete,
-        lastDeletedItem
+        canUndo
       }}
     >
       {children}
