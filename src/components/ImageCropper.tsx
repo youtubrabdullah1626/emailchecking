@@ -38,6 +38,10 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel }: ImageCroppe
       canvas.width = OUTPUT_SIZE;
       canvas.height = OUTPUT_SIZE;
 
+      // Draw a white background in case the image doesn't fill the cropped area
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+
       // Draw the cropped area of the image onto the 256x256 canvas
       ctx.drawImage(
         image,
@@ -76,6 +80,8 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel }: ImageCroppe
               aspect={1}
               cropShape="round"
               showGrid={false}
+              restrictPosition={false}
+              minZoom={0.1}
               onCropChange={setCrop}
               onZoomChange={setZoom}
               onCropComplete={handleCropComplete}
@@ -87,7 +93,7 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel }: ImageCroppe
           <span className="text-sm font-medium text-muted-foreground w-12">Zoom</span>
           <Slider 
             value={[zoom]} 
-            min={1} 
+            min={0.1} 
             max={3} 
             step={0.1} 
             onValueChange={(vals) => setZoom(vals[0])} 
