@@ -272,8 +272,8 @@ export default function RepliesPage() {
           <TableHeader className="bg-muted/50">
             <TableRow>
               <TableHead>Prospect</TableHead>
-              <TableHead>Sequence & Step</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Replied To (Subject)</TableHead>
+              <TableHead>Automation</TableHead>
               <TableHead>Received</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
@@ -328,7 +328,7 @@ export default function RepliesPage() {
                       <div className="flex items-center gap-2">
                         <StatusBadge 
                           status={item.prospectStatus === 'REPLIED' ? 'positive' : item.reviewStatus === 'PENDING' ? 'pending' : 'neutral'} 
-                          label={item.prospectStatus === 'REPLIED' ? 'Stopped' : item.reviewStatus} 
+                          label={item.prospectStatus === 'REPLIED' ? 'Auto-Stopped' : item.reviewStatus === 'PENDING' ? 'Awaiting Review' : item.reviewStatus} 
                         />
                         {actionRequired && <AlertCircle className="h-4 w-4 text-amber-500" />}
                       </div>
