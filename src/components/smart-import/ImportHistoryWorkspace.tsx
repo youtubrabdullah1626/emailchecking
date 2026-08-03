@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { History, Play, Trash2, CheckCircle2, Clock, AlertTriangle, Eye, Plus, MoreVertical, Edit2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +49,7 @@ export function ImportHistoryWorkspace() {
   
   // Track which session is currently queued for confirmation in the AlertDialog
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [deleteProspects, setDeleteProspects] = useState(false);
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -63,7 +65,25 @@ export function ImportHistoryWorkspace() {
     window.location.reload();
   };
 
-  const executeDelete = async (id: string) => {
+  const executeDelete = async (id: string, shouldDeleteProspects: boolean) => {
+    try {
+      if (shouldDeleteProspects) {
+        const dataset = await storage.loadHeavyDataset(id);
+        if (dataset && dataset.validatedRecords && dataset.validatedRecords.length > 0) {
+          const emails = dataset.validatedRecords.map((r: any) => r.email).filter(Boolean);
+          if (emails.length > 0) {
+            await fetch("/api/prospects/bulk-delete", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ emails }),
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to delete associated prospects", err);
+    }
+
     await storage.deleteSession(id);
     setHiddenSessions(prev => {
       const next = new Set(prev);
@@ -73,7 +93,7 @@ export function ImportHistoryWorkspace() {
     loadSessions();
   };
 
-  const handleDeleteInitiated = (id: string) => {
+  const handleDeleteInitiated = (id: string, shouldDeleteProspects: boolean) => {
     // 1. Close the AlertDialog
     setSessionToDelete(null);
 
@@ -82,7 +102,7 @@ export function ImportHistoryWorkspace() {
 
     // 3. Schedule permanent delete
     const timer = setTimeout(() => {
-      executeDelete(id);
+      executeDelete(id, shouldDeleteProspects);
       delete deleteTimers.current[id];
     }, 6000);
     deleteTimers.current[id] = timer;
@@ -252,17 +272,35 @@ export function ImportHistoryWorkspace() {
         </div>
       </CardContent>
 
-      <AlertDialog open={!!sessionToDelete} onOpenChange={(open) => !open && setSessionToDelete(null)}>
+      <AlertDialog open={!!sessionToDelete} onOpenChange={(open) => {
+        if (!open) {
+          setSessionToDelete(null);
+          setDeleteProspects(false); // Reset checkbox on close
+        }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Campaign?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete this campaign? <strong>All emails scheduled in this campaign will also be deleted.</strong>
             </AlertDialogDescription>
+            <div className="flex items-start space-x-2 mt-4 bg-muted/30 p-3 rounded-md border border-border">
+              <Checkbox 
+                id="delete-prospects" 
+                checked={deleteProspects} 
+                onCheckedChange={(c) => setDeleteProspects(!!c)} 
+              />
+              <label htmlFor="delete-prospects" className="text-sm font-medium leading-none cursor-pointer">
+                Also delete all prospects imported by this campaign from the CRM
+                <p className="text-xs text-muted-foreground mt-1 font-normal">
+                  If checked, prospects imported in this CSV will be permanently removed from your Prospects page.
+                </p>
+              </label>
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => sessionToDelete && handleDeleteInitiated(sessionToDelete)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={() => sessionToDelete && handleDeleteInitiated(sessionToDelete, deleteProspects)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete Campaign
             </AlertDialogAction>
           </AlertDialogFooter>
