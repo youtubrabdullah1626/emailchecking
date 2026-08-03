@@ -15,6 +15,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/ui/status-badge";
 import useSWR, { mutate } from "swr";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error("Failed to load prospects");
@@ -56,15 +66,20 @@ function highlightMatch(text: string, query: string) {
 export default function ProspectsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [prospectToDelete, setProspectToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const { data, error, isLoading } = useSWR("/api/prospects", fetcher, { 
     keepPreviousData: true 
   });
 
-  const handleDeleteProspect = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete ${name}? This will also delete all their sequence history and replies.`)) {
-      return;
-    }
+  const handleDeleteProspect = (id: string, name: string) => {
+    setProspectToDelete({ id, name });
+  };
+  
+  const confirmDeleteProspect = async () => {
+    if (!prospectToDelete) return;
+    const { id, name } = prospectToDelete;
+    setProspectToDelete(null);
     
     try {
       const res = await fetch(`/api/prospects/${id}`, { method: 'DELETE' });
@@ -292,6 +307,26 @@ export default function ProspectsPage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!prospectToDelete} onOpenChange={(open) => !open && setProspectToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Prospect?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{prospectToDelete?.name}</strong>? This action will completely remove them from your database, along with all their sequence history and replies.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteProspect} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Prospect
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
