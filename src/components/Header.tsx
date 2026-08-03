@@ -52,8 +52,42 @@ export function Header({ onMenuClick }: HeaderProps) {
       const reader = new FileReader();
       reader.onload = (event) => {
         const result = event.target?.result as string;
-        setAvatarUrl(result);
-        localStorage.setItem('user_avatar', result);
+        
+        // Resize image to prevent localStorage QuotaExceededError
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_SIZE = 256;
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            setAvatarUrl(resizedDataUrl);
+            try {
+              localStorage.setItem('user_avatar', resizedDataUrl);
+            } catch (err) {
+              console.error('Failed to save avatar', err);
+            }
+          }
+        };
+        img.src = result;
       };
       reader.readAsDataURL(file);
     }
@@ -192,11 +226,11 @@ export function Header({ onMenuClick }: HeaderProps) {
           </DropdownMenuContent>
         </DropdownMenu>
         
-        <div className="relative ml-2 group">
-          <label htmlFor="avatar-upload" className="cursor-pointer block relative rounded-full overflow-hidden border-2 border-transparent ring-2 ring-transparent transition-all duration-300 hover:ring-primary/30 hover:border-border shadow-sm">
-            <Avatar className="h-9 w-9">
+        <div className="relative ml-4 group">
+          <label htmlFor="avatar-upload" className="cursor-pointer block relative rounded-full overflow-hidden border-2 border-transparent ring-2 ring-primary/20 transition-all duration-300 hover:ring-primary/50 shadow-md hover:shadow-lg">
+            <Avatar className="h-11 w-11 border border-border/50">
               {avatarUrl && <AvatarImage src={avatarUrl} alt="User Avatar" className="object-cover" />}
-              <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-xs font-semibold tracking-wider">
+              <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-bold tracking-wider">
                 IQ
               </AvatarFallback>
             </Avatar>
