@@ -14,6 +14,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 export function ImportHistoryWorkspace() {
@@ -32,6 +42,8 @@ export function ImportHistoryWorkspace() {
     loadSessions();
   }, [sessionId, loadSessions]); // Reload when current session changes
 
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+
   const handleResume = (id: string) => {
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.setItem("smart_import_active_session_id", id);
@@ -39,9 +51,13 @@ export function ImportHistoryWorkspace() {
     window.location.reload();
   };
 
-  const handleDelete = async (id: string) => {
-    await storage.deleteSession(id);
-    loadSessions();
+  const confirmDelete = async () => {
+    if (sessionToDelete) {
+      await storage.deleteSession(sessionToDelete);
+      loadSessions();
+      setSessionToDelete(null);
+      toast.success("Campaign and scheduled emails deleted");
+    }
   };
 
   const handleRename = (id: string, currentName: string) => {
@@ -176,7 +192,7 @@ export function ImportHistoryWorkspace() {
                       <Edit2 className="h-4 w-4 mr-2" />
                       Rename
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDelete(session.sessionId)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                    <DropdownMenuItem onClick={() => setSessionToDelete(session.sessionId)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete
                     </DropdownMenuItem>
@@ -187,6 +203,23 @@ export function ImportHistoryWorkspace() {
           ))}
         </div>
       </CardContent>
+
+      <AlertDialog open={!!sessionToDelete} onOpenChange={(open) => !open && setSessionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Campaign?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this campaign? <strong>All emails scheduled in this campaign will also be deleted immediately.</strong> This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Campaign
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
