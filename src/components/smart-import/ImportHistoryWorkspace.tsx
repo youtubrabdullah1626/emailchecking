@@ -14,6 +14,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 export function ImportHistoryWorkspace() {
@@ -35,6 +45,9 @@ export function ImportHistoryWorkspace() {
   // Track hidden sessions (optimistic delete) and timers
   const [hiddenSessions, setHiddenSessions] = useState<Set<string>>(new Set());
   const deleteTimers = React.useRef<Record<string, NodeJS.Timeout>>({});
+  
+  // Track which session is currently queued for confirmation in the AlertDialog
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -61,16 +74,20 @@ export function ImportHistoryWorkspace() {
   };
 
   const handleDeleteInitiated = (id: string) => {
-    // Optimistic hide
+    // 1. Close the AlertDialog
+    setSessionToDelete(null);
+
+    // 2. Optimistic hide
     setHiddenSessions(prev => new Set(prev).add(id));
 
-    // Schedule permanent delete
+    // 3. Schedule permanent delete
     const timer = setTimeout(() => {
       executeDelete(id);
       delete deleteTimers.current[id];
     }, 6000);
     deleteTimers.current[id] = timer;
 
+    // 4. Show the sleek undo toast
     toast.success("Campaign deleted", {
       description: "Scheduled emails will also be permanently deleted.",
       action: {
@@ -223,7 +240,7 @@ export function ImportHistoryWorkspace() {
                       <Edit2 className="h-4 w-4 mr-2" />
                       Rename
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDeleteInitiated(session.sessionId)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                    <DropdownMenuItem onClick={() => setSessionToDelete(session.sessionId)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete
                     </DropdownMenuItem>
@@ -234,6 +251,23 @@ export function ImportHistoryWorkspace() {
           ))}
         </div>
       </CardContent>
+
+      <AlertDialog open={!!sessionToDelete} onOpenChange={(open) => !open && setSessionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Campaign?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this campaign? <strong>All emails scheduled in this campaign will also be deleted.</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => sessionToDelete && handleDeleteInitiated(sessionToDelete)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Campaign
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
