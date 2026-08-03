@@ -272,8 +272,8 @@ export default function RepliesPage() {
           <TableHeader className="bg-muted/50">
             <TableRow>
               <TableHead>Prospect</TableHead>
-              <TableHead>Replied To (Subject)</TableHead>
-              <TableHead>Automation</TableHead>
+              <TableHead>Replied After</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Received</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
@@ -301,10 +301,10 @@ export default function RepliesPage() {
                 
                 let classificationStatus: any = "neutral";
                 let classificationLabel: string = item.replyType;
-                if (item.replyType === "REAL_REPLY") { classificationStatus = "positive"; classificationLabel = "Real Reply"; }
-                else if (item.replyType === "NEEDS_REVIEW") { classificationStatus = "pending_review"; classificationLabel = "Needs Review"; }
+                if (item.replyType === "REAL_REPLY") { classificationStatus = "positive"; classificationLabel = "Replied"; }
+                else if (item.replyType === "NEEDS_REVIEW") { classificationStatus = "pending_review"; classificationLabel = "Awaiting Review"; }
                 else if (item.replyType === "AUTO_REPLY") { classificationStatus = "auto_reply"; classificationLabel = "Auto Reply"; }
-                else if (item.replyType === "SPAM") { classificationStatus = "spam"; classificationLabel = "Spam"; }
+                else if (item.replyType === "SPAM") { classificationStatus = "spam"; classificationLabel = "Bounced"; }
 
                 return (
                   <TableRow 
@@ -318,18 +318,12 @@ export default function RepliesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="font-medium text-foreground max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis">
-                        {item.subject}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Step #{item.stepNumber}
+                        {item.stepNumber === 1 ? "First Email" : `Follow-up #${item.stepNumber - 1}`}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <StatusBadge 
-                          status={item.prospectStatus === 'REPLIED' ? 'positive' : item.reviewStatus === 'PENDING' ? 'pending' : 'neutral'} 
-                          label={item.prospectStatus === 'REPLIED' ? 'Auto-Stopped' : item.reviewStatus === 'PENDING' ? 'Awaiting Review' : item.reviewStatus} 
-                        />
+                        <StatusBadge status={classificationStatus} label={classificationLabel} />
                         {actionRequired && <AlertCircle className="h-4 w-4 text-amber-500" />}
                       </div>
                     </TableCell>
