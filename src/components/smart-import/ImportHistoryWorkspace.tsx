@@ -51,7 +51,7 @@ export function ImportHistoryWorkspace() {
   
   // Track which session is currently queued for confirmation in the AlertDialog
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
-  const [prospectAction, setProspectAction] = useState<"KEEP" | "CANCEL" | "DELETE">("KEEP");
+  const [prospectAction, setProspectAction] = useState<"CANCEL" | "DELETE">("CANCEL");
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -67,19 +67,17 @@ export function ImportHistoryWorkspace() {
     window.location.reload();
   };
 
-  const executeDelete = async (id: string, action: "KEEP" | "CANCEL" | "DELETE") => {
+  const executeDelete = async (id: string, action: "CANCEL" | "DELETE") => {
     try {
-      if (action !== "KEEP") {
-        const dataset = await storage.loadHeavyDataset(id);
-        if (dataset && dataset.validatedRecords && dataset.validatedRecords.length > 0) {
-          const emails = dataset.validatedRecords.map((r: any) => r.email).filter(Boolean);
-          if (emails.length > 0) {
-            await fetch("/api/prospects/bulk-action", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ emails, action }),
-            });
-          }
+      const dataset = await storage.loadHeavyDataset(id);
+      if (dataset && dataset.validatedRecords && dataset.validatedRecords.length > 0) {
+        const emails = dataset.validatedRecords.map((r: any) => r.email).filter(Boolean);
+        if (emails.length > 0) {
+          await fetch("/api/prospects/bulk-action", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ emails, action }),
+          });
         }
       }
     } catch (err) {
@@ -95,7 +93,7 @@ export function ImportHistoryWorkspace() {
     loadSessions();
   };
 
-  const handleDeleteInitiated = (id: string, action: "KEEP" | "CANCEL" | "DELETE") => {
+  const handleDeleteInitiated = (id: string, action: "CANCEL" | "DELETE") => {
     // 1. Close the AlertDialog
     setSessionToDelete(null);
 
@@ -277,7 +275,7 @@ export function ImportHistoryWorkspace() {
       <AlertDialog open={!!sessionToDelete} onOpenChange={(open) => {
         if (!open) {
           setSessionToDelete(null);
-          setProspectAction("KEEP"); // Reset action on close
+          setProspectAction("CANCEL"); // Reset action on close
         }
       }}>
         <AlertDialogContent>
@@ -289,13 +287,6 @@ export function ImportHistoryWorkspace() {
             <div className="mt-4 bg-muted/30 p-4 rounded-md border border-border">
               <h4 className="text-sm font-medium mb-3 text-foreground">What should happen to the prospects in your CRM?</h4>
               <RadioGroup value={prospectAction} onValueChange={(val: any) => setProspectAction(val)} className="space-y-3">
-                <div className="flex items-start space-x-3">
-                  <RadioGroupItem value="KEEP" id="keep" className="mt-1" />
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="keep" className="text-sm font-medium">Keep prospects in CRM (Do nothing)</Label>
-                    <p className="text-xs text-muted-foreground">Prospects will remain active in your central database.</p>
-                  </div>
-                </div>
                 <div className="flex items-start space-x-3">
                   <RadioGroupItem value="CANCEL" id="cancel" className="mt-1" />
                   <div className="grid gap-1.5">
