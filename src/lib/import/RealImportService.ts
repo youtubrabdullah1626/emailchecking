@@ -37,10 +37,18 @@ export class RealImportService implements IImportService {
           
           for (const vKey of valueKeys) {
             const newRow: any = {};
+            let currentHeader = "";
             for (const row of rawRows) {
               const newHeaderName = String(row[firstKey] || '').trim();
               if (newHeaderName) {
-                 newRow[newHeaderName] = row[vKey];
+                 currentHeader = newHeaderName;
+                 newRow[currentHeader] = row[vKey] || '';
+              } else if (currentHeader) {
+                 // Append continuation lines to the current header
+                 const continuation = row[vKey] || '';
+                 if (continuation) {
+                   newRow[currentHeader] += "\n" + continuation;
+                 }
               }
             }
             if (Object.keys(newRow).length > 0) {
