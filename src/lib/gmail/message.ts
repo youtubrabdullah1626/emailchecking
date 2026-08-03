@@ -124,7 +124,7 @@ export function buildGmailMessage(
     `To: ${toHeader}`,
     `Subject: ${safeSubject}`,
     `MIME-Version: 1.0`,
-    `List-Unsubscribe: <mailto:${cleanHeaderVal(from)}?subject=unsubscribe>`,
+    // `List-Unsubscribe: <mailto:${cleanHeaderVal(from)}?subject=unsubscribe>`, // Temporarily disabled for deliverability experiment
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
   ];
 
