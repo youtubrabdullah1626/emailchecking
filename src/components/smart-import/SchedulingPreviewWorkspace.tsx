@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import useSWR from "swr";
+import { apiClient } from "@/lib/api-client";
 import { useImport } from "@/components/providers/ImportProvider";
 import { ExecutionQueueItem } from "@/lib/scheduler/SchedulingTypes";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -14,7 +16,9 @@ import { Progress } from "@/components/ui/progress";
 import { SystemCertification } from "./SystemCertification";
 
 export function SchedulingPreviewWorkspace() {
-  const { queueSummary, getExecutionQueue, approveImport, appendTargetSessionId } = useImport() as any;
+  const { queueSummary, getExecutionQueue, approveImport, appendTargetSessionId, startScheduling, setStatus } = useImport() as any;
+  const { data: warmupStatus } = useSWR("/api/warmup/status", url => apiClient<any>(url));
+  const { data: warmupSettings } = useSWR("/api/warmup/settings", url => apiClient<any>(url));
   const [queueSlice, setQueueSlice] = useState<ExecutionQueueItem[]>([]);
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 100;
@@ -127,12 +131,25 @@ export function SchedulingPreviewWorkspace() {
       </div>
 
       {effectiveQueueSummary.existingQueueMetrics && effectiveQueueSummary.existingQueueMetrics.skippedDuplicates > 0 && (
-        <Alert className="bg-amber-50/50 border-amber-200 text-amber-900 mb-6">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
-          <AlertTitle>Duplicates Skipped</AlertTitle>
-          <AlertDescription>
-            {effectiveQueueSummary.existingQueueMetrics.skippedDuplicates} leads were skipped because they are already scheduled in {appendTargetSessionId ? "the existing campaign" : "another active campaign"}.
-          </AlertDescription>
+        <Alert className="bg-amber-50/50 border-amber-200 text-amber-900 mb-6 shadow-sm">
+          <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 ml-2">
+            <div>
+              <AlertTitle className="text-amber-800 font-bold text-base">Duplicates Detected & Skipped</AlertTitle>
+              <AlertDescription className="text-amber-700/90 mt-1">
+                <strong>{effectiveQueueSummary.existingQueueMetrics.skippedDuplicates}</strong> leads were automatically skipped because they are already scheduled in {appendTargetSessionId ? "the existing campaign" : "another active campaign"}.
+              </AlertDescription>
+            </div>
+            <Button 
+              variant="outline" 
+              className="bg-white border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 shadow-sm whitespace-nowrap"
+              onClick={() => {
+                startScheduling(warmupStatus, warmupSettings, undefined, true);
+              }}
+            >
+              Send Anyway (Include Duplicates)
+            </Button>
+          </div>
         </Alert>
       )}
 

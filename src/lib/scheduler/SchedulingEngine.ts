@@ -37,11 +37,12 @@ export class SchedulingEngine {
     warmupStatus: WarmupStatus | null,
     warmupSettings: WarmupSettings | null,
     existingQueue: ExecutionQueueItem[] = [],
-    globalQueue: ExecutionQueueItem[] = []
+    globalQueue: ExecutionQueueItem[] = [],
+    allowDuplicates: boolean = false
   ): Generator<{ date: string; items: ExecutionQueueItem[]; isWarmupThrottled: boolean; complete: boolean; existingQueueMetrics?: any }> {
     
     // Fast lookup for duplicates globally to prevent cross-campaign spam
-    const existingEmails = new Set([
+    const existingEmails = allowDuplicates ? new Set<string>() : new Set([
       ...existingQueue.map(q => q.recipientEmail.toLowerCase().trim()),
       ...globalQueue.map(q => q.recipientEmail.toLowerCase().trim())
     ]);

@@ -34,6 +34,7 @@ export class TestFactories {
       maxHardBounceRate: 0.05,
       maxComplaintRate: 0.01,
       maxConsecutiveErrors: 10,
+      minVolumeForRules: 50,
       ...overrides
     };
   }

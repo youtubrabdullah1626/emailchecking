@@ -26,17 +26,17 @@ type LiveItem = ExecutionQueueItem & {
 export function LiveExecutionDashboard() {
   const { getExecutionQueue, updateQueueItemState, closeSession, deleteQueueItem, rescheduleQueueItem } = useImport() as any;
   const [liveItems, setLiveItems] = useState<LiveItem[]>([]);
-  
+
   // Real stats based on actual data
   const stats = useMemo(() => {
     let sent = 0, opened = 0, replied = 0, bounced = 0;
     liveItems.forEach(item => {
       // Funnel metrics: If it was opened or replied, it was definitely sent.
       if (["SENT", "OPENED", "REPLIED"].includes(item.liveStatus as string)) sent++;
-      
+
       // If it was replied to, it was definitely opened.
       if (["OPENED", "REPLIED"].includes(item.liveStatus as string)) opened++;
-      
+
       if (item.liveStatus === "REPLIED") replied++;
       if (item.liveStatus === "BOUNCED") bounced++;
     });
@@ -51,7 +51,7 @@ export function LiveExecutionDashboard() {
   const [rescheduleItem, setRescheduleItem] = useState<LiveItem | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
-// Helper to actually send the email via the backend
+  // Helper to actually send the email via the backend
   const sendEmailViaBackend = async (item: LiveItem): Promise<boolean> => {
     try {
       const res = await fetch("/api/gmail/send-demo", {
@@ -68,9 +68,9 @@ export function LiveExecutionDashboard() {
       if (!res.ok) {
         console.error("Failed to send email:", data.error);
         if (data.error && data.error.includes("OAuth not configured")) {
-           toast.error("Gmail OAuth Missing", { description: "Please configure your .env.local file with Gmail API credentials." });
+          toast.error("Gmail OAuth Missing", { description: "Please configure your .env.local file with Gmail API credentials." });
         } else {
-           toast.error("Delivery Failed", { description: data.error || "Unknown API error" });
+          toast.error("Delivery Failed", { description: data.error || "Unknown API error" });
         }
         return false;
       }
@@ -110,9 +110,9 @@ export function LiveExecutionDashboard() {
   useEffect(() => {
     const checkLiveTrackingStatus = async () => {
       const currentItems = liveItemsRef.current;
-      // Check items that are SENT or OPENED (since they could transition to OPENED, REPLIED)
+      // Check items that are SENT, OPENED, or CLICKED (since they could transition to OPENED, CLICKED, REPLIED)
       const activeItems = currentItems.filter(
-        item => item.liveStatus === "SENT" || item.liveStatus === "OPENED"
+        item => item.liveStatus === "SENT" || item.liveStatus === "OPENED" || item.liveStatus === "CLICKED"
       );
 
       if (activeItems.length === 0) return;
@@ -125,14 +125,14 @@ export function LiveExecutionDashboard() {
           body: JSON.stringify({ stepIds })
         });
         const data = await res.json();
-        
+
         if (data.statuses && data.statuses.length > 0) {
           const newTimeStr = new Date().toLocaleTimeString([], { hour12: false });
-          
+
           setLiveItems(prev => prev.map(item => {
             const tracking = data.statuses.find((s: any) => s.stepId === item.queueId);
             if (tracking && tracking.status && tracking.status !== item.liveStatus) {
-              
+
               if (updateQueueItemState) {
                 updateQueueItemState(item.queueId, tracking.status, newTimeStr);
               }
@@ -171,7 +171,7 @@ export function LiveExecutionDashboard() {
     const interval = setInterval(() => {
       const now = new Date();
       const currentItems = liveItemsRef.current;
-      
+
       currentItems.forEach(item => {
         if (item.liveStatus === "SCHEDULED") {
           // Helper to get current time in target timezone
@@ -188,12 +188,12 @@ export function LiveExecutionDashboard() {
             // fallback to local time if timezone is invalid
             tzNowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
           }
-          
+
           const itemScheduledStr = `${item.scheduledDate}T${item.scheduledTime}:00`;
-          
+
           if (tzNowStr >= itemScheduledStr) {
             // 1. Immediately mark as PROCESSING in state to prevent next tick from picking it up
-            setLiveItems(prev => prev.map(i => 
+            setLiveItems(prev => prev.map(i =>
               i.queueId === item.queueId ? { ...i, liveStatus: "PROCESSING" as any } : i
             ));
 
@@ -220,7 +220,7 @@ export function LiveExecutionDashboard() {
           }
         }
       });
-    }, 1000); 
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [updateQueueItemState]);
@@ -240,7 +240,7 @@ export function LiveExecutionDashboard() {
 
   const handleSendNow = async (e: React.MouseEvent, queueId: string) => {
     e.stopPropagation();
-    
+
     // Find the item
     const targetItem = liveItems.find(i => i.queueId === queueId);
     if (!targetItem) return;
@@ -258,7 +258,7 @@ export function LiveExecutionDashboard() {
     const success = await sendEmailViaBackend(targetItem);
     const statusStr = success ? "SENT" : "SCHEDULED";
     const timeStr = success ? new Date().toLocaleTimeString([], { hour12: false }) : "-";
-    
+
     setLiveItems(prev => prev.map(item => {
       if (item.queueId === queueId) {
         if (success) {
@@ -327,14 +327,14 @@ export function LiveExecutionDashboard() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
         <div className="flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => closeSession && closeSession()} 
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => closeSession && closeSession()}
             className="h-9 w-9 rounded-full bg-muted/30 hover:bg-muted shrink-0 text-muted-foreground hover:text-foreground transition-colors shadow-sm border border-transparent hover:border-border"
             title="Back to Import History"
           >
@@ -422,28 +422,25 @@ export function LiveExecutionDashboard() {
                 </TableRow>
               ) : (
                 liveItems.map((item, idx) => (
-                  <TableRow 
-                    key={item.queueId + idx} 
+                  <TableRow
+                    key={item.queueId + idx}
                     onClick={() => openLeadJourney(item.recipientEmail)}
-                    className={`hover:bg-muted/40 transition-all duration-200 cursor-pointer group relative ${
-                      item.isNew ? 'bg-emerald-50/30' : ''
-                    }`}
+                    className={`hover:bg-muted/40 transition-all duration-200 cursor-pointer group relative ${item.isNew ? 'bg-emerald-50/30' : ''
+                      }`}
                   >
                     <TableCell className="font-medium py-3 relative">
                       {item.isNew && (
                         <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-emerald-500 rounded-r-md shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                       )}
                       <div className="flex items-center gap-3 pl-2">
-                        <Avatar className={`h-8 w-8 ring-1 shadow-sm transition-all ${
-                          item.isNew 
-                            ? 'ring-emerald-200 bg-emerald-100/50' 
+                        <Avatar className={`h-8 w-8 ring-1 shadow-sm transition-all ${item.isNew
+                            ? 'ring-emerald-200 bg-emerald-100/50'
                             : 'ring-border group-hover:ring-primary/30'
-                        }`}>
-                           <AvatarFallback className={`text-xs font-semibold ${
-                             item.isNew ? 'text-emerald-700 bg-emerald-100/50' : 'bg-primary/5 text-primary'
-                           }`}>
-                             {item.recipientEmail.substring(0, 2).toUpperCase()}
-                           </AvatarFallback>
+                          }`}>
+                          <AvatarFallback className={`text-xs font-semibold ${item.isNew ? 'text-emerald-700 bg-emerald-100/50' : 'bg-primary/5 text-primary'
+                            }`}>
+                            {item.recipientEmail.substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
                         </Avatar>
                         <span className="truncate max-w-[220px]" title={item.recipientEmail}>
                           {item.recipientEmail}
@@ -481,24 +478,24 @@ export function LiveExecutionDashboard() {
                           <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                             Actions
                           </div>
-                          <DropdownMenuItem 
-                            onClick={(e) => handleSendNow(e, item.queueId)} 
+                          <DropdownMenuItem
+                            onClick={(e) => handleSendNow(e, item.queueId)}
                             disabled={item.liveStatus !== "SCHEDULED"}
                             className="cursor-pointer"
                           >
                             <Play className="h-4 w-4 mr-2 text-emerald-500" />
                             Send Now
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={(e) => openReschedule(e, item)} 
+                          <DropdownMenuItem
+                            onClick={(e) => openReschedule(e, item)}
                             disabled={item.liveStatus !== "SCHEDULED"}
                             className="cursor-pointer"
                           >
                             <Clock className="h-4 w-4 mr-2 text-primary" /> Reschedule
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={(e) => handleDeleteItem(e, item.queueId)} 
+                          <DropdownMenuItem
+                            onClick={(e) => handleDeleteItem(e, item.queueId)}
                             className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50"
                           >
                             <Trash2 className="h-4 w-4 mr-2" /> Delete Item
@@ -568,7 +565,7 @@ export function LiveExecutionDashboard() {
               {selectedLead}
             </SheetDescription>
           </SheetHeader>
-          
+
           <ScrollArea className="flex-1 p-6">
             <div className="space-y-8 relative pb-8">
               {/* Vertical connecting line for micro-timeline */}
@@ -577,7 +574,7 @@ export function LiveExecutionDashboard() {
               {selectedLeadItems.map((item, idx) => {
                 const step = item.sequenceStep.stepNumber;
                 let delayStr = "";
-                
+
                 if (idx === 0) {
                   delayStr = "Today";
                 } else {
@@ -588,14 +585,14 @@ export function LiveExecutionDashboard() {
                 }
 
                 const exactDate = format(parseISO(item.scheduledDate), "MMM do");
-                
+
                 return (
                   <div key={item.queueId} className="relative pl-14">
                     {/* Step Marker */}
                     <div className="absolute left-[20px] top-1 h-2 w-2 rounded-full bg-primary ring-4 ring-background shadow-sm" />
-                    
+
                     <div className="bg-background rounded-lg border border-border shadow-sm p-4 space-y-3">
-                      
+
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary shadow-none">

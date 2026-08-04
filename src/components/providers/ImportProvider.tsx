@@ -37,7 +37,7 @@ interface ImportContextType {
   applyMappingConfig: () => Promise<void>;
   proceedToPlanning: () => void;
   startSequenceBuild: (config: CampaignConfig) => Promise<void>;
-  startScheduling: (warmupStatus: any, warmupSettings: any, configOverride?: CampaignConfig) => Promise<void>;
+  startScheduling: (warmupStatus: any, warmupSettings: any, configOverride?: CampaignConfig, allowDuplicates?: boolean) => Promise<void>;
   fastTrackAppend: () => Promise<void>;
   approveImport: () => Promise<void>;
   resetImport: () => Promise<void>;
@@ -345,7 +345,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const startScheduling = async (warmupStatus: any, warmupSettings: any, configOverride?: CampaignConfig) => {
+  const startScheduling = async (warmupStatus: any, warmupSettings: any, configOverride?: CampaignConfig, allowDuplicates: boolean = false) => {
     const activeConfig = configOverride || campaignConfig;
     if (!activeConfig) return;
     perfMonitor.startPhase();
@@ -408,7 +408,8 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         warmupStatus,
         warmupSettings,
         existingQueue,
-        globalQueue
+        globalQueue,
+        allowDuplicates
       );
 
       // Synchronous generation for ultra-fast performance
