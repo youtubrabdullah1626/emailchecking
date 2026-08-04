@@ -112,7 +112,7 @@ export function LiveExecutionDashboard() {
       const currentItems = liveItemsRef.current;
       // Check items that are SENT, OPENED, or CLICKED (since they could transition to OPENED, CLICKED, REPLIED)
       const activeItems = currentItems.filter(
-        item => item.liveStatus === "SENT" || item.liveStatus === "OPENED" || item.liveStatus === "CLICKED"
+        item => item.liveStatus === "SENT" || item.liveStatus === "OPENED"
       );
 
       if (activeItems.length === 0) return;
