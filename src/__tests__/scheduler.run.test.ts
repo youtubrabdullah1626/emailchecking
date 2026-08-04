@@ -32,6 +32,9 @@ jest.mock("@/lib/prisma", () => ({
       findMany: jest.fn(),
       updateMany: jest.fn(),
     },
+    auditLog: {
+      create: jest.fn(),
+    },
   },
 }));
 

@@ -169,8 +169,7 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
 
   // Tracking Engine: Inject Pixel safely into HTML part only
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  // const trackingPixel = TrackingInjector.generatePixel(trackingId, baseUrl);
-  const trackingPixel = ""; // Temporarily disabled for deliverability experiment
+  const trackingPixel = TrackingInjector.generatePixel(trackingId, baseUrl);
 
   const messagePayload = buildGmailMessage({
     from: config.senderEmail,

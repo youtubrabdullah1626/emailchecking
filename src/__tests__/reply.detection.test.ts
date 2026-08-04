@@ -132,6 +132,12 @@ jest.mock("@/lib/prisma", () => ({
     emailEvent: {
       createMany: mockPrismaEmailEventCreateMany,
     },
+    trackedEmail: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    auditLog: {
+      create: jest.fn(),
+    },
     $transaction: mockPrismaTransaction,
   },
 }));
@@ -576,6 +582,7 @@ describe("applyReplyStop", () => {
     cancellableStepIds: string[] = ["step-001", "step-002"]
   ) {
     const mockTx = {
+      $executeRaw: jest.fn(),
       sequence: {
         findUnique: jest.fn().mockResolvedValue({
           status: sequenceStatus,
@@ -588,12 +595,16 @@ describe("applyReplyStop", () => {
       },
       prospect: {
         update: jest.fn().mockResolvedValue({}),
+        findUnique: jest.fn().mockResolvedValue({ email: "test@example.com", name: "Test User", company: "Test Corp" }),
       },
       replyClassification: {
         create: jest.fn().mockResolvedValue({}),
       },
       emailEvent: {
         createMany: jest.fn().mockResolvedValue({}),
+      },
+      auditLog: {
+        create: jest.fn().mockResolvedValue({}),
       },
     };
 
@@ -875,14 +886,9 @@ describe("scanForReplies — REAL_REPLY detected", () => {
     mockPrismaReplyFindMany.mockResolvedValue([]);
 
     // Transaction succeeds — simulate stop action returning a result
-    mockPrismaTransaction.mockImplementation(async (fn: (tx: {
-      sequence: { findUnique: jest.Mock; update: jest.Mock };
-      sequenceStep: { updateMany: jest.Mock };
-      prospect: { update: jest.Mock };
-      replyClassification: { create: jest.Mock };
-      emailEvent: { createMany: jest.Mock };
-    }) => Promise<unknown>) => {
+    mockPrismaTransaction.mockImplementation(async (fn: (tx: any) => Promise<unknown>) => {
       const mockTx = {
+        $executeRaw: jest.fn(),
         sequence: {
           findUnique: jest.fn().mockResolvedValue({
             status: "ACTIVE",
@@ -891,9 +897,13 @@ describe("scanForReplies — REAL_REPLY detected", () => {
           update: jest.fn().mockResolvedValue({}),
         },
         sequenceStep: { updateMany: jest.fn().mockResolvedValue({}) },
-        prospect: { update: jest.fn().mockResolvedValue({}) },
+        prospect: { 
+          update: jest.fn().mockResolvedValue({}),
+          findUnique: jest.fn().mockResolvedValue({ email: "test@example.com", name: "User", company: "Corp" }),
+        },
         replyClassification: { create: jest.fn().mockResolvedValue({}) },
         emailEvent: { createMany: jest.fn().mockResolvedValue({}) },
+        auditLog: { create: jest.fn().mockResolvedValue({}) },
       };
       return fn(mockTx);
     });

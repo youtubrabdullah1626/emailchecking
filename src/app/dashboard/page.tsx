@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { useSmartExecutiveBannerLogic } from "@/components/ui/smart-executive-banner";
 import { Send, Reply, AlertCircle, PlayCircle, Activity } from "lucide-react";
 
 // Existing Types
@@ -106,26 +107,43 @@ export default function DashboardPage() {
   // Derive reply rate
   const replyRate = stats && stats.emailsSentToday > 0 ? Math.round((stats.totalReplies / stats.emailsSentToday) * 100) : 0;
 
+  const bannerState = useSmartExecutiveBannerLogic(stats, recentReplies);
+
+  // Compute specific styling based on priority
+  const bannerStyles: Record<number, { glow: string; bg: string; iconBg: string }> = {
+    1: { glow: 'bg-blue-500/30', bg: 'bg-card', iconBg: 'bg-blue-500/15 text-blue-700' },
+    2: { glow: 'bg-indigo-500/30', bg: 'bg-card', iconBg: 'bg-indigo-500/15 text-indigo-700' },
+    3: { glow: 'bg-emerald-500/30', bg: 'bg-card', iconBg: 'bg-emerald-500/15 text-emerald-700' },
+    4: { glow: 'bg-amber-500/30', bg: 'bg-card', iconBg: 'bg-amber-500/15 text-amber-700' },
+    5: { glow: 'bg-orange-500/30', bg: 'bg-card', iconBg: 'bg-orange-500/15 text-orange-700' },
+    6: { glow: 'bg-slate-300/30', bg: 'bg-card', iconBg: 'bg-slate-100 dark:bg-slate-800 text-slate-600' }
+  };
+
+  const style = bannerStyles[bannerState.priority] || bannerStyles[6];
+
   return (
     <AnimatedPage className="space-y-8">
       
       {/* Welcome Header */}
-      <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between bg-primary/5 border border-primary/10 rounded-2xl p-6">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Welcome back, Team</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Scheduler is <span className="font-medium text-foreground">{stats?.schedulerStatus || 'idle'}</span>. 
-            {/* @ts-ignore - The property exists on the API response but may not be in the strict type definition */}
-            {(stats?.schedulerHealth as any)?.lastChecked ? ` Next run in ${formatDistanceToNow(new Date(new Date((stats.schedulerHealth as any).lastChecked).getTime() + 60000))}.` : ' Next run in unknown.'}
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Button variant="outline" className="bg-background" asChild>
-            <Link href="/prospects/new">Add Prospect</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/scheduler">Run Scheduler</Link>
-          </Button>
+      <div className={`relative flex flex-col md:flex-row gap-6 items-start md:items-center justify-between ${style.bg} border border-border shadow-sm rounded-xl p-6 overflow-hidden`}>
+        {/* Ink Spill Glow Effect */}
+        <div className={`absolute -left-12 -top-12 h-40 w-40 rounded-full blur-[50px] opacity-70 pointer-events-none ${style.glow}`} />
+        
+        <div className="flex items-center gap-5 relative z-10">
+          <div className={`flex items-center justify-center p-3 rounded-full ${style.iconBg} shadow-sm border border-background/50`}>
+            {bannerState.icon}
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">{bannerState.title}</h2>
+            <p className="text-muted-foreground mt-1 text-sm flex items-center gap-2">
+              {bannerState.message}
+              {bannerState.actionLabel && bannerState.actionTarget && (
+                <Link href={bannerState.actionTarget} className="text-primary font-medium hover:underline flex items-center gap-1">
+                  {bannerState.actionLabel} &rarr;
+                </Link>
+              )}
+            </p>
+          </div>
         </div>
       </div>
 

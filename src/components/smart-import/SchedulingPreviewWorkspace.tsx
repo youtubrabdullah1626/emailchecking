@@ -126,12 +126,12 @@ export function SchedulingPreviewWorkspace() {
         </Card>
       </div>
 
-      {appendTargetSessionId && effectiveQueueSummary.existingQueueMetrics && effectiveQueueSummary.existingQueueMetrics.skippedDuplicates > 0 && (
+      {effectiveQueueSummary.existingQueueMetrics && effectiveQueueSummary.existingQueueMetrics.skippedDuplicates > 0 && (
         <Alert className="bg-amber-50/50 border-amber-200 text-amber-900 mb-6">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertTitle>Duplicates Skipped</AlertTitle>
           <AlertDescription>
-            {effectiveQueueSummary.existingQueueMetrics.skippedDuplicates} leads were skipped because they are already scheduled in the existing campaign.
+            {effectiveQueueSummary.existingQueueMetrics.skippedDuplicates} leads were skipped because they are already scheduled in {appendTargetSessionId ? "the existing campaign" : "another active campaign"}.
           </AlertDescription>
         </Alert>
       )}

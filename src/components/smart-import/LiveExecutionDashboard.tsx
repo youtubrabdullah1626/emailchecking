@@ -24,7 +24,7 @@ type LiveItem = ExecutionQueueItem & {
 };
 
 export function LiveExecutionDashboard() {
-  const { getExecutionQueue, updateQueueItemState, closeSession, deleteQueueItem } = useImport() as any;
+  const { getExecutionQueue, updateQueueItemState, closeSession, deleteQueueItem, rescheduleQueueItem } = useImport() as any;
   const [liveItems, setLiveItems] = useState<LiveItem[]>([]);
   
   // Real stats based on actual data
@@ -108,48 +108,61 @@ export function LiveExecutionDashboard() {
 
   // Check for Replies Worker (Every 15s)
   useEffect(() => {
-    const checkReplies = async () => {
+    const checkLiveTrackingStatus = async () => {
       const currentItems = liveItemsRef.current;
-      // Only check items that are SENT
-      const sentRecipients = currentItems
-        .filter(item => item.liveStatus === "SENT" || item.liveStatus === "OPENED")
-        .map(item => item.recipientEmail);
+      // Check items that are SENT, OPENED, or CLICKED (since they could transition to OPENED, CLICKED, REPLIED)
+      const activeItems = currentItems.filter(
+        item => item.liveStatus === "SENT" || item.liveStatus === "OPENED" || item.liveStatus === "CLICKED"
+      );
 
-      if (sentRecipients.length === 0) return;
+      if (activeItems.length === 0) return;
+      const stepIds = activeItems.map(item => item.queueId);
 
       try {
-        const res = await fetch("/api/replies");
+        const res = await fetch("/api/track/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stepIds })
+        });
         const data = await res.json();
         
-        if (data.replies && data.replies.length > 0) {
-          const repliedEmails = new Set(data.replies.map((r: any) => r.email));
-          let updatedAny = false;
+        if (data.statuses && data.statuses.length > 0) {
           const newTimeStr = new Date().toLocaleTimeString([], { hour12: false });
           
           setLiveItems(prev => prev.map(item => {
-            if (repliedEmails.has(item.recipientEmail) && item.liveStatus !== "REPLIED") {
-              updatedAny = true;
+            const tracking = data.statuses.find((s: any) => s.stepId === item.queueId);
+            if (tracking && tracking.status && tracking.status !== item.liveStatus) {
+              
               if (updateQueueItemState) {
-                updateQueueItemState(item.queueId, "REPLIED", newTimeStr);
+                updateQueueItemState(item.queueId, tracking.status, newTimeStr);
               }
-              toast.success("New Reply Detected!", {
-                description: `${item.recipientEmail} has replied.`,
-                icon: <Reply className="h-4 w-4 text-emerald-500" />
-              });
-              return { ...item, liveStatus: "REPLIED", lastEventTime: newTimeStr };
+
+              if (tracking.status === "REPLIED") {
+                toast.success("New Reply Detected!", {
+                  description: `${item.recipientEmail} has replied.`,
+                  icon: <Reply className="h-4 w-4 text-emerald-500" />
+                });
+              } else if (tracking.status === "OPENED" && item.liveStatus === "SENT") {
+                toast.success("Email Opened!", {
+                  description: `${item.recipientEmail} just opened your email.`,
+                  icon: <MailOpen className="h-4 w-4 text-blue-500" />
+                });
+              }
+
+              return { ...item, liveStatus: tracking.status, lastEventTime: newTimeStr };
             }
             return item;
           }));
         }
       } catch (err) {
-        console.error("Failed to check replies", err);
+        console.error("Failed to check tracking status", err);
       }
     };
 
     // Initial check
-    checkReplies();
+    checkLiveTrackingStatus();
     // Poll every 15 seconds
-    const interval = setInterval(checkReplies, 15000);
+    const interval = setInterval(checkLiveTrackingStatus, 15000);
     return () => clearInterval(interval);
   }, [updateQueueItemState]);
 
@@ -161,9 +174,24 @@ export function LiveExecutionDashboard() {
       
       currentItems.forEach(item => {
         if (item.liveStatus === "SCHEDULED") {
-          const scheduledDateTime = new Date(`${item.scheduledDate}T${item.scheduledTime}:00`);
+          // Helper to get current time in target timezone
+          const targetTimezone = item.timezone || "UTC"; // fallback
+          let tzNowStr = "";
+          try {
+            const tzOptions = { timeZone: targetTimezone, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' } as const;
+            const parts = new Intl.DateTimeFormat('en-US', tzOptions).formatToParts(now);
+            const p = (type: string) => parts.find(p => p.type === type)?.value || "";
+            let h = parseInt(p('hour'), 10);
+            if (h === 24) h = 0;
+            tzNowStr = `${p('year')}-${p('month')}-${p('day')}T${h.toString().padStart(2, '0')}:${p('minute')}:${p('second')}`;
+          } catch (e) {
+            // fallback to local time if timezone is invalid
+            tzNowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+          }
           
-          if (now >= scheduledDateTime) {
+          const itemScheduledStr = `${item.scheduledDate}T${item.scheduledTime}:00`;
+          
+          if (tzNowStr >= itemScheduledStr) {
             // 1. Immediately mark as PROCESSING in state to prevent next tick from picking it up
             setLiveItems(prev => prev.map(i => 
               i.queueId === item.queueId ? { ...i, liveStatus: "PROCESSING" as any } : i
@@ -271,12 +299,17 @@ export function LiveExecutionDashboard() {
       }
       return item;
     }));
+    if (rescheduleQueueItem) {
+      rescheduleQueueItem(rescheduleItem.queueId, rescheduleDate, rescheduleTime);
+    }
+    toast.success("Email Rescheduled");
     setRescheduleItem(null);
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "SCHEDULED": return <Badge variant="secondary" className="bg-muted text-muted-foreground font-normal"><Clock className="h-3 w-3 mr-1" /> Scheduled</Badge>;
+      case "PROCESSING": return <Badge variant="secondary" className="bg-orange-50 text-orange-600 border-orange-200 font-normal"><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Processing</Badge>;
       case "SENT": return <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-200 font-normal"><Send className="h-3 w-3 mr-1" /> Sent</Badge>;
       case "OPENED": return <Badge variant="secondary" className="bg-purple-50 text-purple-600 border-purple-200 font-normal"><MailOpen className="h-3 w-3 mr-1" /> Opened</Badge>;
       case "REPLIED": return <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-medium"><Reply className="h-3 w-3 mr-1" /> Replied</Badge>;

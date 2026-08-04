@@ -15,8 +15,8 @@ const config = {
       "ts-jest",
       {
         tsconfig: {
-          // ts-jest needs CommonJS module format to work with Jest
           module: "commonjs",
+          jsx: "react-jsx",
         },
       },
     ],

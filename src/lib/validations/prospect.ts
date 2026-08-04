@@ -12,7 +12,7 @@ import { z } from "zod";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const EMAIL_REGEX = /^[a-zA-Z0-9]+([._-][a-zA-Z0-9]+)*@[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$/;
+const EMAIL_REGEX = /^[a-zA-Z0-9+]+([._-][a-zA-Z0-9+]+)*@[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$/;
 
 export function isValidEmail(raw: string): boolean {
   return EMAIL_REGEX.test(raw.trim());
@@ -46,13 +46,10 @@ export const prospectCreateSchema = z.object({
     .transform(normalizeEmail),
   timezone: z.string().trim().min(1, "Timezone is required.")
     .refine(isValidIanaTimezone, "Select a valid timezone."),
-  notes: z.string().trim().max(2000, "Notes must be 2000 characters or fewer.").optional(),
+  notes: z.string().trim().max(2000, "Notes must be 2000 characters or fewer.").optional().transform(v => v === "" ? undefined : v),
 });
 
-export const prospectUpdateSchema = prospectCreateSchema.partial().refine(
-  (data) => Object.keys(data).length > 0,
-  "At least one field must be provided for update."
-);
+export const prospectUpdateSchema = prospectCreateSchema.partial();
 
 export type ProspectCreateInput = z.infer<typeof prospectCreateSchema>;
 export type ProspectUpdateInput = z.infer<typeof prospectUpdateSchema>;

@@ -143,7 +143,7 @@ LegacyTextarea.displayName = 'LegacyTextarea';
 
 // --- LegacyPageHeader ---
 export interface LegacyPageHeaderProps {
-  title: string;
+  title: React.ReactNode;
   description?: string;
   actions?: React.ReactNode;
 }

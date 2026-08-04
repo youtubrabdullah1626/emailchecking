@@ -9,8 +9,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Plus, Filter, Check, MoreHorizontal, Trash, ExternalLink } from "lucide-react";
+import { Search, Plus, Filter, Check, MoreHorizontal, Trash, ExternalLink, Info } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import useSWR, { mutate } from "swr";
@@ -118,7 +119,29 @@ export default function ProspectsPage() {
   return (
     <div className="flex-1 space-y-8 p-8 pt-6 h-full flex flex-col">
       <PageHeader 
-        title="Prospects" 
+        title={
+          <div className="flex items-center gap-2.5">
+            Prospects
+            <TooltipProvider>
+              <Tooltip delayDuration={200}>
+                <TooltipTrigger asChild>
+                  <button type="button" className="flex items-center justify-center h-6 w-6 rounded-full bg-muted/50 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors focus:outline-none cursor-help mt-1">
+                    <Info className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" align="center" className="max-w-[280px] p-4 bg-white border border-slate-200 shadow-xl rounded-xl z-50">
+                  <p className="font-semibold text-slate-900 mb-2">
+                    What is a Prospect?
+                  </p>
+                  <div className="text-slate-600 text-xs leading-relaxed space-y-2">
+                    <p>A prospect is anyone you want to contact.</p>
+                    <p>Add them here, and the Smart Engine will automatically handle all emails and follow-ups. ⚡</p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        } 
         description="Manage your contacts and their sequence status."
         actions={
           <>

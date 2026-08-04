@@ -17,6 +17,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setIsMobileDrawerOpen(false);
   }, [pathname]);
 
+  // 100% Honest "Last Online" Tracker
+  useEffect(() => {
+    let lastTracked = 0;
+    const TRACKING_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+    const trackActivity = () => {
+      const now = Date.now();
+      if (now - lastTracked > TRACKING_INTERVAL) {
+        lastTracked = now;
+        fetch("/api/track-activity", { 
+          method: "POST", 
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}) // Empty body, backend resolves primary account
+        }).catch(() => {});
+      }
+    };
+
+    // Track on initial load
+    trackActivity();
+
+    // Track on user interactions (debounced by the if statement above)
+    window.addEventListener("click", trackActivity, { passive: true });
+    window.addEventListener("scroll", trackActivity, { passive: true });
+    window.addEventListener("mousemove", trackActivity, { passive: true });
+
+    return () => {
+      window.removeEventListener("click", trackActivity);
+      window.removeEventListener("scroll", trackActivity);
+      window.removeEventListener("mousemove", trackActivity);
+    };
+  }, []);
+
   return (
     <SWRConfig 
       value={{ 

@@ -6,7 +6,8 @@ import { StorageEngine, ImportSessionMetadata } from "@/lib/storage/StorageEngin
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { History, Play, Trash2, CheckCircle2, Clock, AlertTriangle, Eye, Plus, MoreVertical, Edit2 } from "lucide-react";
+import { History, Play, Trash2, CheckCircle2, Clock, AlertTriangle, Eye, Plus, MoreVertical, Edit2, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -55,8 +56,9 @@ export function ImportHistoryWorkspace() {
 
   // Cleanup timers on unmount
   useEffect(() => {
+    const timers = deleteTimers.current;
     return () => {
-      Object.values(deleteTimers.current).forEach(clearTimeout);
+      Object.values(timers).forEach(clearTimeout);
     };
   }, []);
 
@@ -176,9 +178,27 @@ export function ImportHistoryWorkspace() {
       <input type="file" ref={fileInputRef} className="hidden" accept=".csv,.xlsx" onChange={onFileSelected} />
       <CardHeader className="bg-muted/5 border-b border-border py-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2.5">
             <History className="h-5 w-5 text-muted-foreground" />
-            Import History & Recovery
+            Full History
+            <TooltipProvider>
+              <Tooltip delayDuration={200}>
+                <TooltipTrigger asChild>
+                  <button type="button" className="flex items-center justify-center h-6 w-6 rounded-full bg-muted/50 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors focus:outline-none cursor-help">
+                    <Info className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" align="center" className="max-w-[280px] p-4 bg-white border border-slate-200 shadow-xl rounded-xl z-50">
+                  <p className="font-semibold text-slate-900 mb-2">
+                    What is Full History?
+                  </p>
+                  <div className="text-slate-600 text-xs leading-relaxed space-y-2">
+                    <p>This shows all your past imports and active workflows.</p>
+                    <p>You can instantly resume paused imports or monitor live campaigns from here! ⚡</p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </CardTitle>
           <Badge variant="outline">{sessions.length} Sessions</Badge>
         </div>

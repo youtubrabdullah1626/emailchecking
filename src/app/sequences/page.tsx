@@ -8,13 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, MoreHorizontal, PlayCircle, PauseCircle, CheckCircle2, Trash2 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Plus, MoreHorizontal, PlayCircle, PauseCircle, CheckCircle2, Trash2, Info, ExternalLink } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { formatDistanceToNow, format } from "date-fns";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
 interface StepItem {
@@ -74,7 +78,13 @@ export default function SequencesPage() {
           throw new Error(data.error || "Failed to load sequences.");
         }
         const json = await res.json();
-        setSequences(json.data ?? []);
+        // Sort sequences: Active first, then by created_at descending
+        const sortedSequences = (json.data ?? []).sort((a: SequenceDetail, b: SequenceDetail) => {
+          if (a.status === 'ACTIVE' && b.status !== 'ACTIVE') return -1;
+          if (a.status !== 'ACTIVE' && b.status === 'ACTIVE') return 1;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+        setSequences(sortedSequences);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to load sequences.";
         setError(msg);
@@ -100,7 +110,29 @@ export default function SequencesPage() {
   return (
     <AnimatedPage className="space-y-6">
       <PageHeader 
-        title="Sequences" 
+        title={
+          <div className="flex items-center gap-2.5">
+            Sequences
+            <TooltipProvider>
+              <Tooltip delayDuration={200}>
+                <TooltipTrigger asChild>
+                  <button type="button" className="flex items-center justify-center h-6 w-6 rounded-full bg-muted/50 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors focus:outline-none cursor-help mt-1">
+                    <Info className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" align="center" className="max-w-[280px] p-4 bg-white border border-slate-200 shadow-xl rounded-xl z-50">
+                  <p className="font-semibold text-slate-900 mb-2">
+                    What is a Sequence?
+                  </p>
+                  <div className="text-slate-600 text-xs leading-relaxed space-y-2">
+                    <p>A sequence is an automated chain of emails.</p>
+                    <p>Just set the schedule, and the Smart Engine handles all follow-ups perfectly on time! ⚡</p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        } 
         description="Active outreach campaigns running for your prospects."
       >
         <Button className="gap-2" asChild>
@@ -129,102 +161,122 @@ export default function SequencesPage() {
           </Button>
         </div>
       ) : (
-        <AnimatedList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sequences.map(seq => {
-            const totalSteps = seq.steps.length;
-            const sentSteps = seq.steps.filter((s) => s.status === "SENT").length;
-            
-            const activeStep =
-              seq.steps.find((s) => s.status === "PROCESSING") ??
-              seq.steps.find((s) => s.status === "PENDING");
-            
-            const currentStepNum = activeStep ? activeStep.step_number : (seq.status === "COMPLETED" ? totalSteps : 1);
-            const completionPercent = totalSteps > 0 ? Math.round((sentSteps / totalSteps) * 100) : 0;
-            
-            const pendingSteps = seq.steps
-              .filter((s) => s.status === "PENDING")
-              .sort((a, b) => new Date(a.scheduled_at_utc).getTime() - new Date(b.scheduled_at_utc).getTime());
-            
-            const nextSendAt = pendingSteps[0]?.scheduled_at_utc;
-            const firstSubject = seq.steps[0]?.subject;
-            
-            let badgeStatus = seq.status.toLowerCase();
-            if (badgeStatus === 'draft') badgeStatus = 'none';
+        <Card className="overflow-hidden border-border/50 shadow-sm">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-muted/50">
+                  <TableRow>
+                    <TableHead className="w-[300px]">Prospect & Sequence</TableHead>
+                    <TableHead className="w-[200px]">Status & Schedule</TableHead>
+                    <TableHead>Progress</TableHead>
+                    <TableHead className="text-right w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sequences.map(seq => {
+                    const totalSteps = seq.steps.length;
+                    const sentSteps = seq.steps.filter((s) => s.status === "SENT").length;
+                    
+                    const activeStep =
+                      seq.steps.find((s) => s.status === "PROCESSING") ??
+                      seq.steps.find((s) => s.status === "PENDING");
+                    
+                    const currentStepNum = activeStep ? activeStep.step_number : (seq.status === "COMPLETED" ? totalSteps : 1);
+                    const completionPercent = totalSteps > 0 ? Math.round((sentSteps / totalSteps) * 100) : 0;
+                    
+                    const pendingSteps = seq.steps
+                      .filter((s) => s.status === "PENDING")
+                      .sort((a, b) => new Date(a.scheduled_at_utc).getTime() - new Date(b.scheduled_at_utc).getTime());
+                    
+                    const nextSendAt = pendingSteps[0]?.scheduled_at_utc;
+                    const firstSubject = seq.steps[0]?.subject;
+                    
+                    let badgeStatus = seq.status.toLowerCase();
+                    if (badgeStatus === 'draft') badgeStatus = 'none';
 
-            return (
-              <AnimatedItem key={seq.id}>
-                <Card className="hover-elevate transition-shadow border-border h-full flex flex-col group">
-                  <CardContent className="p-6 flex flex-col h-full relative">
-                    <div className="flex justify-between items-start mb-4">
-                      <StatusBadge status={badgeStatus as any} dot />
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 -mt-2 -mr-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                            disabled={deletingId === seq.id}
-                          >
-                            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem 
-                            onClick={() => handleDelete(seq.id)}
-                            className="text-destructive focus:bg-destructive focus:text-destructive-foreground cursor-pointer"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Sequence
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    
-                    <div className="mb-6 flex-1">
-                      <Link href={`/prospects/${seq.prospect.id}/sequence`} className="block">
-                        <h3 className="font-semibold text-lg hover:text-primary transition-colors mb-1 line-clamp-2">
-                          {firstSubject || `Sequence for ${seq.prospect.name}`}
-                        </h3>
-                      </Link>
-                      <p className="text-sm text-muted-foreground">
-                        Prospect: <Link href={`/prospects/${seq.prospect.id}`} className="font-medium text-foreground hover:underline">{seq.prospect.name}</Link>
-                      </p>
-                      {seq.prospect.company && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{seq.prospect.company}</p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-3 mt-auto">
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="font-medium">Step {currentStepNum} of {totalSteps}</span>
-                        <span className="text-muted-foreground">{completionPercent}%</span>
-                      </div>
-                      <Progress value={completionPercent} className="h-2" />
-                      
-                      <div className="flex items-center justify-between pt-4 border-t border-border mt-4">
-                        <div className="text-xs text-muted-foreground">
-                          {seq.status === 'COMPLETED' ? (
-                            <span className="flex items-center gap-1 text-emerald-600 font-medium">
-                              <CheckCircle2 className="h-3 w-3" /> Completed
-                            </span>
-                          ) : nextSendAt && seq.status === 'ACTIVE' ? (
-                            <span>Next send: {formatDistanceToNow(new Date(nextSendAt), { addSuffix: true })}</span>
-                          ) : seq.status === 'STOPPED' ? (
-                            <span className="flex items-center gap-1 text-amber-600 font-medium">
-                              <PauseCircle className="h-3 w-3" /> Stopped
-                            </span>
-                          ) : (
-                            "No pending steps"
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </AnimatedItem>
-            );
-          })}
-        </AnimatedList>
+                    return (
+                      <TableRow key={seq.id} className="group cursor-default hover:bg-muted/30">
+                        <TableCell>
+                          <div className="flex items-start gap-3">
+                            <Avatar className="h-9 w-9 mt-0.5 border border-border shadow-sm group-hover:scale-105 transition-transform">
+                              <AvatarFallback className="bg-primary/5 text-primary text-xs font-medium">
+                                {seq.prospect.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col">
+                              <Link href={`/prospects/${seq.prospect.id}/sequence`} className="font-semibold text-sm hover:text-primary transition-colors line-clamp-1">
+                                {firstSubject || `Sequence for ${seq.prospect.name}`}
+                              </Link>
+                              <span className="text-xs text-muted-foreground mt-0.5">
+                                to <Link href={`/prospects/${seq.prospect.id}`} className="font-medium text-foreground hover:underline">{seq.prospect.name}</Link>
+                                {seq.prospect.company && ` at ${seq.prospect.company}`}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col items-start gap-1.5">
+                            <StatusBadge status={badgeStatus as any} dot />
+                            <div className="text-[11px] text-muted-foreground mt-0.5">
+                              {seq.status === 'COMPLETED' ? (
+                                <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                                  <CheckCircle2 className="h-3 w-3" /> Finished
+                                </span>
+                              ) : nextSendAt && seq.status === 'ACTIVE' ? (
+                                <span className="text-foreground font-medium">Next: {formatDistanceToNow(new Date(nextSendAt), { addSuffix: true })}</span>
+                              ) : seq.status === 'STOPPED' ? (
+                                <span className="flex items-center gap-1 text-amber-600 font-medium">
+                                  <PauseCircle className="h-3 w-3" /> Paused
+                                </span>
+                              ) : (
+                                "No pending steps"
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1.5 w-full pr-8">
+                            <div className="flex justify-between text-[10px] font-medium text-muted-foreground">
+                              <span>Step {currentStepNum} of {totalSteps}</span>
+                              <span>{completionPercent}%</span>
+                            </div>
+                            <Progress value={completionPercent} className="h-1.5" />
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" disabled={deletingId === seq.id}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/prospects/${seq.prospect.id}/sequence`} className="cursor-pointer">
+                                  <ExternalLink className="mr-2 h-4 w-4" />
+                                  View Sequence
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleDelete(seq.id)}
+                                className="text-destructive focus:bg-destructive focus:text-destructive-foreground cursor-pointer"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Sequence
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </AnimatedPage>
   );

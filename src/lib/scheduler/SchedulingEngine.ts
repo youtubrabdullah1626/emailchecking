@@ -110,20 +110,45 @@ export class SchedulingEngine {
       }
 
       const isToday = dateStr === tzDateStr;
-      let isWindowClosed = false;
+      // Check how much capacity is ALREADY consumed by the GLOBAL queue on this exact date
+      const itemsOnDate = globalQueue.filter(q => q.scheduledDate === dateStr);
+      const allItemsOnDate = new Map<string, ExecutionQueueItem>();
+      itemsOnDate.forEach(q => allItemsOnDate.set(q.queueId, q));
+      existingQueue.filter(q => q.scheduledDate === dateStr).forEach(q => allItemsOnDate.set(q.queueId, q));
       
+      const alreadyScheduledOnDate = allItemsOnDate.size;
+      
+      let lastScheduledTimeStr: string | undefined;
+      if (alreadyScheduledOnDate > 0) {
+        lastScheduledTimeStr = Array.from(allItemsOnDate.values()).map(q => q.scheduledTime).sort().pop();
+      }
+
+      const sendingWindow = warmupSettings?.sendingWindow || "09:00-17:00";
+      const [startWindowStr, endWindowStr] = sendingWindow.split("-");
+      const [startH, startM] = startWindowStr.split(":").map(Number);
+      const [endH, endM] = endWindowStr.split(":").map(Number);
+      const startTotalMins = startH * 60 + startM;
+      const endTotalMins = endH * 60 + endM;
+
+      let isWindowClosed = false;
+      let minStartMins = startTotalMins;
+
       if (isToday) {
-        const sendingWindow = warmupSettings?.sendingWindow || "09:00-17:00";
-        const endWindowStr = sendingWindow.split("-")[1];
-        if (endWindowStr) {
-          const [endH, endM] = endWindowStr.split(":").map(Number);
-          const endTotalMins = endH * 60 + endM;
-          const currentTotalMins = currentHours * 60 + currentMins;
-          // If we have less than 5 minutes left in today's window, consider it closed
-          if (currentTotalMins >= endTotalMins - 5) {
-            isWindowClosed = true;
-          }
-        }
+        const currentTotalMins = currentHours * 60 + currentMins;
+        minStartMins = Math.max(minStartMins, currentTotalMins + 5);
+      }
+
+      if (lastScheduledTimeStr) {
+        const [lastH, lastM] = lastScheduledTimeStr.split(":").map(Number);
+        minStartMins = Math.max(minStartMins, lastH * 60 + lastM + 1);
+      }
+
+      let remainingMinutesForDay = Infinity;
+      if (minStartMins >= endTotalMins - 5) {
+        isWindowClosed = true;
+        remainingMinutesForDay = 0;
+      } else {
+        remainingMinutesForDay = endTotalMins - minStartMins;
       }
 
       // 1. Calculate Daily Capacity
@@ -140,24 +165,7 @@ export class SchedulingEngine {
         }
       }
 
-      // Check how much capacity is ALREADY consumed by the GLOBAL queue on this exact date
-      const itemsOnDate = globalQueue.filter(q => q.scheduledDate === dateStr);
-      // Include any items we just generated for this target campaign on this date too!
-      // Wait, globalQueue doesn't have the newly generated items for THIS campaign run.
-      // So we must rely on alreadyScheduledOnDate which is updated inside QueueBuilder? No, QueueBuilder just spaces out times.
-      // We will count items from globalQueue PLUS existingQueue (if they overlap, we deduplicate by ID to be safe, though globalQueue shouldn't contain existingQueue if we build it correctly, but let's be safe).
-      const allItemsOnDate = new Map<string, ExecutionQueueItem>();
-      itemsOnDate.forEach(q => allItemsOnDate.set(q.queueId, q));
-      existingQueue.filter(q => q.scheduledDate === dateStr).forEach(q => allItemsOnDate.set(q.queueId, q));
-      
-      const alreadyScheduledOnDate = allItemsOnDate.size;
-      
-      let lastScheduledTimeStr: string | undefined;
-      if (alreadyScheduledOnDate > 0) {
-        lastScheduledTimeStr = Array.from(allItemsOnDate.values()).map(q => q.scheduledTime).sort().pop();
-      }
-
-      const rawDailyCapacity = (skipForBusinessDay || isWindowClosed) ? 0 : Math.min(baseLimit, warmupDailyTarget);
+      const rawDailyCapacity = (skipForBusinessDay || isWindowClosed) ? 0 : Math.min(baseLimit, warmupDailyTarget, remainingMinutesForDay);
       // Remaining capacity after existing items are subtracted
       const dailyCapacity = Math.max(0, rawDailyCapacity - alreadyScheduledOnDate);
       

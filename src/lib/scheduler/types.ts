@@ -125,3 +125,61 @@ export type SchedulerLogEvent =
   | "scheduler_run_completed"
   | "scheduler_run_failed"
   | "stale_processing_steps_detected";
+
+// -- Smart Scheduler Pure Engine Types -----------------------------------------
+
+export enum SchedulingReason {
+  BUSINESS_HOURS_SHIFT = 'BUSINESS_HOURS_SHIFT',
+  WEEKEND_SHIFT = 'WEEKEND_SHIFT',
+  RANDOMIZED_INTERVAL = 'RANDOMIZED_INTERVAL',
+  PROVIDER_LIMIT = 'PROVIDER_LIMIT',
+  WARMUP_LIMIT = 'WARMUP_LIMIT',
+  OPTIMAL = 'OPTIMAL'
+}
+
+export interface BusinessHours {
+  readonly activeDays: number[]; 
+  readonly startTime: string; 
+  readonly endTime: string; 
+}
+
+export interface SchedulingContext {
+  readonly currentUtcTime: Date;
+  readonly randomJitterSeconds: number;
+  
+  readonly recipientTimezone?: string;
+  readonly campaignDefaultTimezone?: string;
+  
+  readonly minIntervalSeconds: number;
+  readonly maxIntervalSeconds: number;
+  readonly businessHours: BusinessHours;
+  
+  readonly holidayCalendar?: string[];
+  readonly recipientActivityWindows?: unknown[];
+  readonly providerRestrictions?: unknown;
+}
+
+export interface SchedulingDecision {
+  readonly recommendedSendTimeUtc: Date;
+  readonly recipientLocalTime: string;
+  readonly delayAppliedSeconds: number;
+  readonly appliedRules: SchedulingReason[];
+}
+
+export interface RuleResult {
+  readonly newTargetTime: Date;
+  readonly reason: SchedulingReason | null;
+  readonly shifted: boolean;
+}
+
+export interface SchedulingRule {
+  readonly name: string;
+  apply(context: SchedulingContext, targetTimeZoned: Date, timezone: string): RuleResult;
+}
+
+export class SchedulerValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SchedulerValidationError';
+  }
+}

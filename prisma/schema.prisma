@@ -150,6 +150,8 @@ model EmailAccount {
   created_at        DateTime  @default(now())
   refresh_token     String?
   token_expires_at  DateTime?
+  last_login_at     DateTime?
+  last_seen_at      DateTime?
   updated_at        DateTime  @default(now()) @updatedAt
   user_id           String?
 
@@ -280,6 +282,8 @@ model SystemSettings {
   auto_closer_enabled       Boolean  @default(true)
   auto_closer_rebuttal_style String  @default("AGGRESSIVE")
   auto_closer_auto_draft    Boolean  @default(true)
+  smart_deliverability      Boolean  @default(true) // 🛡 Smart Deliverability ON / OFF
+  monthly_ai_credit_limit   Int      @default(50000) // Default 50k tokens or credits
   updated_at           DateTime @default(now()) @updatedAt
 
   @@map("system_settings")
@@ -339,4 +343,17 @@ model TrackingEvent {
   @@index([tracked_email_id, event_type])
   @@index([occurred_at])
   @@map("tracking_events")
+}
+
+/// 100% Honest AI Usage Tracking
+model AiUsageLog {
+  id              String   @id @default(cuid())
+  email           String   // The account that used it
+  feature         String   // e.g. "AutoReply", "SequenceGen"
+  tokens_used     Int
+  occurred_at     DateTime @default(now())
+  metadata        Json?
+
+  @@index([email, occurred_at])
+  @@map("ai_usage_logs")
 }

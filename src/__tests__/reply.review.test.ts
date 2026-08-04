@@ -60,7 +60,7 @@ describe("getPendingReviews", () => {
           name: "John Doe",
           company: "Acme",
           email: "john@acme.com",
-          sequence: { id: "seq-001", status: "ACTIVE" },
+          sequences: [{ id: "seq-001", status: "ACTIVE" }],
         },
       },
     ]);
@@ -86,7 +86,8 @@ describe("processOperatorReviewAction — CONFIRM_STOP", () => {
       raw_snippet: "John asked me to reply",
       prospect: {
         id: "p-001",
-        sequence: { id: "seq-001", status: "ACTIVE" },
+        email: "john@acme.com",
+        sequences: [{ id: "seq-001", status: "ACTIVE" }],
       },
     });
 
@@ -138,7 +139,8 @@ describe("processOperatorReviewAction — KEEP_ACTIVE", () => {
       review_status: "PENDING",
       prospect: {
         id: "p-001",
-        sequence: { id: "seq-001", status: "ACTIVE" },
+        email: "john@acme.com",
+        sequences: [{ id: "seq-001", status: "ACTIVE" }],
       },
     });
 
@@ -173,7 +175,8 @@ describe("processOperatorReviewAction — DISMISS", () => {
       review_status: "PENDING",
       prospect: {
         id: "p-001",
-        sequence: { id: "seq-001", status: "ACTIVE" },
+        email: "john@acme.com",
+        sequences: [{ id: "seq-001", status: "ACTIVE" }],
       },
     });
 

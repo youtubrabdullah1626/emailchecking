@@ -44,8 +44,8 @@ interface ImportContextType {
   closeSession: () => void;
   runDiagnostics: () => void;
   updateQueueItemState: (queueId: string, liveStatus: any, lastEventTime: string) => Promise<void>;
+  rescheduleQueueItem: (queueId: string, newDate: string, newTime: string) => Promise<void>;
   deleteQueueItem: (queueId: string) => Promise<void>;
-  appendTargetSessionId: string | null;
   setAppendTargetSessionId: (id: string | null) => void;
   undo: () => void;
   canUndo: boolean;
@@ -566,6 +566,24 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const rescheduleQueueItem = async (queueId: string, newDate: string, newTime: string) => {
+    let updated = false;
+    queueRef.current = queueRef.current.map(item => {
+      if (item.queueId === queueId) {
+        updated = true;
+        return { ...item, scheduledDate: newDate, scheduledTime: newTime };
+      }
+      return item;
+    });
+
+    if (updated) {
+      await recoveryEngine.saveCheckpoint("EXECUTION_STARTED", {
+        status: "EXECUTING",
+        heavyData: { executionQueue: queueRef.current, queueSummary: queueSummary! }
+      });
+    }
+  };
+
   const resetImport = async () => {
     await recoveryEngine.abandonSession();
     closeSession();
@@ -632,8 +650,8 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         closeSession,
         runDiagnostics,
         updateQueueItemState,
+        rescheduleQueueItem,
         deleteQueueItem,
-        appendTargetSessionId,
         setAppendTargetSessionId,
         undo,
         canUndo

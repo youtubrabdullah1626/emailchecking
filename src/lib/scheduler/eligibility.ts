@@ -26,9 +26,9 @@
  * Any status in this set means: do not send any email to this person.
  */
 export const BLOCKING_PROSPECT_STATUSES = new Set<string>([
-  // "REPLIED", // Removed: Prospect global status no longer blocks future sequences.
-  // "STOPPED",
-  // "COMPLETED",
+  "REPLIED",
+  "STOPPED",
+  "COMPLETED",
 ]);
 
 /**
@@ -64,11 +64,14 @@ export interface EligibilityResult {
 
 // ── Layer checks (separated for individual testability) ───────────────────────
 
-/** Check prospect-level eligibility. */
 export function isProspectEligible(prospectStatus: string): EligibilityResult {
-  // Prospect layer no longer blocks in a 1:N architecture.
-  // Only the Sequence layer determines scheduling eligibility.
-  return { eligible: true, reason: "Prospect layer gating is disabled for 1:N sequences." };
+  if (BLOCKING_PROSPECT_STATUSES.has(prospectStatus)) {
+    return {
+      eligible: false,
+      reason: `Prospect status is "${prospectStatus}" — blocked by reply-safety or completion invariants.`,
+    };
+  }
+  return { eligible: true, reason: "Prospect is ACTIVE." };
 }
 
 /** Check sequence-level eligibility. */

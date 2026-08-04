@@ -140,21 +140,7 @@ export function classifyMessage(
   const fromEmail = extractEmailAddress(fromHeader);
   const snippet = (message.snippet ?? "").slice(0, 500);
 
-  // ── Layer 0: Known prospect email → REAL_REPLY ────────────────────────────
-  // We do this BEFORE the "own outbound message guard" to support testing where
-  // users send emails to themselves (prospectEmail === senderEmail).
-  if (isSameEmailAddress(fromEmail, prospectEmail)) {
-    return {
-      gmailMessageId: message.id,
-      gmailThreadId: message.threadId,
-      fromEmail,
-      fromHeader,
-      subject,
-      snippet,
-      replyType: "REAL_REPLY",
-      reason: `Reply from prospect email "${prospectEmail}".`,
-    };
-  }
+
 
   // ── Layer 1: Own outbound message guard ───────────────────────────────────
   // The thread contains our own sent messages — we must ignore them.
@@ -218,7 +204,18 @@ export function classifyMessage(
   }
 
   // ── Layer 5: Known prospect email → REAL_REPLY ────────────────────────────
-  // (Moved to Layer 0 above to support testing to self)
+  if (isSameEmailAddress(fromEmail, prospectEmail)) {
+    return {
+      gmailMessageId: message.id,
+      gmailThreadId: message.threadId,
+      fromEmail,
+      fromHeader,
+      subject,
+      snippet,
+      replyType: "REAL_REPLY",
+      reason: `Reply from prospect email "${prospectEmail}".`,
+    };
+  }
 
   // ── Layer 6: Unknown sender in thread → NEEDS_REVIEW ─────────────────────
   // Conservative: could be a gatekeeper or PA. Do not auto-stop.

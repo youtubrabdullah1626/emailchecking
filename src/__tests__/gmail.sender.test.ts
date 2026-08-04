@@ -66,6 +66,13 @@ jest.mock("@/lib/prisma", () => ({
     emailEvent: {
       create: jest.fn(),
     },
+    trackedEmail: {
+      create: jest.fn().mockResolvedValue({ id: "trk-123" }),
+      update: jest.fn(),
+    },
+    trackingEvent: {
+      create: jest.fn(),
+    },
     // $transaction: calls the callback with a mock tx object that mirrors the prisma mock.
     // This is required because sender.ts wraps markStepSent and markStepFailed in $transaction.
     $transaction: jest.fn((fn: (tx: unknown) => Promise<unknown>) =>
@@ -76,6 +83,9 @@ jest.mock("@/lib/prisma", () => ({
         },
         emailEvent: {
           create: (jest.requireMock("@/lib/prisma") as { default: { emailEvent: { create: jest.Mock } } }).default.emailEvent.create,
+        },
+        trackedEmail: {
+          create: (jest.requireMock("@/lib/prisma") as { default: { trackedEmail: { create: jest.Mock } } }).default.trackedEmail.create,
         },
       })
     ),
@@ -96,6 +106,15 @@ jest.mock("@/lib/intelligence/error-engine", () => ({
 jest.mock("@/lib/reputation/guard", () => ({
   canSendEmail: jest.fn().mockResolvedValue({ allowed: true }),
   recordSuccessfulSend: jest.fn(),
+}));
+
+// ── Mock Tracking Engine ──────────────────────────────────────────────────────
+jest.mock("@/lib/tracking/EmailTrackingService", () => ({
+  emailTrackingService: {
+    registerEmail: jest.fn().mockResolvedValue("track-123"),
+    setProviderMapping: jest.fn().mockResolvedValue(undefined),
+    ingestEvent: jest.fn().mockResolvedValue(undefined),
+  }
 }));
 
 // ── Imports (after mocks) ─────────────────────────────────────────────────────

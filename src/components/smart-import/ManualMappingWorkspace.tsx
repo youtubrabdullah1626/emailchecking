@@ -16,27 +16,7 @@ export function ManualMappingWorkspace() {
   const { parsedHeaders, mappingConfig, updateMapping, applyMappingConfig, setMappingConfig, startSequenceBuild, startScheduling, approveImport } = useImport() as any; 
   const { status: warmupStatus, settings: warmupSettings } = useWarmup();
   const [templateName, setTemplateName] = useState("");
-  const [isFastTracking, setIsFastTracking] = useState(false);
   const templateEngine = new TemplateEngine();
-
-  const handleFastTrack = async () => {
-    setIsFastTracking(true);
-    try {
-      await applyMappingConfig();
-      const config = {
-        id: "default_fast_track",
-        name: "Fast Track Campaign",
-        timezone: "America/New_York",
-        sendWindow: { start: "09:00", end: "17:00", days: [1,2,3,4,5] },
-        startDate: new Date().toISOString().split('T')[0] // Provide valid startDate to prevent parsing errors
-      };
-      await startSequenceBuild(config);
-      await startScheduling(warmupStatus, warmupSettings, config);
-      await approveImport(); // which now sets to EXECUTING
-    } catch (e) {
-      setIsFastTracking(false);
-    }
-  };
 
   const handleSaveTemplate = () => {
     if (templateName.trim()) {
@@ -121,12 +101,8 @@ export function ManualMappingWorkspace() {
             </div>
           )}
           <div className="flex items-center gap-4">
-            <Button onClick={applyMappingConfig} disabled={!isEmailMapped || isFastTracking} variant="outline" className="shadow-sm">
-              Advanced Setup
-            </Button>
-            <Button onClick={handleFastTrack} disabled={!isEmailMapped || isFastTracking} className="gap-2 shadow-md bg-emerald-600 hover:bg-emerald-700 text-white">
-              {isFastTracking ? <span className="animate-spin">⌛</span> : <span>🚀</span>}
-              {isFastTracking ? "Launching..." : "Launch Live Campaign"}
+            <Button onClick={applyMappingConfig} disabled={!isEmailMapped} className="gap-2 shadow-md bg-primary hover:bg-primary/90 text-primary-foreground">
+              Continue to Setup <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </div>

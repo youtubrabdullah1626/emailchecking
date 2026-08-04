@@ -48,6 +48,13 @@ export const GET = withObservability(async (request: NextRequest) => {
       const { saveAccountOAuthTokens } = await import("@/lib/gmail/oauth");
       await saveAccountOAuthTokens(email, refreshToken);
 
+      // 1.5 Honest Metric: Track real authentication timestamp
+      const prisma = (await import("@/lib/prisma")).default;
+      await prisma.emailAccount.update({
+        where: { email },
+        data: { last_login_at: new Date() }
+      });
+
       // 2. Automatic Watch Registration & Self-Healing Initialization
       const { autoRepairAccount } = await import("@/lib/reply-tracker/health-monitor");
       await autoRepairAccount(email);
