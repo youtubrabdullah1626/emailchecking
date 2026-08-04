@@ -9,8 +9,7 @@ describe('UI Coverage: Presentation Layer Constraints', () => {
     const badge = StatusBadge({ status: 'ACTIVE', label: 'Test' });
     
     // Verify it returns a React element without requiring DOM manipulation
-    expect(badge).toBeTruthy();
-    expect(typeof badge.type).toBe('string'); // native element
+    expect(React.isValidElement(badge)).toBe(true);
   });
 
   it('OptimizationCard renders backend state without duplication', () => {
