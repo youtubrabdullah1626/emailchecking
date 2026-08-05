@@ -96,4 +96,5 @@ export type GmailLogEvent =
   | "gmail_batch_completed"
   | "gmail_oauth_missing"
   | "gmail_oauth_error"
-  | "gmail_send_aborted_limit";
+  | "gmail_send_aborted_limit"
+  | "gmail_send_aborted_health";
