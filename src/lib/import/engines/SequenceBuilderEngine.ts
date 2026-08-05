@@ -43,6 +43,40 @@ export interface ISequenceBuilderStrategy {
  */
 export class SequenceBuilderEngine implements ISequenceBuilderStrategy {
   
+  private interpolateVariables(template: string, record: ImportRecord): string {
+    if (!template) return "";
+    let result = template;
+    
+    // Standard fields mapping
+    const standardFields: Record<string, string | undefined> = {
+      firstName: record.firstName,
+      lastName: record.lastName,
+      companyName: record.companyName,
+      title: record.title,
+      email: record.email,
+      phone: record.phone,
+      website: record.website,
+      country: record.country,
+      city: record.city,
+    };
+
+    // Replace all {{variable}} tags
+    result = result.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, variableName) => {
+      // First check standard fields
+      if (standardFields[variableName] !== undefined) {
+        return standardFields[variableName] as string;
+      }
+      // Then check custom fields
+      if (record.customFields[variableName] !== undefined) {
+        return record.customFields[variableName] as string;
+      }
+      // Fallback: leave as is if not found
+      return match;
+    });
+
+    return result;
+  }
+
   public buildSequences(records: ImportRecord[]): {
     sequences: CampaignSequence[];
     summary: SequenceSummaryData;
@@ -73,7 +107,11 @@ export class SequenceBuilderEngine implements ISequenceBuilderStrategy {
       }
       
       // Parse Subject dynamically
-      let baseSubject = record.customFields["subject"] || record.customFields["Subject"] || `Important Outreach to ${record.company || record.firstName || record.email}`;
+      let baseSubject = record.customFields["subject"] || record.customFields["Subject"] || `Important Outreach to ${record.companyName || record.firstName || record.email}`;
+
+      // Interpolate the base variables
+      baseSubject = this.interpolateVariables(baseSubject, record);
+      initialMessage = this.interpolateVariables(initialMessage, record);
 
       const steps: SequenceStep[] = [];
       let stepCounter = 1;
@@ -98,13 +136,14 @@ export class SequenceBuilderEngine implements ISequenceBuilderStrategy {
         const content = record.customFields[key];
         
         if (content && content.trim() !== "") {
+          const interpolatedContent = this.interpolateVariables(content, record);
           stepCounter++;
           steps.push({
             id: `${record.id}_step_${stepCounter}`,
             stepNumber: stepCounter,
             type: "EMAIL",
             subject: `Re: ${baseSubject}`,
-            content: content,
+            content: interpolatedContent,
             delayDays: 3, // Defaulting to 3 days for dynamic follow-ups
           });
         }

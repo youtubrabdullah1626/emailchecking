@@ -54,10 +54,17 @@ export class PdfTableParser {
           if (validItems.length === 0) continue;
 
           if (headers.length === 0) {
-            // Assume first row with multiple items is header
+            // Assume first row with multiple items AND at least one common CRM keyword is the header.
+            // This prevents grabbing document titles like ["Prospect List", "Oct 2026"] as headers.
             if (validItems.length > 1) {
-              headers = validItems.map(i => i.str.trim());
-              headerXs = validItems.map(i => i.transform[4]);
+              const potentialHeaders = validItems.map(i => i.str.trim());
+              const headerString = potentialHeaders.join(" ").toLowerCase();
+              const hasKeyword = ["email", "name", "first", "last", "company", "title", "role"].some(kw => headerString.includes(kw));
+              
+              if (hasKeyword || validItems.length >= 3) {
+                headers = potentialHeaders;
+                headerXs = validItems.map(i => i.transform[4]);
+              }
             }
           } else {
             const record: Record<string, string> = {};

@@ -17,9 +17,6 @@ export class CsvParser {
                 continue;
               }
               let val = String(row[key]).trim();
-              if (/^[=+\-@]/.test(val)) {
-                val = "'" + val;
-              }
               sanitizedRow[key] = val;
             }
             allData.push(sanitizedRow);
