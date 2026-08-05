@@ -61,7 +61,9 @@ export function LiveExecutionDashboard() {
           to: item.recipientEmail,
           toName: "",
           subject: `Outreach to ${item.recipientEmail}`,
-          content: item.sequenceStep.content
+          content: item.sequenceStep.content,
+          importSequenceId: item.queueId.split('_s')[0], // Groups steps for the same import & prospect
+          stepNumber: item.sequenceStep.stepNumber,
         })
       });
       const data = await res.json();

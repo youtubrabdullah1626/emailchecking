@@ -6,7 +6,7 @@ import { getActiveSequence, createSequence } from "@/lib/db/sequences";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { to, toName, subject, content } = body;
+    const { to, toName, subject, content, importSequenceId, stepNumber } = body;
     
     if (!to || !content) {
       return NextResponse.json({ error: "Missing 'to' or 'content'" }, { status: 400 });
@@ -30,38 +30,72 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // For a "Send Now" demo action, we ALWAYS create a brand new sequence.
-    // This prevents the new test email from being accidentally threaded as a follow-up
-    // to an older, unrelated sequence (which causes confusion in Gmail's conversation view).
-    
-    // Stop any currently active sequences for this prospect to prevent collisions
-    await prisma.sequence.updateMany({
-      where: { prospect_id: prospect.id, status: { in: ["ACTIVE", "DRAFT"] } },
-      data: { status: "STOPPED", stopped_at: new Date() }
-    });
+    let sequence;
+    let step;
 
-    const newSeqResult = await createSequence(prospect.id, [{
-      step_number: 1,
-      subject: subject || "Important Outreach",
-      body: content,
-      scheduled_at_utc: new Date(),
-      scheduled_time_local: new Date().toLocaleTimeString(),
-      timezone: "UTC",
-      computed_date: new Date().toISOString().split('T')[0],
-    }]);
-    
-    if (!newSeqResult.ok) {
-      throw new Error(newSeqResult.message);
+    if (importSequenceId) {
+      // If the frontend passed an importSequenceId (e.g. from Smart Import), we group steps
+      // with the exact same importSequenceId into a single Sequence so they thread together correctly.
+      sequence = await prisma.sequence.findUnique({ where: { id: importSequenceId } });
+      
+      if (!sequence) {
+        // Stop any old campaigns to prevent collisions, as this is a new Smart Import campaign
+        await prisma.sequence.updateMany({
+          where: { prospect_id: prospect.id, status: { in: ["ACTIVE", "DRAFT"] } },
+          data: { status: "STOPPED", stopped_at: new Date() }
+        });
+
+        sequence = await prisma.sequence.create({
+          data: {
+            id: importSequenceId, // Force the ID so subsequent steps can find it
+            prospect_id: prospect.id,
+            status: "ACTIVE",
+            started_at: new Date(),
+          }
+        });
+      }
+      
+      step = await prisma.sequenceStep.create({
+        data: {
+          sequence_id: sequence.id,
+          step_number: stepNumber || 1,
+          subject: subject || "Important Outreach",
+          body: content,
+          scheduled_at_utc: new Date(),
+          scheduled_time_local: new Date().toLocaleTimeString(),
+          timezone: "UTC",
+          status: "PENDING",
+        }
+      });
+    } else {
+      // Traditional manual "Send Now" without a specific sequence context
+      // We ALWAYS create a brand new sequence so it doesn't thread with old, unrelated sequences.
+      await prisma.sequence.updateMany({
+        where: { prospect_id: prospect.id, status: { in: ["ACTIVE", "DRAFT"] } },
+        data: { status: "STOPPED", stopped_at: new Date() }
+      });
+
+      const newSeqResult = await createSequence(prospect.id, [{
+        step_number: 1,
+        subject: subject || "Important Outreach",
+        body: content,
+        scheduled_at_utc: new Date(),
+        scheduled_time_local: new Date().toLocaleTimeString(),
+        timezone: "UTC",
+        computed_date: new Date().toISOString().split('T')[0],
+      }]);
+      
+      if (!newSeqResult.ok) {
+        throw new Error(newSeqResult.message);
+      }
+      sequence = newSeqResult.data;
+      step = sequence.steps[0];
+      
+      await prisma.sequence.update({
+        where: { id: sequence.id },
+        data: { status: "ACTIVE", started_at: new Date() }
+      });
     }
-    
-    const sequence = newSeqResult.data;
-    const step = sequence.steps[0];
-    
-    // Mark sequence as ACTIVE immediately since this is an immediate send-demo action
-    await prisma.sequence.update({
-      where: { id: sequence.id },
-      data: { status: "ACTIVE", started_at: new Date() }
-    });
 
     // 3. Claim the step atomically (simulating what the scheduler or send-now does)
     const claimed = await prisma.sequenceStep.updateMany({
