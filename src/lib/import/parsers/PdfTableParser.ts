@@ -25,6 +25,7 @@ export class PdfTableParser {
       const records: any[] = [];
       let headers: string[] = [];
       let headerXs: number[] = [];
+      let lastRecordY: number = -1;
 
       // Very basic tabular heuristic: group texts by their vertical 'y' coordinate
       for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
@@ -76,7 +77,12 @@ export class PdfTableParser {
               }
             }
           } else {
-            const record: Record<string, string> = {};
+            // Determine if this row is just wrapped text of the previous row
+            const yDist = lastRecordY !== -1 ? Math.abs(lastRecordY - currentY) : Infinity;
+            const isWrapped = records.length > 0 && validItems.length <= headers.length / 2 && yDist < 22;
+            
+            const targetRecord = isWrapped ? records[records.length - 1] : {};
+
             for (const item of validItems) {
               const x = item.transform[4];
               // Find closest header by X coordinate
@@ -90,14 +96,17 @@ export class PdfTableParser {
                 }
               }
               const hName = headers[closestHeaderIdx];
-              if (record[hName]) {
-                record[hName] += " " + item.str.trim();
+              if (targetRecord[hName]) {
+                const needsSpace = !hName.toLowerCase().includes("email");
+                targetRecord[hName] += (needsSpace ? " " : "") + item.str.trim();
               } else {
-                record[hName] = item.str.trim();
+                targetRecord[hName] = item.str.trim();
               }
             }
-            if (Object.keys(record).length > 0) {
-              records.push(record);
+            
+            if (!isWrapped && Object.keys(targetRecord).length > 0) {
+              records.push(targetRecord);
+              lastRecordY = currentY;
             }
           }
         }
