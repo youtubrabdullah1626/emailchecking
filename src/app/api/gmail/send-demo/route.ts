@@ -30,72 +30,38 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    let activeSeqResult = await getActiveSequence(prospect.id);
-    let sequence;
-    let step;
+    // For a "Send Now" demo action, we ALWAYS create a brand new sequence.
+    // This prevents the new test email from being accidentally threaded as a follow-up
+    // to an older, unrelated sequence (which causes confusion in Gmail's conversation view).
+    
+    // Stop any currently active sequences for this prospect to prevent collisions
+    await prisma.sequence.updateMany({
+      where: { prospect_id: prospect.id, status: { in: ["ACTIVE", "DRAFT"] } },
+      data: { status: "STOPPED", stopped_at: new Date() }
+    });
 
-    if (activeSeqResult.ok) {
-      sequence = activeSeqResult.data;
-      
-      // Find the next available step number and insert, handling race conditions robustly
-      let retries = 0;
-      while (!step && retries < 5) {
-        try {
-          const maxStep = await prisma.sequenceStep.aggregate({
-            where: { sequence_id: sequence.id },
-            _max: { step_number: true }
-          });
-          const nextStepNumber = (maxStep._max.step_number || 0) + 1;
-
-          // 2. Insert the step as PENDING so the backend sender can claim and send it properly
-          step = await prisma.sequenceStep.create({
-            data: {
-              sequence_id: sequence.id,
-              step_number: nextStepNumber,
-              subject: subject || "Important Outreach",
-              body: content,
-              scheduled_at_utc: new Date(),
-              scheduled_time_local: new Date().toLocaleTimeString(),
-              timezone: "UTC",
-              status: "PENDING",
-            }
-          });
-        } catch (err: any) {
-          if (err.code === 'P2002') {
-            retries++;
-          } else {
-            throw err;
-          }
-        }
-      }
-
-      if (!step) {
-        throw new Error("Failed to generate a unique step_number for the sequence after multiple retries.");
-      }
-    } else {
-      // Create a brand new sequence with the step already attached via the centralized repository
-      const newSeqResult = await createSequence(prospect.id, [{
-        step_number: 1,
-        subject: subject || "Important Outreach",
-        body: content,
-        scheduled_at_utc: new Date(),
-        scheduled_time_local: new Date().toLocaleTimeString(),
-        timezone: "UTC",
-        computed_date: new Date().toISOString().split('T')[0],
-      }]);
-      
-      if (!newSeqResult.ok) {
-        throw new Error(newSeqResult.message);
-      }
-      sequence = newSeqResult.data;
-      step = sequence.steps[0];
-      
-      // Mark sequence as ACTIVE immediately since this is an immediate send-demo action
-      await prisma.sequence.update({
-        where: { id: sequence.id },
-        data: { status: "ACTIVE", started_at: new Date() }
-      });
+    const newSeqResult = await createSequence(prospect.id, [{
+      step_number: 1,
+      subject: subject || "Important Outreach",
+      body: content,
+      scheduled_at_utc: new Date(),
+      scheduled_time_local: new Date().toLocaleTimeString(),
+      timezone: "UTC",
+      computed_date: new Date().toISOString().split('T')[0],
+    }]);
+    
+    if (!newSeqResult.ok) {
+      throw new Error(newSeqResult.message);
     }
+    
+    const sequence = newSeqResult.data;
+    const step = sequence.steps[0];
+    
+    // Mark sequence as ACTIVE immediately since this is an immediate send-demo action
+    await prisma.sequence.update({
+      where: { id: sequence.id },
+      data: { status: "ACTIVE", started_at: new Date() }
+    });
 
     // 3. Claim the step atomically (simulating what the scheduler or send-now does)
     const claimed = await prisma.sequenceStep.updateMany({
