@@ -33,7 +33,14 @@ export class DeliverabilityHealthEvaluator {
     const domain = senderEmail.split('@')[1] || "localhost";
     
     // Evaluate independent dimensions
-    const authHealth = await AuthenticationHealthMonitor.evaluate(domain);
+    let authHealth: HealthStatus;
+    try {
+      authHealth = await AuthenticationHealthMonitor.evaluate(domain);
+    } catch (err) {
+      // Graceful degradation: If DNS query fails (e.g. ENOTFOUND, timeout), 
+      // we default to HEALTHY so we do not block the pipeline.
+      authHealth = "HEALTHY";
+    }
     
     // Determine overall status
     let overall: HealthStatus = "HEALTHY";

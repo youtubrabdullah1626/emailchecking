@@ -83,6 +83,7 @@ function encodeRFC2047(text: string): string {
  * Prevents header injection attacks by stripping newlines.
  */
 function cleanHeaderVal(val: string): string {
+  if (!val) return "";
   return val.replace(/\r|\n/g, "");
 }
 

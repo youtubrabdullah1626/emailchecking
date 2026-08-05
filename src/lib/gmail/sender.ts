@@ -154,7 +154,7 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
       gmailLog("gmail_send_aborted_health", {
         stepId,
         detail: `Deliverability Health Evaluator blocked sending due to FAILING health.`,
-        health
+        health_status: health.overall
       });
       return {
         stepId,
