@@ -4,7 +4,6 @@ import React from "react";
 import { useImport } from "@/components/providers/ImportProvider";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { LegacyBadge as Badge } from "@/components/ui/legacy-adapters";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 
@@ -54,7 +53,7 @@ export function ImportPreviewTable() {
         <CardDescription>Reviewing the first 20 records. Please ensure columns map correctly.</CardDescription>
       </CardHeader>
       <CardContent className="p-0">
-        <ScrollArea className="w-full max-h-[400px]">
+        <div className="w-full max-h-[400px] overflow-auto">
           <div className="min-w-max">
             <Table>
               <TableHeader className="bg-muted/30 sticky top-0 z-10 backdrop-blur-sm">
@@ -116,7 +115,7 @@ export function ImportPreviewTable() {
             </TableBody>
           </Table>
           </div>
-        </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
