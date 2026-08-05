@@ -76,7 +76,6 @@ export async function POST(request: NextRequest) {
           subject: subject || "Important Outreach",
           body: content,
           status: "PENDING", // Reset to PENDING for retry/re-execution
-          error_message: null
         }
       });
     } else {
