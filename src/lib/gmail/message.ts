@@ -130,6 +130,7 @@ export function buildGmailMessage(
   const headers: string[] = [
     `Date: ${new Date().toUTCString()}`,
     `From: ${cleanHeaderVal(from)}`,
+    `Reply-To: ${cleanHeaderVal(from)}`,
     `To: ${toHeader}`,
     `Subject: ${safeSubject}`,
     `MIME-Version: 1.0`,
