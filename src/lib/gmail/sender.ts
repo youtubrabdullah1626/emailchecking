@@ -28,6 +28,8 @@
  * Server-side only. Never import from client components.
  */
 
+import * as fs from "fs";
+import * as path from "path";
 import { google } from "googleapis";
 import prisma from "@/lib/prisma";
 import { getOAuthConfig, createOAuth2Client } from "./oauth";
@@ -240,15 +242,38 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
   try {
     // auth and gmail clients are already instantiated above
 
-    const response = await gmail.users.messages.send({
-      userId: "me", // "me" refers to the authenticated user
-      requestBody: {
-        raw: messagePayload.raw,
-        ...(messagePayload.threadId
-          ? { threadId: messagePayload.threadId }
-          : {}),
-      },
-    });
+    // Retry configuration
+    const MAX_API_RETRIES = 3;
+    let attempt = 1;
+    let response: any;
+
+    while (attempt <= MAX_API_RETRIES) {
+      try {
+        response = await gmail.users.messages.send({
+          userId: "me", // "me" refers to the authenticated user
+          requestBody: {
+            raw: messagePayload.raw,
+            ...(messagePayload.threadId
+              ? { threadId: messagePayload.threadId }
+              : {}),
+          },
+        });
+        // If successful, break out of retry loop
+        break;
+      } catch (err: any) {
+        const status = err?.status || err?.code;
+        // Retry only on transient errors: 429 Too Many Requests, or 5xx Server Errors
+        if (status === 429 || (status >= 500 && status < 600)) {
+          if (attempt === MAX_API_RETRIES) throw err;
+          // Exponential backoff: 2s, 4s, etc.
+          await sleep(attempt * 2000);
+          attempt++;
+        } else {
+          // Fatal error (e.g. 400 Bad Request, 403 Forbidden), do not retry
+          throw err;
+        }
+      }
+    }
 
     if (!response.data.id || !response.data.threadId) {
       throw new Error(
@@ -294,7 +319,20 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
 
   if (!dbUpdateSuccess) {
     // Gmail send succeeded but we could not record it.
-    // Log the Gmail message ID prominently so it can be manually reconciled.
+    // DEAD LETTER FALLBACK: Write to local disk to prevent duplicate resends if recovered.
+    try {
+      const fallbackDir = path.join(process.cwd(), "logs");
+      if (!fs.existsSync(fallbackDir)) fs.mkdirSync(fallbackDir, { recursive: true });
+      
+      const logEntry = JSON.stringify({ 
+        stepId, gmailMessageId, gmailThreadId, sentAt: new Date().toISOString() 
+      }) + "\n";
+      
+      fs.appendFileSync(path.join(fallbackDir, "orphan-sends.jsonl"), logEntry);
+    } catch (fsErr) {
+      console.error("CRITICAL: Failed to write to dead-letter fallback log", fsErr);
+    }
+
     const err = new Error(`Gmail send succeeded (messageId=${gmailMessageId}) but DB update failed for step ${stepId}.`);
     logger.critical(`Gmail send succeeded but DB update failed for step ${stepId}`, { error: err.message, stepId, gmailMessageId });
     await errorTracker.trackError({ 
@@ -526,10 +564,12 @@ async function markStepFailed(
  */
 function extractSafeErrorMessage(err: unknown): string {
   if (err instanceof Error) {
-    // Strip any token-like strings from the message as a safety measure
+    // Deep sanitization: Strip any token-like strings, JWTs, or client secrets
     return err.message
       .replace(/ya29\.[A-Za-z0-9._-]+/g, "[ACCESS_TOKEN_REDACTED]")
       .replace(/refresh_token=[^&\s]*/gi, "refresh_token=[REDACTED]")
+      .replace(/client_secret=[^&\s]*/gi, "client_secret=[REDACTED]")
+      .replace(/ey[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*/g, "[JWT_REDACTED]")
       .slice(0, 400); // cap length
   }
   return "Unknown error";
