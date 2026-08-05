@@ -298,7 +298,7 @@ describe("buildGmailMessage", () => {
       toName: "C",
       subject: "Follow-up",
       body: "Body",
-      inReplyToMessageId: "prev-msg-abc",
+      inReplyToMessageId: "prev-msg-abc@domain.com",
     });
 
     const decoded = Buffer.from(
@@ -306,8 +306,8 @@ describe("buildGmailMessage", () => {
       "base64"
     ).toString("utf8");
 
-    expect(decoded).toContain("In-Reply-To: <prev-msg-abc>");
-    expect(decoded).toContain("References: <prev-msg-abc>");
+    expect(decoded).toContain("In-Reply-To: <prev-msg-abc@domain.com>");
+    expect(decoded).toContain("References: <prev-msg-abc@domain.com>");
   });
 
   it("decoded message does NOT contain In-Reply-To when no previous step", () => {

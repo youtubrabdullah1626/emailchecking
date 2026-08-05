@@ -179,7 +179,33 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
   // ── 5. Build the Gmail message payload ────────────────────────────────────
   // Thread continuation: for Step 2+, use the previous step's thread/message IDs
   const previousThreadId = step.previousStep?.gmail_thread_id ?? undefined;
-  const previousMessageId = step.previousStep?.gmail_message_id ?? undefined;
+  const previousInternalMessageId = step.previousStep?.gmail_message_id ?? undefined;
+  
+  let previousRfcMessageId: string | undefined = undefined;
+  
+  const auth = cachedAuth || createOAuth2Client();
+  const gmail = google.gmail({ version: "v1", auth: auth as any });
+
+  // Fetch the true RFC Message-ID to use for In-Reply-To chaining
+  if (previousInternalMessageId) {
+    try {
+      const prevMsg = await gmail.users.messages.get({
+        userId: "me",
+        id: previousInternalMessageId,
+        format: "metadata",
+        metadataHeaders: ["Message-ID"],
+      });
+      const rfcHeader = prevMsg.data.payload?.headers?.find(h => h.name === "Message-ID");
+      if (rfcHeader && rfcHeader.value) {
+        previousRfcMessageId = rfcHeader.value;
+      }
+    } catch (err) {
+      gmailLog("gmail_fetch_prev_msg_failed", {
+        stepId,
+        detail: `Could not fetch previous message ID ${previousInternalMessageId} to get RFC Message-ID. Threading might rely solely on threadId.`
+      });
+    }
+  }
 
   // Tracking Engine: Register Email
   const trackingId = await emailTrackingService.registerEmail({
@@ -201,7 +227,7 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
     toName: step.sequence.prospect.name,
     subject: step.subject,
     body: step.body, // Pure plain text, no HTML tags
-    inReplyToMessageId: previousMessageId,
+    inReplyToMessageId: previousRfcMessageId, // Must be the RFC Message-ID (e.g. <...@mail.gmail.com>)
     threadId: previousThreadId,
     trackingPixel,
     enableListUnsubscribe,
@@ -212,12 +238,7 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
   let gmailThreadId: string;
 
   try {
-    const auth = cachedAuth || createOAuth2Client();
-    // `auth as any` is required because googleapis and googleapis-common bundle
-    // separate copies of google-auth-library, causing TS to see mismatched private
-    // members. The runtime type is correct — this is a known packaging issue.
-    
-    const gmail = google.gmail({ version: "v1", auth: auth as any });
+    // auth and gmail clients are already instantiated above
 
     const response = await gmail.users.messages.send({
       userId: "me", // "me" refers to the authenticated user

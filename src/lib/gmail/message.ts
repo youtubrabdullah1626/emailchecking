@@ -137,24 +137,27 @@ export function buildGmailMessage(
   ];
 
   // 1. Message-ID logic
+  // We DO NOT generate a custom Message-ID here.
+  // By omitting it, the Gmail API will natively generate a perfectly formatted, 
+  // cryptographically signed Message-ID (e.g. <...@mail.gmail.com>) that perfectly 
+  // aligns with Google's DKIM signatures. Forging our own Message-ID, especially 
+  // for @gmail.com accounts, triggers severe spam penalties.
   if (customHeaders?.['Message-ID']) {
     headers.push(`Message-ID: ${cleanHeaderVal(customHeaders['Message-ID'])}`);
-  } else {
-    // Generate secure RFC-compliant Message-ID using authenticated sender domain
-    const senderDomain = cleanHeaderVal(from).split('@')[1] || 'localhost';
-    const entropy = crypto.randomBytes(16).toString('hex');
-    const timestamp = Date.now();
-    headers.push(`Message-ID: <${timestamp}.${entropy}@${senderDomain}>`);
   }
 
   // 2. List-Unsubscribe logic (RFC 8058 & 2369)
-  if (enableListUnsubscribe) {
-    const senderDomain = cleanHeaderVal(from).split('@')[1] || 'localhost';
+  const senderDomain = cleanHeaderVal(from).split('@')[1] || 'localhost';
+  const isFreeGmail = senderDomain.toLowerCase() === 'gmail.com' || senderDomain.toLowerCase() === 'googlemail.com';
+  
+  // NEVER inject a List-Unsubscribe claiming to be gmail.com (e.g. unsubscribe@gmail.com). 
+  // This is a catastrophic spoofing violation.
+  if (enableListUnsubscribe && !isFreeGmail) {
     headers.push(`List-Unsubscribe: <mailto:unsubscribe@${senderDomain}?subject=unsubscribe>`);
     headers.push(`List-Unsubscribe-Post: List-Unsubscribe=One-Click`);
   }
 
-  if (inReplyToMessageId) {
+  if (inReplyToMessageId && inReplyToMessageId.includes('@')) {
     const safeId = cleanMessageId(inReplyToMessageId);
     headers.push(`In-Reply-To: <${safeId}>`);
     headers.push(`References: <${safeId}>`);

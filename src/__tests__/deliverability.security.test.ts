@@ -21,25 +21,8 @@ describe("Deliverability Pipeline V2 - Security & Penetration Tests", () => {
     expect(rawStr).toContain("UrgentBcc: hacker@evil.com");
   });
 
-  it("safely generates a unique entropy-based Message-ID without collisions", () => {
-    const payloads = Array.from({ length: 1000 }).map(() => buildGmailMessage({
-      from: "sender@example.com",
-      to: "recipient@example.com",
-      toName: "",
-      subject: "Subject",
-      body: "Body"
-    }));
-
-    const messageIds = payloads.map(p => {
-      const rawStr = Buffer.from(p.raw.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
-      const match = rawStr.match(/Message-ID: <(.+?)>/);
-      return match ? match[1] : null;
-    });
-
-    // Ensure all 1000 Message-IDs are valid and unique
-    const uniqueIds = new Set(messageIds);
-    expect(uniqueIds.size).toBe(1000);
-    expect(messageIds[0]).toMatch(/^[0-9]+\.[a-f0-9]{32}@example\.com$/);
+  it("safely generates a unique entropy-based Message-ID without collisions (REMOVED)", () => {
+    // Test removed: We no longer generate Message-IDs. We rely on the Gmail API to generate DKIM-aligned Message-IDs natively.
   });
 
   it("prevents duplicate List-Unsubscribe headers from being injected", () => {
@@ -85,17 +68,7 @@ describe("Deliverability Pipeline V2 - Security & Penetration Tests", () => {
     expect(rawStr).not.toContain("visibility:hidden");
   });
 
-  it("handles empty or malformed sender domains safely (fallback to localhost)", () => {
-    const payload = buildGmailMessage({
-      from: "invalidemailformat", // No @ symbol
-      to: "recipient@example.com",
-      toName: "Name",
-      subject: "Sub",
-      body: "Body"
-    });
-
-    const rawStr = Buffer.from(payload.raw.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
-    expect(rawStr).toContain("Message-ID: <");
-    expect(rawStr).toContain("@localhost>"); // Fallback domain
+  it("handles empty or malformed sender domains safely (fallback to localhost) (REMOVED)", () => {
+    // Test removed: We no longer generate Message-IDs or List-Unsubscribe if domain is malformed/gmail.
   });
 });
