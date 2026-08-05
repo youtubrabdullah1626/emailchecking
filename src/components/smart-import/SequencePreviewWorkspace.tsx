@@ -98,8 +98,13 @@ export function SequencePreviewWorkspace() {
                           </Badge>
                           {index > 0 && <span className="text-xs text-muted-foreground">Day {step.delayDays}</span>}
                         </div>
-                        <div className="text-sm text-foreground whitespace-pre-wrap font-mono bg-muted/30 p-3 rounded-md border border-border/50 text-xs line-clamp-6 hover:line-clamp-none transition-all">
-                          {step.content}
+                        <div className="text-sm text-foreground whitespace-pre-wrap font-mono bg-muted/30 p-3 rounded-md border border-border/50 text-xs transition-all relative">
+                          <div className="font-semibold text-foreground/90 mb-2 pb-2 border-b border-border/50">
+                            Subject: {step.subject}
+                          </div>
+                          <div className="line-clamp-6 hover:line-clamp-none transition-all">
+                            {step.content}
+                          </div>
                         </div>
                       </div>
                     </div>
