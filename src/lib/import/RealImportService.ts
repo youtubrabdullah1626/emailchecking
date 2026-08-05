@@ -37,6 +37,9 @@ export class RealImportService implements IImportService {
           
           for (const vKey of valueKeys) {
             const newRow: any = {};
+            // Recover the very first key-value pair that was consumed as headers by the underlying parser
+            newRow[firstKey] = vKey;
+            
             let currentHeader = "";
             for (const row of rawRows) {
               const newHeaderName = String(row[firstKey] || '').trim();
