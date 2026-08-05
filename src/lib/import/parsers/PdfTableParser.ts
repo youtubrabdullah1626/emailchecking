@@ -31,23 +31,36 @@ export class PdfTableParser {
         const page = await pdfDocument.getPage(pageNum);
         const textContent = await page.getTextContent();
         
-        // Group items by Y coordinate (rounding to handle slight misalignments)
-        const rowsMap = new Map<number, any[]>();
+        // Extract valid text items
+        const items = textContent.items.filter(i => "transform" in i && (i as any).str.trim());
         
-        for (const item of textContent.items) {
-          if ("transform" in item) {
-            const y = Math.round(item.transform[5] / 5) * 5; // round to nearest 5
-            if (!rowsMap.has(y)) rowsMap.set(y, []);
-            rowsMap.get(y)!.push(item);
+        // Sort items primarily by Y (descending) and secondarily by X (ascending)
+        items.sort((a: any, b: any) => {
+          const yDiff = b.transform[5] - a.transform[5];
+          if (Math.abs(yDiff) < 8) {
+             return a.transform[4] - b.transform[4];
+          }
+          return yDiff;
+        });
+
+        const rows: any[][] = [];
+        let currentRow: any[] = [];
+        let currentY = -1;
+
+        for (const item of items) {
+          const y = (item as any).transform[5];
+          if (currentY === -1 || Math.abs(currentY - y) < 8) {
+            currentRow.push(item);
+            if (currentY === -1) currentY = y;
+          } else {
+            rows.push(currentRow);
+            currentRow = [item];
+            currentY = y;
           }
         }
-        
-        // Sort rows top-to-bottom (highest Y to lowest Y in PDF coordinates usually)
-        const sortedY = Array.from(rowsMap.keys()).sort((a, b) => b - a);
-        
-        for (const y of sortedY) {
-          const rowItems = rowsMap.get(y)!;
-          // Sort items in row left-to-right
+
+        for (const rowItems of rows) {
+          // Sort items in row left-to-right (just to be safe)
           rowItems.sort((a, b) => a.transform[4] - b.transform[4]);
           
           const validItems = rowItems.filter(i => i.str.trim());
