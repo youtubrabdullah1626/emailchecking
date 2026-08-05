@@ -130,7 +130,6 @@ export function buildGmailMessage(
   const headers: string[] = [
     `Date: ${new Date().toUTCString()}`,
     `From: ${cleanHeaderVal(from)}`,
-    `Reply-To: ${cleanHeaderVal(from)}`,
     `To: ${toHeader}`,
     `Subject: ${safeSubject}`,
     `MIME-Version: 1.0`,
@@ -153,8 +152,6 @@ export function buildGmailMessage(
   
   // NEVER inject a List-Unsubscribe claiming to be gmail.com (e.g. unsubscribe@gmail.com). 
   // This is a catastrophic spoofing violation.
-  let requiresOptOutFooter = isFreeGmail; // Always require body opt-out for free Gmail (CAN-SPAM compliance)
-  
   if (enableListUnsubscribe && !isFreeGmail) {
     headers.push(`List-Unsubscribe: <mailto:unsubscribe@${senderDomain}?subject=unsubscribe>`);
     headers.push(`List-Unsubscribe-Post: List-Unsubscribe=One-Click`);
@@ -168,13 +165,6 @@ export function buildGmailMessage(
 
   // Raw UTF-8 for plain text (base64 is a known spam trigger for plain text)
   let plainText = body;
-  if (requiresOptOutFooter) {
-    plainText += `\n\n--\nIf you'd prefer not to receive future emails, just reply "stop" or "unsubscribe".`;
-  }
-  // Add uniqueness hash to bypass content-similarity spam filters during repetitive testing
-  const uniqueRef = crypto.randomBytes(4).toString('hex');
-  plainText += `\n\n[Ref: ${uniqueRef}]`;
-
   if (originalMessage) {
     plainText += `\n\nOn ${originalMessage.date}, ${originalMessage.from} wrote:\n`;
     plainText += originalMessage.text.split('\n').map(line => `> ${line}`).join('\n');
@@ -184,20 +174,13 @@ export function buildGmailMessage(
 
   // Base64 chunked text/html payload
   // Emulate Gmail's native <div dir="ltr"> wrapping
-  let htmlContent = `<div dir="ltr">${body.replace(/\r\n|\n/g, '<br>')}</div>`;
-  if (requiresOptOutFooter) {
-    htmlContent += `<br><br><div dir="ltr" style="color: #888888; font-size: 11px;">--<br>If you'd prefer not to receive future emails, just reply "stop" or "unsubscribe".</div>`;
-  }
-  htmlContent += `<div dir="ltr" style="color: #cccccc; font-size: 10px; margin-top: 10px;">Ref: ${Date.now()}-${uniqueRef}</div>`;
+  let htmlBody = `<div dir="ltr">${body.replace(/\r\n|\n/g, '<br>')}</div>`;
   if (originalMessage) {
-    htmlContent += `<br><div class="gmail_quote"><div dir="ltr" class="gmail_attr">On ${originalMessage.date} ${originalMessage.from} wrote:<br></div><blockquote class="gmail_quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">${originalMessage.text.replace(/\r\n|\n/g, '<br>')}</blockquote></div>`;
+    htmlBody += `<br><div class="gmail_quote"><div dir="ltr" class="gmail_attr">On ${originalMessage.date} ${originalMessage.from} wrote:<br></div><blockquote class="gmail_quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">${originalMessage.text.replace(/\r\n|\n/g, '<br>')}</blockquote></div>`;
   }
   if (trackingPixel) {
-    htmlContent += `\n${trackingPixel}`;
+    htmlBody += `\n${trackingPixel}`;
   }
-  
-  // Wrap in fully compliant HTML5 document to maximize deliverability score
-  let htmlBody = `<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<meta charset="UTF-8">\r\n</head>\r\n<body>\r\n${htmlContent}\r\n</body>\r\n</html>`;
   
   // Enforce strict CRLF for 8bit text/html encoding
   htmlBody = htmlBody.replace(/\r\n|\n/g, "\r\n");
