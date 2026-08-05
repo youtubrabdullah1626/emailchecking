@@ -4,6 +4,7 @@ export interface SequenceStep {
   id: string; // unique ID per step per lead
   stepNumber: number; // strictly continuous 1, 2, 3...
   type: "EMAIL" | "LINKEDIN" | "CALL"; // Future proofing
+  subject: string; // The email subject
   content: string; // The personalized content
   delayDays: number; // Expected delay before sending
   conditions?: Record<string, any>;
@@ -65,11 +66,14 @@ export class SequenceBuilderEngine implements ISequenceBuilderStrategy {
       }
 
       // Check initial message
-      let initialMessage = record.customFields["initialMessage"];
+      let initialMessage = record.customFields["initialMessage"] || record.customFields["message"] || record.customFields["email body"];
       if (!initialMessage || initialMessage.trim() === "") {
         // Auto-generate a generic placeholder if missing so it doesn't fail silently for beginners
         initialMessage = `Hi ${record.firstName || "there"},\n\nI wanted to reach out regarding potential synergies between our companies.\n\nBest,\nSales Team`;
       }
+      
+      // Parse Subject dynamically
+      let baseSubject = record.customFields["subject"] || record.customFields["Subject"] || `Important Outreach to ${record.company || record.firstName || record.email}`;
 
       const steps: SequenceStep[] = [];
       let stepCounter = 1;
@@ -79,6 +83,7 @@ export class SequenceBuilderEngine implements ISequenceBuilderStrategy {
         id: `${record.id}_step_${stepCounter}`,
         stepNumber: stepCounter,
         type: "EMAIL",
+        subject: baseSubject,
         content: initialMessage,
         delayDays: 0,
       });
@@ -98,8 +103,9 @@ export class SequenceBuilderEngine implements ISequenceBuilderStrategy {
             id: `${record.id}_step_${stepCounter}`,
             stepNumber: stepCounter,
             type: "EMAIL",
+            subject: `Re: ${baseSubject}`,
             content: content,
-            delayDays: 2, // Default standard delay for future capability
+            delayDays: 3, // Defaulting to 3 days for dynamic follow-ups
           });
         }
       }

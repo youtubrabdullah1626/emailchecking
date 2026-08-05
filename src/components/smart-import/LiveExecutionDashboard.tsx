@@ -60,7 +60,7 @@ export function LiveExecutionDashboard() {
         body: JSON.stringify({
           to: item.recipientEmail,
           toName: "",
-          subject: `Outreach to ${item.recipientEmail}`,
+          subject: item.sequenceStep.subject || `Outreach to ${item.recipientEmail}`,
           content: item.sequenceStep.content,
           importSequenceId: item.queueId.split('_s')[0], // Groups steps for the same import & prospect
           stepNumber: item.sequenceStep.stepNumber,
