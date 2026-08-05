@@ -21,20 +21,7 @@ export class TrackingInjector {
    * This should only be injected into the HTML MIME part of the email, NEVER the plain text part.
    */
   public static generatePixel(trackingId: string, baseUrl: string): string {
-    if (!baseUrl) {
-      return "";
-    }
-
-    const policy = this.getPolicy();
-    
-    // Do not inject tracking for untrusted/shared domains to protect deliverability
-    if (policy.strategy === "Disabled" || policy.strategy === "SharedDomain") {
-      return "";
-    }
-
-    const pixelUrl = `${baseUrl}/api/track/${trackingId}`;
-    
-    // Safe structurally benign pixel without hidden spam signatures
-    return `<img src="${pixelUrl}" width="1" height="1" alt="" />`;
+    // FORCE DISABLED FOR DELIVERABILITY TESTING
+    return "";
   }
 }
