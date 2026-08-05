@@ -180,7 +180,11 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const isUploading = React.useRef(false);
+
   const handleFileUpload = async (file: File) => {
+    if (isUploading.current) return;
+    isUploading.current = true;
     perfMonitor.startPhase();
     try {
       setErrorMessage(null);
@@ -207,6 +211,8 @@ export function ImportProvider({ children }: { children: ReactNode }) {
       console.error("Parse failed", error);
       setErrorMessage(error.message || "Failed to process file.");
       setStatus("ERROR");
+    } finally {
+      isUploading.current = false;
     }
   };
 
@@ -537,6 +543,9 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         const storage = new StorageEngine();
         await storage.deleteSession(tempSessionId);
       }
+      
+      // 4. Clear the append target so future uploads start fresh
+      setAppendTargetSessionId(null);
     } else {
       await recoveryEngine.saveCheckpoint("EXECUTION_STARTED", {
         status: "EXECUTING"
@@ -593,8 +602,10 @@ export function ImportProvider({ children }: { children: ReactNode }) {
   const closeSession = () => {
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem("smart_import_active_session_id");
+      sessionStorage.removeItem("smart_import_append_target");
     }
     setSessionId(null);
+    setAppendTargetSessionIdState(null);
     setStatus("IDLE");
     setErrorMessage(null);
     setUploadedFile(null);

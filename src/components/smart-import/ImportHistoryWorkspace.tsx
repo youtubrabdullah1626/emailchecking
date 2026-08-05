@@ -54,11 +54,10 @@ export function ImportHistoryWorkspace() {
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [prospectAction, setProspectAction] = useState<"CANCEL" | "DELETE">("CANCEL");
 
-  // Cleanup timers on unmount
+  // Removed unmount timer clearing so optimistic deletes actually execute even if user navigates away
   useEffect(() => {
-    const timers = deleteTimers.current;
     return () => {
-      Object.values(timers).forEach(clearTimeout);
+      // Do not clearTimeout here, otherwise navigating away cancels the deletion
     };
   }, []);
 
