@@ -98,17 +98,9 @@ function cleanMessageId(id: string): string {
  * Chunk a string into lines of a specific maximum length.
  * Required for RFC 2045 Base64 encoding which recommends 76-character line lengths.
  */
-function chunkString(str: string, length: number): string {
-  const chunks = [];
-  for (let i = 0; i < str.length; i += length) {
-    chunks.push(str.substring(i, i + length));
-  }
-  return chunks.join("\r\n");
-}
 
-function generateBoundary(): string {
-  return `----=_Part_${crypto.randomBytes(16).toString("hex")}`;
-}
+
+
 
 export function buildGmailMessage(
   options: BuildMessageOptions
@@ -125,7 +117,6 @@ export function buildGmailMessage(
     finalSubject = `Re: ${finalSubject}`;
   }
   const safeSubject = encodeRFC2047(finalSubject);
-  const boundary = generateBoundary();
 
   const headers: string[] = [
     `Date: ${new Date().toUTCString()}`,
@@ -133,7 +124,8 @@ export function buildGmailMessage(
     `To: ${toHeader}`,
     `Subject: ${safeSubject}`,
     `MIME-Version: 1.0`,
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    `Content-Type: text/plain; charset="UTF-8"`,
+    `Content-Transfer-Encoding: 8bit`
   ];
 
   // 1. Message-ID logic
@@ -172,34 +164,7 @@ export function buildGmailMessage(
   // Enforce strict CRLF for 8bit text/plain encoding to satisfy RFC 5322 section 2.1
   plainText = plainText.replace(/\r\n|\n/g, "\r\n");
 
-  // Base64 chunked text/html payload
-  // Emulate Gmail's native <div dir="ltr"> wrapping
-  let htmlBody = `<div dir="ltr">${body.replace(/\r\n|\n/g, '<br>')}</div>`;
-  if (originalMessage) {
-    htmlBody += `<br><div class="gmail_quote"><div dir="ltr" class="gmail_attr">On ${originalMessage.date} ${originalMessage.from} wrote:<br></div><blockquote class="gmail_quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">${originalMessage.text.replace(/\r\n|\n/g, '<br>')}</blockquote></div>`;
-  }
-  if (trackingPixel) {
-    htmlBody += `\n${trackingPixel}`;
-  }
-  
-  // Enforce strict CRLF for 8bit text/html encoding
-  htmlBody = htmlBody.replace(/\r\n|\n/g, "\r\n");
-
-  const multipartBody = [
-    `--${boundary}`,
-    `Content-Type: text/plain; charset="UTF-8"`,
-    `Content-Transfer-Encoding: 8bit`,
-    ``,
-    plainText,
-    `--${boundary}`,
-    `Content-Type: text/html; charset="UTF-8"`,
-    `Content-Transfer-Encoding: 8bit`,
-    ``,
-    htmlBody,
-    `--${boundary}--`
-  ].join("\r\n");
-
-  const message = headers.join("\r\n") + "\r\n\r\n" + multipartBody;
+  const message = headers.join("\r\n") + "\r\n\r\n" + plainText;
 
   const raw = Buffer.from(message)
     .toString("base64")
