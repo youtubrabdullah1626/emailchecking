@@ -62,6 +62,30 @@ export class PdfTableParser {
           
           const validItems = rowItems.filter(i => i.str.trim());
           if (validItems.length === 0) continue;
+          
+          // Heuristic: If we haven't found headers yet, check if this entire page is a vertical table
+          // A vertical table has exactly 2 valid items per row for many rows
+          if (headers.length === 0 && rows.filter(r => r.filter((i: any) => i.str.trim()).length === 2).length >= 3) {
+            // This is a vertical table! Transpose it.
+            const verticalRecord: any = {};
+            for (const r of rows) {
+              const rItems = r.filter((i: any) => i.str.trim()).sort((a: any, b: any) => a.transform[4] - b.transform[4]);
+              if (rItems.length >= 2) {
+                const key = rItems[0].str.trim();
+                const val = rItems.slice(1).map((i: any) => i.str.trim()).join(" ");
+                verticalRecord[key] = val;
+              } else if (rItems.length === 1 && Object.keys(verticalRecord).length > 0) {
+                 // Wrapped text in vertical value
+                 const lastKey = Object.keys(verticalRecord)[Object.keys(verticalRecord).length - 1];
+                 verticalRecord[lastKey] += " " + rItems[0].str.trim();
+              }
+            }
+            if (Object.keys(verticalRecord).length > 0) {
+               records.push(verticalRecord);
+            }
+            // Skip the rest of standard horizontal parsing for this page
+            break;
+          }
 
           if (headers.length === 0) {
             // Assume first row with multiple items AND at least one common CRM keyword is the header.
