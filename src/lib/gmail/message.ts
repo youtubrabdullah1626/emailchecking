@@ -184,17 +184,20 @@ export function buildGmailMessage(
 
   // Base64 chunked text/html payload
   // Emulate Gmail's native <div dir="ltr"> wrapping
-  let htmlBody = `<div dir="ltr">${body.replace(/\r\n|\n/g, '<br>')}</div>`;
+  let htmlContent = `<div dir="ltr">${body.replace(/\r\n|\n/g, '<br>')}</div>`;
   if (requiresOptOutFooter) {
-    htmlBody += `<br><br><div dir="ltr" style="color: #888888; font-size: 11px;">--<br>If you'd prefer not to receive future emails, just reply "stop" or "unsubscribe".</div>`;
+    htmlContent += `<br><br><div dir="ltr" style="color: #888888; font-size: 11px;">--<br>If you'd prefer not to receive future emails, just reply "stop" or "unsubscribe".</div>`;
   }
-  htmlBody += `<div dir="ltr" style="color: #cccccc; font-size: 10px; margin-top: 10px;">Ref: ${Date.now()}-${uniqueRef}</div>`;
+  htmlContent += `<div dir="ltr" style="color: #cccccc; font-size: 10px; margin-top: 10px;">Ref: ${Date.now()}-${uniqueRef}</div>`;
   if (originalMessage) {
-    htmlBody += `<br><div class="gmail_quote"><div dir="ltr" class="gmail_attr">On ${originalMessage.date} ${originalMessage.from} wrote:<br></div><blockquote class="gmail_quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">${originalMessage.text.replace(/\r\n|\n/g, '<br>')}</blockquote></div>`;
+    htmlContent += `<br><div class="gmail_quote"><div dir="ltr" class="gmail_attr">On ${originalMessage.date} ${originalMessage.from} wrote:<br></div><blockquote class="gmail_quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">${originalMessage.text.replace(/\r\n|\n/g, '<br>')}</blockquote></div>`;
   }
   if (trackingPixel) {
-    htmlBody += `\n${trackingPixel}`;
+    htmlContent += `\n${trackingPixel}`;
   }
+  
+  // Wrap in fully compliant HTML5 document to maximize deliverability score
+  let htmlBody = `<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<meta charset="UTF-8">\r\n</head>\r\n<body>\r\n${htmlContent}\r\n</body>\r\n</html>`;
   
   // Enforce strict CRLF for 8bit text/html encoding
   htmlBody = htmlBody.replace(/\r\n|\n/g, "\r\n");
