@@ -94,38 +94,19 @@ export function ImportHistoryWorkspace() {
     loadSessions();
   };
 
-  const handleDeleteInitiated = (id: string, action: "CANCEL" | "DELETE") => {
+  const handleDeleteInitiated = async (id: string, action: "CANCEL" | "DELETE") => {
     // 1. Close the AlertDialog
     setSessionToDelete(null);
 
     // 2. Optimistic hide
     setHiddenSessions(prev => new Set(prev).add(id));
 
-    // 3. Schedule permanent delete
-    const timer = setTimeout(() => {
-      executeDelete(id, action);
-      delete deleteTimers.current[id];
-    }, 6000);
-    deleteTimers.current[id] = timer;
+    // 3. Delete immediately without a fragile 6-second timeout
+    await executeDelete(id, action);
 
-    // 4. Show the sleek undo toast
+    // 4. Show the sleek toast
     toast.success("Campaign deleted", {
-      description: "Scheduled emails will also be permanently deleted.",
-      action: {
-        label: "Undo",
-        onClick: () => {
-          if (deleteTimers.current[id]) {
-            clearTimeout(deleteTimers.current[id]);
-            delete deleteTimers.current[id];
-            setHiddenSessions(prev => {
-              const next = new Set(prev);
-              next.delete(id);
-              return next;
-            });
-            toast.success("Campaign restored");
-          }
-        },
-      },
+      description: "Scheduled emails have been permanently deleted.",
     });
   };
 
