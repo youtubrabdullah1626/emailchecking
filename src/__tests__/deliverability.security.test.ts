@@ -42,11 +42,8 @@ describe("Deliverability Pipeline V2 - Security & Penetration Tests", () => {
     const rawStr = Buffer.from(payload.raw.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
     const unsubscribeMatches = rawStr.match(/List-Unsubscribe:/g);
     
-    // Due to the strict implementation in message.ts, if we enableListUnsubscribe, 
-    // it shouldn't duplicate if passed via custom headers because we only append the auto-generated one.
-    // Actually, in our current `message.ts`, we don't pass custom `List-Unsubscribe` from `headers` block at all (only Message-ID is explicitly extracted from `customHeaders`).
-    // So there is explicitly exactly ONE List-Unsubscribe header injected.
-    expect(unsubscribeMatches?.length).toBe(1);
+    // We have completely removed List-Unsubscribe headers from the codebase.
+    expect(unsubscribeMatches).toBeNull();
   });
 
   it("neutralizes hidden spam signatures in the HTML payload", () => {

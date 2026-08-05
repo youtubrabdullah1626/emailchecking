@@ -138,16 +138,7 @@ export function buildGmailMessage(
     headers.push(`Message-ID: ${cleanHeaderVal(customHeaders['Message-ID'])}`);
   }
 
-  // 2. List-Unsubscribe logic (RFC 8058 & 2369)
-  const senderDomain = cleanHeaderVal(from).split('@')[1] || 'localhost';
-  const isFreeGmail = senderDomain.toLowerCase() === 'gmail.com' || senderDomain.toLowerCase() === 'googlemail.com';
-  
-  // NEVER inject a List-Unsubscribe claiming to be gmail.com (e.g. unsubscribe@gmail.com). 
-  // This is a catastrophic spoofing violation.
-  if (enableListUnsubscribe && !isFreeGmail) {
-    headers.push(`List-Unsubscribe: <mailto:unsubscribe@${senderDomain}?subject=unsubscribe>`);
-    headers.push(`List-Unsubscribe-Post: List-Unsubscribe=One-Click`);
-  }
+
 
   if (inReplyToMessageId && inReplyToMessageId.includes('@')) {
     const safeId = cleanMessageId(inReplyToMessageId);
