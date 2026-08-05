@@ -55,8 +55,14 @@ export async function POST(request: NextRequest) {
         });
       }
       
-      step = await prisma.sequenceStep.create({
-        data: {
+      step = await prisma.sequenceStep.upsert({
+        where: {
+          sequence_id_step_number: {
+            sequence_id: sequence.id,
+            step_number: stepNumber || 1,
+          }
+        },
+        create: {
           sequence_id: sequence.id,
           step_number: stepNumber || 1,
           subject: subject || "Important Outreach",
@@ -65,6 +71,12 @@ export async function POST(request: NextRequest) {
           scheduled_time_local: new Date().toLocaleTimeString(),
           timezone: "UTC",
           status: "PENDING",
+        },
+        update: {
+          subject: subject || "Important Outreach",
+          body: content,
+          status: "PENDING", // Reset to PENDING for retry/re-execution
+          error_message: null
         }
       });
     } else {
