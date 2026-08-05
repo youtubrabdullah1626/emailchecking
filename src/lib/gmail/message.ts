@@ -152,6 +152,8 @@ export function buildGmailMessage(
   
   // NEVER inject a List-Unsubscribe claiming to be gmail.com (e.g. unsubscribe@gmail.com). 
   // This is a catastrophic spoofing violation.
+  let requiresOptOutFooter = isFreeGmail; // Always require body opt-out for free Gmail (CAN-SPAM compliance)
+  
   if (enableListUnsubscribe && !isFreeGmail) {
     headers.push(`List-Unsubscribe: <mailto:unsubscribe@${senderDomain}?subject=unsubscribe>`);
     headers.push(`List-Unsubscribe-Post: List-Unsubscribe=One-Click`);
@@ -165,6 +167,9 @@ export function buildGmailMessage(
 
   // Raw UTF-8 for plain text (base64 is a known spam trigger for plain text)
   let plainText = body;
+  if (requiresOptOutFooter) {
+    plainText += `\n\n--\nIf you'd prefer not to receive future emails, just reply "stop" or "unsubscribe".`;
+  }
   if (originalMessage) {
     plainText += `\n\nOn ${originalMessage.date}, ${originalMessage.from} wrote:\n`;
     plainText += originalMessage.text.split('\n').map(line => `> ${line}`).join('\n');
@@ -175,6 +180,9 @@ export function buildGmailMessage(
   // Base64 chunked text/html payload
   // Emulate Gmail's native <div dir="ltr"> wrapping
   let htmlBody = `<div dir="ltr">${body.replace(/\r\n|\n/g, '<br>')}</div>`;
+  if (requiresOptOutFooter) {
+    htmlBody += `<br><br><div dir="ltr" style="color: #888888; font-size: 11px;">--<br>If you'd prefer not to receive future emails, just reply "stop" or "unsubscribe".</div>`;
+  }
   if (originalMessage) {
     htmlBody += `<br><div class="gmail_quote"><div dir="ltr" class="gmail_attr">On ${originalMessage.date} ${originalMessage.from} wrote:<br></div><blockquote class="gmail_quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">${originalMessage.text.replace(/\r\n|\n/g, '<br>')}</blockquote></div>`;
   }
