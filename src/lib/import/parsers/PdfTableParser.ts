@@ -34,13 +34,9 @@ export class PdfTableParser {
         // Extract valid text items
         const items = textContent.items.filter(i => "transform" in i && (i as any).str.trim());
         
-        // Sort items primarily by Y (descending) and secondarily by X (ascending)
+        // Sort items strictly by Y (descending) to maintain transitivity
         items.sort((a: any, b: any) => {
-          const yDiff = b.transform[5] - a.transform[5];
-          if (Math.abs(yDiff) < 8) {
-             return a.transform[4] - b.transform[4];
-          }
-          return yDiff;
+          return b.transform[5] - a.transform[5];
         });
 
         const rows: any[][] = [];
