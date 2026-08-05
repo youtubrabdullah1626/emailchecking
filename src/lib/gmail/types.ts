@@ -97,4 +97,5 @@ export type GmailLogEvent =
   | "gmail_oauth_missing"
   | "gmail_oauth_error"
   | "gmail_send_aborted_limit"
-  | "gmail_send_aborted_health";
+  | "gmail_send_aborted_health"
+  | "gmail_fetch_prev_msg_failed";
