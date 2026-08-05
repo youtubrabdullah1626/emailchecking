@@ -173,18 +173,17 @@ export function buildGmailMessage(
   plainText = plainText.replace(/\r\n|\n/g, "\r\n");
 
   // Base64 chunked text/html payload
-  // Emulate Gmail's native <div dir="ltr"> wrapping but strictly enclosed in valid HTML to pass spam filters
-  let innerHtml = `<div dir="ltr">${body.replace(/\r\n|\n/g, '<br>')}</div>`;
+  // Emulate Gmail's native <div dir="ltr"> wrapping
+  let htmlBody = `<div dir="ltr">${body.replace(/\r\n|\n/g, '<br>')}</div>`;
   if (originalMessage) {
-    innerHtml += `<br><div class="gmail_quote"><div dir="ltr" class="gmail_attr">On ${originalMessage.date} ${originalMessage.from} wrote:<br></div><blockquote class="gmail_quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">${originalMessage.text.replace(/\r\n|\n/g, '<br>')}</blockquote></div>`;
+    htmlBody += `<br><div class="gmail_quote"><div dir="ltr" class="gmail_attr">On ${originalMessage.date} ${originalMessage.from} wrote:<br></div><blockquote class="gmail_quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">${originalMessage.text.replace(/\r\n|\n/g, '<br>')}</blockquote></div>`;
   }
   if (trackingPixel) {
-    innerHtml += `\n${trackingPixel}`;
+    htmlBody += `\n${trackingPixel}`;
   }
   
-  const htmlBody = `<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<meta charset="UTF-8">\r\n</head>\r\n<body>\r\n${innerHtml}\r\n</body>\r\n</html>`;
-  const base64Html = Buffer.from(htmlBody, 'utf-8').toString('base64');
-  const chunkedHtml = chunkString(base64Html, 76);
+  // Enforce strict CRLF for 8bit text/html encoding
+  htmlBody = htmlBody.replace(/\r\n|\n/g, "\r\n");
 
   const multipartBody = [
     `--${boundary}`,
@@ -194,9 +193,9 @@ export function buildGmailMessage(
     plainText,
     `--${boundary}`,
     `Content-Type: text/html; charset="UTF-8"`,
-    `Content-Transfer-Encoding: base64`,
+    `Content-Transfer-Encoding: 8bit`,
     ``,
-    chunkedHtml,
+    htmlBody,
     `--${boundary}--`
   ].join("\r\n");
 
