@@ -40,6 +40,7 @@ import { canSendEmail, recordSuccessfulSend } from "@/lib/reputation/guard";
 import { emailTrackingService } from "@/lib/tracking/EmailTrackingService";
 import { TrackingInjector } from "@/lib/tracking/TrackingInjector";
 import { reportSystemError } from "@/lib/intelligence/error-engine";
+import { DeliverabilityHealthEvaluator } from "@/lib/reputation/DeliverabilityHealthModel";
 import type { StepSendResult, BatchSendResult, StepForSend } from "./types";
 
 // ── Send a single step ────────────────────────────────────────────────────────
@@ -143,6 +144,29 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
     };
   }
 
+  // ── 4.6 Deliverability Pipeline V2 (Feature Flag & Health Check) ───────────
+  const DELIVERABILITY_PIPELINE_V2 = process.env.DELIVERABILITY_PIPELINE_V2 === "true";
+  let enableListUnsubscribe = false;
+
+  if (DELIVERABILITY_PIPELINE_V2) {
+    const health = await DeliverabilityHealthEvaluator.evaluateHealth(config.senderEmail);
+    if (health.overall === "FAILING") {
+      gmailLog("gmail_send_aborted_health", {
+        stepId,
+        detail: `Deliverability Health Evaluator blocked sending due to FAILING health.`,
+        health
+      });
+      return {
+        stepId,
+        outcome: "ABORTED",
+        detail: "Sending blocked by Deliverability Health Evaluator.",
+      };
+    }
+    
+    // Enable List-Unsubscribe if configured, default true for V2 pipeline
+    enableListUnsubscribe = process.env.ENABLE_LIST_UNSUBSCRIBE !== "false";
+  }
+
   gmailLog("gmail_send_verified_processing", {
     stepId,
     stepNumber: step.step_number,
@@ -180,6 +204,7 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
     inReplyToMessageId: previousMessageId,
     threadId: previousThreadId,
     trackingPixel,
+    enableListUnsubscribe,
   });
 
   // ── 6. Send via Gmail API ─────────────────────────────────────────────────

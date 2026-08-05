@@ -56,6 +56,14 @@ export interface BuildMessageOptions {
    * Optional HTML tracking pixel to inject into the HTML part.
    */
   trackingPixel?: string;
+  /**
+   * Whether to include the List-Unsubscribe header.
+   */
+  enableListUnsubscribe?: boolean;
+  /**
+   * Existing Message-ID, if any.
+   */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -104,7 +112,7 @@ function generateBoundary(): string {
 export function buildGmailMessage(
   options: BuildMessageOptions
 ): GmailMessagePayload {
-  const { from, to, toName, subject, body, inReplyToMessageId, threadId, originalMessage, trackingPixel } =
+  const { from, to, toName, subject, body, inReplyToMessageId, threadId, originalMessage, trackingPixel, enableListUnsubscribe, headers: customHeaders } =
     options;
 
   const cleanToName = toName ? encodeRFC2047(cleanHeaderVal(toName)) : "";
@@ -124,9 +132,26 @@ export function buildGmailMessage(
     `To: ${toHeader}`,
     `Subject: ${safeSubject}`,
     `MIME-Version: 1.0`,
-    // `List-Unsubscribe: <mailto:${cleanHeaderVal(from)}?subject=unsubscribe>`, // Temporarily disabled for deliverability experiment
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
   ];
+
+  // 1. Message-ID logic
+  if (customHeaders?.['Message-ID']) {
+    headers.push(`Message-ID: ${cleanHeaderVal(customHeaders['Message-ID'])}`);
+  } else {
+    // Generate secure RFC-compliant Message-ID using authenticated sender domain
+    const senderDomain = cleanHeaderVal(from).split('@')[1] || 'localhost';
+    const entropy = crypto.randomBytes(16).toString('hex');
+    const timestamp = Date.now();
+    headers.push(`Message-ID: <${timestamp}.${entropy}@${senderDomain}>`);
+  }
+
+  // 2. List-Unsubscribe logic (RFC 8058 & 2369)
+  if (enableListUnsubscribe) {
+    const senderDomain = cleanHeaderVal(from).split('@')[1] || 'localhost';
+    headers.push(`List-Unsubscribe: <mailto:unsubscribe@${senderDomain}?subject=unsubscribe>`);
+    headers.push(`List-Unsubscribe-Post: List-Unsubscribe=One-Click`);
+  }
 
   if (inReplyToMessageId) {
     const safeId = cleanMessageId(inReplyToMessageId);
