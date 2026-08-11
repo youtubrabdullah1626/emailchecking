@@ -39,7 +39,7 @@ export default async function EditProspectPage({ params }: Props) {
     <AnimatedPage className="space-y-6">
       <PageHeader title="Edit Prospect">
         <Button variant="outline" asChild>
-          <Link href={`/prospects/${id}`}>Cancel</Link>
+          <Link prefetch={true} href={`/prospects/${id}`}>Cancel</Link>
         </Button>
       </PageHeader>
 

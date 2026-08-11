@@ -380,11 +380,11 @@ export default function SequenceBuilder({
         />
       )}
 
-      {/* Back Link */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-        <Link href="/sequences" className="hover:text-foreground flex items-center gap-1">
-          <ArrowLeft className="h-3 w-3" /> Back to sequences
-        </Link>
+      {/* Back Button */}
+      <div className="flex items-center gap-2 mb-4">
+        <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-muted-foreground hover:text-foreground -ml-2">
+          <ArrowLeft className="h-4 w-4 mr-2" /> Back
+        </Button>
       </div>
 
       {/* Hero Header */}
@@ -396,7 +396,7 @@ export default function SequenceBuilder({
           <div className="flex items-center gap-3">
             <StatusBadge status={sequenceStatus.toLowerCase() as any} dot />
             <span className="text-muted-foreground text-sm">
-              Prospect: <Link href={`/prospects/${prospect.id}`} className="font-medium text-foreground hover:underline">{prospect.name}</Link>
+              Prospect: <Link prefetch={true} href={`/prospects/${prospect.id}`} className="font-medium text-foreground hover:underline">{prospect.name}</Link>
               {prospect.company && ` (${prospect.company})`}
             </span>
           </div>

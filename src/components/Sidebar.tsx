@@ -14,7 +14,8 @@ import {
   Activity, 
   ServerCog,
   UserCheck,
-  FileUp
+  FileUp,
+  Shield
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 
@@ -42,6 +43,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
   ];
 
   const adminNavigation = [
+    { name: "Audit Log", href: "/admin/audit", icon: Shield },
     { name: "Active Users", href: "/admin/users", icon: UserCheck },
     { name: "Analytics", href: "/admin/analytics", icon: Activity },
     { name: "System Health", href: "/system-health", icon: Activity },
@@ -74,6 +76,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
               <Link 
                 key={item.name}
                 href={item.href}
+                prefetch={true}
                 onClick={handleLinkClick}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-sm font-medium transition-colors",
@@ -97,6 +100,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
               <Link 
                 key={item.name}
                 href={item.href}
+                prefetch={true}
                 onClick={handleLinkClick}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-sm font-medium transition-colors",
@@ -116,6 +120,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
       <div className="p-4 border-t border-sidebar-border">
         <Link 
           href="/settings"
+          prefetch={true}
           onClick={handleLinkClick}
           className={cn(
             "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",

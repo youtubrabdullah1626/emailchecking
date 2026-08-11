@@ -46,6 +46,7 @@ interface ImportContextType {
   updateQueueItemState: (queueId: string, liveStatus: any, lastEventTime: string) => Promise<void>;
   rescheduleQueueItem: (queueId: string, newDate: string, newTime: string) => Promise<void>;
   deleteQueueItem: (queueId: string) => Promise<void>;
+  appendTargetSessionId: string | null;
   setAppendTargetSessionId: (id: string | null) => void;
   undo: () => void;
   canUndo: boolean;
@@ -418,7 +419,6 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         allowDuplicates
       );
 
-      // Synchronous generation for ultra-fast performance
       let result = generator.next();
       while (!result.done) {
         if (result.value) {
@@ -441,6 +441,13 @@ export function ImportProvider({ children }: { children: ReactNode }) {
           }
         }
         result = generator.next();
+      }
+
+      if (!summary.existingQueueMetrics && existingQueue.length > 0) {
+        summary.existingQueueMetrics = {
+          totalExistingScheduled: existingQueue.length,
+          skippedDuplicates: 0
+        };
       }
 
       setQueueSummary(summary);
@@ -605,7 +612,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
       sessionStorage.removeItem("smart_import_append_target");
     }
     setSessionId(null);
-    setAppendTargetSessionIdState(null);
+    setAppendTargetSessionId(null);
     setStatus("IDLE");
     setErrorMessage(null);
     setUploadedFile(null);
@@ -664,6 +671,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         updateQueueItemState,
         rescheduleQueueItem,
         deleteQueueItem,
+        appendTargetSessionId,
         setAppendTargetSessionId,
         undo,
         canUndo

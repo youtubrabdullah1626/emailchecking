@@ -17,7 +17,15 @@ export async function POST(request: NextRequest) {
 
     // 1. Ensure Prospect and Sequence exist
     const emailLower = to.toLowerCase();
-    let prospect = await prisma.prospect.findUnique({ where: { email: emailLower } });
+    
+    // Get a valid user from the database to avoid foreign key constraint errors
+    const firstUser = await prisma.users.findFirst();
+    if (!firstUser) {
+      return NextResponse.json({ error: "System error: No admin user found in the database." }, { status: 500 });
+    }
+    const realUserId = firstUser.id;
+
+    let prospect = await prisma.prospect.findFirst({ where: { email: emailLower, user_id: realUserId } });
     
     if (!prospect) {
       prospect = await prisma.prospect.create({
@@ -26,6 +34,7 @@ export async function POST(request: NextRequest) {
           name: toName || to.split("@")[0],
           company: "Unknown",
           timezone: "UTC",
+          user_id: realUserId,
         }
       });
     }
@@ -51,6 +60,7 @@ export async function POST(request: NextRequest) {
             prospect_id: prospect.id,
             status: "ACTIVE",
             started_at: new Date(),
+            user_id: realUserId,
           }
         });
       }

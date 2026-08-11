@@ -10,7 +10,8 @@ import { exchangeCodeForRefreshToken } from "@/lib/gmail/oauth";
 import { getAppUrl } from "@/lib/env";
 import { withObservability } from "@/lib/observability/middleware";
 import { logger } from "@/lib/observability/logger";
-import { audit } from "@/lib/observability/audit";
+import { auditService } from "@/lib/audit/audit.service";
+import { getSessionUser } from "@/lib/audit/rbac";
 
 const CALLBACK_PATH = "/api/auth/gmail/callback";
 
@@ -59,11 +60,18 @@ export const GET = withObservability(async (request: NextRequest) => {
       const { autoRepairAccount } = await import("@/lib/reply-tracker/health-monitor");
       await autoRepairAccount(email);
       
-      await audit.logEvent({
-        actionType: "USER_ACTION",
-        action: "Gmail Account Connected",
-        metadata: { email }
-      });
+      const user = await getSessionUser();
+      auditService.logAction(
+        user?.id || 'system',
+        user?.email || 'system',
+        'GMAIL_CONNECTED',
+        'AUTHENTICATION',
+        `Gmail (${email})`,
+        'Email Account',
+        'SUCCESS',
+        { metadata: { email } }
+      );
+      
       logger.info("Successfully connected Gmail account", { email });
 
       // Success

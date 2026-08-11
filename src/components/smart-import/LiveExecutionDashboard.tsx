@@ -19,8 +19,9 @@ import { toast } from "sonner";
 import { format, parseISO, differenceInDays } from "date-fns";
 
 type LiveItem = ExecutionQueueItem & {
-  liveStatus: "SCHEDULED" | "SENT" | "OPENED" | "REPLIED" | "BOUNCED";
+  liveStatus: "SCHEDULED" | "PROCESSING" | "SENT" | "OPENED" | "REPLIED" | "BOUNCED";
   lastEventTime: string;
+  retryCount?: number;
 };
 
 export function LiveExecutionDashboard() {
@@ -201,22 +202,51 @@ export function LiveExecutionDashboard() {
 
             // 2. Fire the side-effect EXACTLY ONCE (outside of setState to avoid Strict Mode double-invocation)
             sendEmailViaBackend(item).then(success => {
-              const statusStr = success ? "SENT" : "BOUNCED";
               const timeStr = new Date().toLocaleTimeString([], { hour12: false });
 
-              setLiveItems(prev => prev.map(ci => {
-                if (ci.queueId === item.queueId) {
-                  if (success) {
-                    toast.success("Email Sent Automatically", { description: `Delivered to ${ci.recipientEmail}` });
+              if (success) {
+                  setLiveItems(prev => prev.map(ci => {
+                    if (ci.queueId === item.queueId) {
+                      toast.success("Email Sent Automatically", { description: `Delivered to ${ci.recipientEmail}` });
+                      return { ...ci, liveStatus: "SENT", lastEventTime: timeStr };
+                    }
+                    return ci;
+                  }));
+                  if (updateQueueItemState) updateQueueItemState(item.queueId, "SENT", timeStr);
+              } else {
+                  const currentRetries = item.retryCount || 0;
+                  if (currentRetries < 2) {
+                     toast.error("Delivery Failed", { description: `Retrying ${item.recipientEmail} in 1 minute... (${currentRetries + 1}/2)` });
+                     
+                     // Calculate time 1 minute from now
+                     const nextMin = new Date(Date.now() + 60000);
+                     // Helper for local timezone formatting to match queue expectations
+                     const tzOptions = { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' } as const;
+                     const parts = new Intl.DateTimeFormat('en-US', tzOptions).formatToParts(nextMin);
+                     const p = (type: string) => parts.find(p => p.type === type)?.value || "";
+                     let h = parseInt(p('hour'), 10);
+                     if (h === 24) h = 0;
+                     const nextMinDateStr = `${p('year')}-${p('month')}-${p('day')}`;
+                     const nextMinTimeStr = `${h.toString().padStart(2, '0')}:${p('minute')}`;
+                     
+                     setLiveItems(prev => prev.map(ci => 
+                        ci.queueId === item.queueId ? { 
+                            ...ci, 
+                            liveStatus: "SCHEDULED", 
+                            retryCount: currentRetries + 1,
+                            scheduledDate: nextMinDateStr,
+                            scheduledTime: nextMinTimeStr,
+                            lastEventTime: timeStr
+                        } : ci
+                     ));
+                     
+                     if (rescheduleQueueItem) rescheduleQueueItem(item.queueId, nextMinDateStr, nextMinTimeStr);
+                  } else {
+                     setLiveItems(prev => prev.map(ci => 
+                        ci.queueId === item.queueId ? { ...ci, liveStatus: "BOUNCED", lastEventTime: timeStr } : ci
+                     ));
+                     if (updateQueueItemState) updateQueueItemState(item.queueId, "BOUNCED", timeStr);
                   }
-                  return { ...ci, liveStatus: statusStr, lastEventTime: timeStr };
-                }
-                return ci;
-              }));
-
-              // Persist to indexedDB so it survives page reloads
-              if (updateQueueItemState) {
-                updateQueueItemState(item.queueId, statusStr, timeStr);
               }
             });
           }
@@ -225,7 +255,7 @@ export function LiveExecutionDashboard() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [updateQueueItemState]);
+  }, [updateQueueItemState, rescheduleQueueItem]);
 
   // Lead Journey items
   const selectedLeadItems = useMemo(() => {
@@ -258,8 +288,8 @@ export function LiveExecutionDashboard() {
     toast.loading("Sending email...", { id: queueId });
 
     const success = await sendEmailViaBackend(targetItem);
-    const statusStr = success ? "SENT" : "SCHEDULED";
-    const timeStr = success ? new Date().toLocaleTimeString([], { hour12: false }) : "-";
+    const statusStr = success ? "SENT" : "BOUNCED";
+    const timeStr = success ? new Date().toLocaleTimeString([], { hour12: false }) : new Date().toLocaleTimeString([], { hour12: false });
 
     setLiveItems(prev => prev.map(item => {
       if (item.queueId === queueId) {

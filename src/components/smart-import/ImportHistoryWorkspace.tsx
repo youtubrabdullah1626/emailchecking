@@ -35,16 +35,39 @@ export function ImportHistoryWorkspace() {
   const { sessionId, handleFileUpload, setAppendTargetSessionId } = useImport() as any;
   const storage = useMemo(() => new StorageEngine(), []);
 
-  const loadSessions = useCallback(() => {
-    const all = storage.getAllSessions();
+  const loadSessions = useCallback(async () => {
+    let all = storage.getAllSessions();
+    
+    // Auto-update COMPLETED status for LIVE CAMPAIGNS that have no pending items
+    for (const session of all) {
+      if (session.lastCheckpoint === "EXECUTION_STARTED") {
+         try {
+            const dataset = await storage.loadHeavyDataset(session.sessionId);
+            const q = dataset?.executionQueue || [];
+            if (q.length > 0) {
+               const hasPending = q.some((item: any) => !item.liveStatus || item.liveStatus === "SCHEDULED" || item.liveStatus === "PROCESSING");
+               if (!hasPending) {
+                  session.status = "COMPLETED";
+                  session.lastCheckpoint = "COMPLETED" as any;
+                  storage.saveSessionMetadata(session);
+               }
+            }
+         } catch (e) {
+           console.error("Failed to load queue for completion check", e);
+         }
+      }
+    }
+    
     // Sort newest first
     all.sort((a, b) => new Date(b.importDate).getTime() - new Date(a.importDate).getTime());
-    setSessions(all);
+    setSessions([...all]);
   }, [storage]);
 
   useEffect(() => {
     loadSessions();
-  }, [sessionId, loadSessions]); // Reload when current session changes
+    const interval = setInterval(loadSessions, 2000);
+    return () => clearInterval(interval);
+  }, [sessionId, loadSessions]);
 
   // Track hidden sessions (optimistic delete) and timers
   const [hiddenSessions, setHiddenSessions] = useState<Set<string>>(new Set());
@@ -88,7 +111,7 @@ export function ImportHistoryWorkspace() {
     await storage.deleteSession(id);
     setHiddenSessions(prev => {
       const next = new Set(prev);
-      next.delete(id);
+      // Keep it hidden even after deletion to prevent flicker
       return next;
     });
     loadSessions();
@@ -195,8 +218,14 @@ export function ImportHistoryWorkspace() {
                     session.status === "FAILED" ? "destructive" :
                     session.lastCheckpoint === "EXECUTION_STARTED" ? "default" :
                     "secondary"
-                  } className={session.lastCheckpoint === "EXECUTION_STARTED" ? "bg-emerald-500 hover:bg-emerald-600 text-[10px]" : "text-[10px]"}>
-                    {session.lastCheckpoint === "EXECUTION_STARTED" ? "LIVE CAMPAIGN" : session.status}
+                  } className={
+                    session.status === "COMPLETED" ? "bg-blue-500 hover:bg-blue-600 text-[10px] flex items-center gap-1" :
+                    session.lastCheckpoint === "EXECUTION_STARTED" ? "bg-emerald-500 hover:bg-emerald-600 text-[10px] flex items-center gap-1" : 
+                    "text-[10px]"
+                  }>
+                    {session.status === "COMPLETED" && <CheckCircle2 className="h-3 w-3" />}
+                    {session.lastCheckpoint === "EXECUTION_STARTED" && <Play className="h-3 w-3 fill-current" />}
+                    {session.status === "COMPLETED" ? "COMPLETED" : session.lastCheckpoint === "EXECUTION_STARTED" ? "LIVE CAMPAIGN" : session.status}
                   </Badge>
                   {session.status === "DRAFT" && session.lastCheckpoint !== "EXECUTION_STARTED" && (
                     <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200 bg-amber-50">

@@ -29,8 +29,9 @@ export async function GET() {
 
     const [
       activeSequences,
-      emailsSentToday,
-      totalReplies,
+      sequenceEmailsSentToday,
+      adhocEmailsSentToday,
+      repliesToday,
       pendingReviews,
       failedSteps,
       stoppedSequences,
@@ -47,8 +48,16 @@ export async function GET() {
           occurred_at: { gte: startOfDay },
         },
       }),
+      prisma.adhocEmail.count({
+        where: {
+          sent_at: { gte: startOfDay },
+        },
+      }),
       prisma.replyClassification.count({
-        where: { reply_type: "REAL_REPLY" },
+        where: { 
+          reply_type: "REAL_REPLY",
+          classified_at: { gte: startOfDay }
+        },
       }),
       prisma.replyClassification.count({
         where: {
@@ -145,10 +154,12 @@ export async function GET() {
         ? "PENDING_DUE"
         : "IDLE";
 
+    const emailsSentToday = sequenceEmailsSentToday + adhocEmailsSentToday;
+
     return NextResponse.json({
       activeSequences,
       emailsSentToday,
-      totalReplies,
+      repliesToday,
       pendingReviews,
       failedSteps,
       stoppedSequences,

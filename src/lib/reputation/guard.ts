@@ -16,7 +16,7 @@ export async function canSendEmail(email: string): Promise<ReputationGuardResult
   // If not tracked yet, create default profile
   if (!account) {
     account = await prisma.emailAccount.create({
-      data: { email }
+      data: { email, user_id: "admin_demo_user" } // Fallback user ID for unlinked guards
     });
   }
 

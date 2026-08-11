@@ -23,6 +23,9 @@ import { AlertCircle, MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { ImageCropper } from "./ImageCropper";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export interface HeaderProps {
   onMenuClick?: () => void;
@@ -30,6 +33,7 @@ export interface HeaderProps {
 
 export function Header({ onMenuClick }: HeaderProps) {
   const { mutate } = useSWRConfig();
+  const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [localCleared, setLocalCleared] = useState(false);
@@ -121,7 +125,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               </span>
               <span className="text-[10px] text-muted-foreground font-medium leading-none mt-0.5 flex items-center gap-1">
                 <TrendingUp className="h-3 w-3 text-emerald-500" />
-                {summary ? `${summary.emailsSentToday || 0} Sent Today • ${summary.totalReplies || 0} Total Replies` : 'Calculating metrics...'}
+                {summary ? `${summary.emailsSentToday || 0} Sent Today • ${summary.repliesToday || 0} Replies Today` : 'Calculating metrics...'}
               </span>
             </div>
           </div>
@@ -142,18 +146,35 @@ export function Header({ onMenuClick }: HeaderProps) {
         
         <div className="h-4 w-px bg-border hidden md:block mx-2" />
         
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-9 w-9 text-muted-foreground hover:text-foreground"
-          onClick={async () => {
-            setIsRefreshing(true);
-            await mutate(() => true, undefined, { revalidate: true });
-            setTimeout(() => setIsRefreshing(false), 500); // minimum spin time for smooth feel
-          }}
-        >
-          <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                onClick={async () => {
+                  setIsRefreshing(true);
+                  toast.loading("Optimizing system performance & clearing caches...", { id: "refresh" });
+                  
+                  // Mutate all SWR cached data across the app
+                  await mutate(() => true, undefined, { revalidate: true });
+                  
+                  // Refresh Next.js server components cache
+                  router.refresh();
+                  
+                  setTimeout(() => {
+                    setIsRefreshing(false);
+                    toast.success("System Optimized for Fastest Speed!", { id: "refresh" });
+                  }, 800);
+                }}
+              >
+                <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Clear system caches & optimize speed</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -185,7 +206,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               ) : (
                 notifications.map((notif: any) => (
                   <DropdownMenuItem key={notif.id} asChild className="cursor-pointer">
-                    <Link href={notif.link} className="flex items-start gap-3 p-3 w-full">
+                    <Link href={notif.link} prefetch={true} className="flex items-start gap-3 p-3 w-full">
                       <div className="mt-0.5 flex-shrink-0">
                         {notif.type === "error" ? (
                           <AlertCircle className="h-4 w-4 text-destructive" />

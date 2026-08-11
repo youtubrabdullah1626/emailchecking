@@ -16,6 +16,8 @@
  */
 
 import { useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Zap, Loader2, Check, XCircle } from "lucide-react";
 
 interface SendNowButtonProps {
   stepId: string;
@@ -75,46 +77,46 @@ export default function SendNowButton({
   const isDisabled = state === "sending" || state === "success";
 
   return (
-    <div className="send-now-wrapper" data-step-id={stepId}>
-      <button
-        type="button"
-        className={`btn send-now-btn${
-          state === "success" ? " send-now-btn--success" : ""
-        }${state === "error" ? " send-now-btn--error" : ""}`}
+    <div className="flex flex-col items-end gap-1" data-step-id={stepId}>
+      <Button
+        variant={state === "error" ? "destructive" : state === "success" ? "outline" : "default"}
+        size="sm"
         onClick={handleSendNow}
         disabled={isDisabled}
         id={`send-now-step-${stepNumber}`}
         aria-label={`Send Step ${stepNumber} immediately`}
         title="Bypass scheduling and send this email right now"
+        className="min-w-[120px] transition-all"
       >
         {state === "idle" && (
           <>
-            <span className="send-now-icon">⚡</span>
+            <Zap className="mr-2 h-4 w-4" />
             Send Now
           </>
         )}
         {state === "sending" && (
           <>
-            <span className="send-now-spinner" aria-hidden="true" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Sending…
           </>
         )}
         {state === "success" && (
           <>
-            <span className="send-now-icon">✅</span>
+            <Check className="mr-2 h-4 w-4 text-emerald-500" />
             Sent!
           </>
         )}
         {state === "error" && (
           <>
-            <span className="send-now-icon">❌</span>
+            <XCircle className="mr-2 h-4 w-4" />
             Failed
           </>
         )}
-      </button>
+      </Button>
 
+      {/* Error Message Tooltip-like or simple text */}
       {state === "error" && errorDetail && (
-        <p className="send-now-error" role="alert">
+        <p className="text-xs text-destructive mt-1 max-w-[200px] text-right" role="alert">
           {errorDetail}
         </p>
       )}

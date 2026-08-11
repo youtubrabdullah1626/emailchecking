@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface FieldErrors {
   name?: string;
@@ -225,8 +226,15 @@ function ProspectFormComponent({ mode, initialData, prospectId }: ProspectFormPr
           <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {mode === "create" ? "Add Prospect" : "Save Changes"}
+          <Button type="submit" disabled={isSubmitting} className="min-w-[140px]">
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {mode === "create" ? "Adding..." : "Saving..."}
+              </>
+            ) : (
+              mode === "create" ? "Add Prospect" : "Save Changes"
+            )}
           </Button>
         </div>
       </div>

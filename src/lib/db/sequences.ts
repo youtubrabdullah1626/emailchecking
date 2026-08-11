@@ -12,6 +12,8 @@ import prisma from "@/lib/prisma";
 import type { Sequence, SequenceStep, SequenceStatus } from "@prisma/client";
 import type { SanitizedStep } from "@/lib/validations/sequence";
 import { errorTracker } from "@/lib/observability/errors";
+import { auditService } from "@/lib/audit/audit.service";
+import { getSessionUser } from "@/lib/audit/rbac";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -244,7 +246,8 @@ export async function createSequence(
     // when two parallel requests attempt to create a sequence for the same prospect.
     const sequence = await prisma.$transaction(async (tx) => {
       // 1. Lock the prospect row specifically to ensure atomicity for this prospect.
-      await tx.$executeRaw`SELECT id FROM prospects WHERE id = ${prospectId} FOR UPDATE`;
+      const prospects = await tx.$queryRaw<{id: string, user_id: string}[]>`SELECT id, user_id FROM prospects WHERE id = ${prospectId} FOR UPDATE`;
+      const prospectUserId = prospects[0]?.user_id || "admin_demo_user";
 
       // 2. ACTIVE CAMPAIGN PROTECTION (Single source of truth)
       const activeSequence = await tx.sequence.findFirst({
@@ -262,6 +265,7 @@ export async function createSequence(
       return tx.sequence.create({
         data: {
           prospect_id: prospectId,
+          user_id: prospectUserId,
           status: "DRAFT",
           steps: {
             create: steps.map((step) => ({
@@ -278,6 +282,20 @@ export async function createSequence(
         include: { steps: { orderBy: { step_number: "asc" } } },
       });
     });
+    
+    // Log Audit Event safely
+    const user = await getSessionUser();
+    auditService.logAction(
+      user?.id || 'system',
+      user?.email || 'system',
+      'SEQUENCE_CREATED',
+      'CAMPAIGN',
+      `Sequence (${sequence.id})`,
+      'Sequence',
+      'SUCCESS',
+      { resourceId: sequence.id, metadata: { prospectId, steps: steps.length } }
+    );
+    
     return { ok: true, data: sequence };
   } catch (error) {
     if (error instanceof Error && error.message === "DUPLICATE_ACTIVE_SEQUENCE") {
@@ -358,6 +376,18 @@ export async function updateSequence(
       });
     });
 
+    const user = await getSessionUser();
+    auditService.logAction(
+      user?.id || 'system',
+      user?.email || 'system',
+      'SEQUENCE_UPDATED',
+      'CAMPAIGN',
+      `Sequence (${sequence.id})`,
+      'Sequence',
+      'SUCCESS',
+      { resourceId: sequence.id, metadata: { steps: steps.length } }
+    );
+
     return { ok: true, data: sequence };
   } catch (error) {
     if (isNotFoundError(error)) {
@@ -415,6 +445,18 @@ export async function startSequence(
       include: { steps: { orderBy: { step_number: "asc" } } },
     });
 
+    const user = await getSessionUser();
+    auditService.logAction(
+      user?.id || 'system',
+      user?.email || 'system',
+      'SEQUENCE_STARTED',
+      'CAMPAIGN',
+      `Sequence (${sequence.id})`,
+      'Sequence',
+      'SUCCESS',
+      { resourceId: sequence.id }
+    );
+
     return { ok: true, data: sequence };
   } catch (error) {
     if (isNotFoundError(error)) {
@@ -454,6 +496,19 @@ export async function deleteSequence(
     // The cascade delete will safely remove steps.
 
     await prisma.sequence.delete({ where: { id: sequenceId } });
+    
+    const user = await getSessionUser();
+    auditService.logAction(
+      user?.id || 'system',
+      user?.email || 'system',
+      'SEQUENCE_DELETED',
+      'CAMPAIGN',
+      `Sequence (${sequenceId})`,
+      'Sequence',
+      'SUCCESS',
+      { resourceId: sequenceId }
+    );
+    
     return { ok: true, data: undefined };
   } catch (error) {
     if (isNotFoundError(error)) {

@@ -1,0 +1,1 @@
+console.time('fetch'); fetch('http://localhost:3000/api/gmail/send-adhoc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prospectId: 'cmsiyjnlf0000eldsuggkk9ew', subject: 'hisa', body: 'sass', pauseSequence: true }) }).then(async r => { console.log(r.status, await r.json()); console.timeEnd('fetch'); }).catch(console.error);

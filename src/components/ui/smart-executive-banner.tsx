@@ -159,7 +159,7 @@ export function SmartExecutiveBanner({ stats, recentReplies }: { stats: any, rec
       <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
         {bannerState.actionLabel && bannerState.actionTarget && (
           <Button size="sm" className="h-9 px-4 text-xs font-medium shadow-sm" asChild>
-            <Link href={bannerState.actionTarget}>{bannerState.actionLabel}</Link>
+            <Link prefetch={true} href={bannerState.actionTarget}>{bannerState.actionLabel}</Link>
           </Button>
         )}
         <button 

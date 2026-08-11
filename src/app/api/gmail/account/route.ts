@@ -21,6 +21,8 @@ import { disconnectAccount } from "@/lib/gmail/oauth";
 import { getCurrentHistoryId } from "@/lib/reply-tracker/gmail";
 import { scanForReplies } from "@/lib/reply/scanner";
 import { verifySchedulerSecret, unauthorizedResponse } from "@/lib/auth/scheduler-auth";
+import { auditService } from "@/lib/audit/audit.service";
+import { getSessionUser } from "@/lib/audit/rbac";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const isSameOrigin =
@@ -124,6 +126,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (action === "DISCONNECT") {
       await disconnectAccount(email);
+      
+      const user = await getSessionUser();
+      auditService.logAction(
+        user?.id || 'system',
+        user?.email || 'system',
+        'GMAIL_DISCONNECTED',
+        'AUTHENTICATION',
+        `Gmail (${email})`,
+        'Email Account',
+        'SUCCESS',
+        { metadata: { email } }
+      );
+      
       return NextResponse.json({
         ok: true,
         action: "DISCONNECT",
@@ -134,6 +149,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (action === "DELETE_ACCOUNT") {
       await prisma.emailAccount.deleteMany({ where: { email } });
       await prisma.gmailWatchState.deleteMany({ where: { email } });
+      
+      const user = await getSessionUser();
+      auditService.logAction(
+        user?.id || 'system',
+        user?.email || 'system',
+        'GMAIL_DELETED',
+        'AUTHENTICATION',
+        `Gmail (${email})`,
+        'Email Account',
+        'SUCCESS',
+        { metadata: { email } }
+      );
+      
       return NextResponse.json({
         ok: true,
         action: "DELETE_ACCOUNT",

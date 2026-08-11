@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const chunkSize = 1000;
     for (let i = 0; i < prospectsData.length; i += chunkSize) {
       const chunk = prospectsData.slice(i, i + chunkSize);
-      await prisma.prospect.createMany({ data: chunk });
+      await prisma.prospect.createMany({ data: chunk as any });
     }
 
     const prospects = await prisma.prospect.findMany({ select: { id: true } });
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     for (let i = 0; i < sequencesData.length; i += chunkSize) {
       const chunk = sequencesData.slice(i, i + chunkSize);
-      await prisma.sequence.createMany({ data: chunk });
+      await prisma.sequence.createMany({ data: chunk as any });
     }
 
     const sequences = await prisma.sequence.findMany({ select: { id: true } });

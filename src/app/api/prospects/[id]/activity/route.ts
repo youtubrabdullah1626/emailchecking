@@ -20,7 +20,8 @@ export async function GET(
             }
           }
         },
-        reply_classifications: true
+        reply_classifications: true,
+        adhoc_emails: true
       }
     });
 
@@ -54,10 +55,16 @@ export async function GET(
         
         sequence.steps.forEach((step: any) => {
           if (step.status === "SENT" && step.sent_at) {
+            const stepName = step.step_number === 1 
+              ? "1st message" 
+              : `Follow-up ${step.step_number - 1}`;
+              
             activity.push({
               id: `step-${step.id}`,
               type: "EMAIL_SENT",
-              description: `Sent Email ${step.step_number}: ${step.subject}`,
+              description: `${stepName}: ${step.subject}`,
+              bodyPreview: step.body,
+              isManual: false,
               createdAt: step.sent_at
             });
           }
@@ -75,6 +82,21 @@ export async function GET(
           createdAt: reply.classified_at
         });
       }
+    }
+
+    // 5. Adhoc (Manual) Emails
+    if (prospect.adhoc_emails && Array.isArray(prospect.adhoc_emails)) {
+      prospect.adhoc_emails.forEach((email: any) => {
+        activity.push({
+          id: `adhoc-${email.id}`,
+          type: email.status === "PENDING" ? "SCHEDULED_EMAIL" : "EMAIL_SENT",
+          description: email.subject,
+          bodyPreview: email.body,
+          isManual: true,
+          status: email.status,
+          createdAt: email.status === "PENDING" && email.scheduled_at ? email.scheduled_at : (email.sent_at || email.scheduled_at || new Date())
+        });
+      });
     }
 
     // Sort descending by date

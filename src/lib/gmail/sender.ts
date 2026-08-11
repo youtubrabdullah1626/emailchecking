@@ -219,17 +219,29 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
     sourceId: stepId,
   });
 
-  // Tracking Engine: Inject Pixel safely into HTML part only
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const trackingPixel = TrackingInjector.generatePixel(trackingId, baseUrl);
+  // Tracking Engine: Only inject pixel if NEXT_PUBLIC_APP_URL is a real public HTTPS URL.
+  // Using localhost:3000 in a tracking pixel is a top-tier spam signal — Google flags it
+  // as a hidden link to a private/internal server, identical to phishing email patterns.
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+  const isPublicUrl = baseUrl.startsWith("https://") && !baseUrl.includes("localhost");
+  const trackingPixel = isPublicUrl
+    ? TrackingInjector.generatePixel(trackingId, baseUrl)
+    : undefined; // Disabled until app is deployed to a real public domain
+
+  if (!isPublicUrl) {
+    gmailLog("gmail_tracking_pixel_disabled", {
+      stepId,
+      detail: "Tracking pixel suppressed: NEXT_PUBLIC_APP_URL is not a public HTTPS URL. Set it to your deployed domain to enable open tracking."
+    });
+  }
 
   const messagePayload = buildGmailMessage({
     from: config.senderEmail,
     to: step.sequence.prospect.email,
     toName: step.sequence.prospect.name,
     subject: step.subject,
-    body: step.body, // Pure plain text, no HTML tags
-    inReplyToMessageId: previousRfcMessageId, // Must be the RFC Message-ID (e.g. <...@mail.gmail.com>)
+    body: step.body,
+    inReplyToMessageId: previousRfcMessageId,
     threadId: previousThreadId,
     trackingPixel,
     enableListUnsubscribe,
@@ -404,7 +416,8 @@ export async function sendBatch(stepIds: string[]): Promise<BatchSendResult> {
     gmailLog("gmail_batch_completed", { total: stepIds.length, sent: 0, failed: 0, aborted: 0, durationMs: 0, status: "CONFIG_ERROR" });
   }
 
-  for (const stepId of stepIds) {
+  for (let i = 0; i < stepIds.length; i++) {
+    const stepId = stepIds[i];
     const result = await sendStep(stepId, auth);
     results.push(result);
 
@@ -421,7 +434,6 @@ export async function sendBatch(stepIds: string[]): Promise<BatchSendResult> {
       case "CONFIG_ERROR":
         configErrors++;
         // If OAuth is missing, no point continuing — all remaining steps will fail
-        // Fill remaining steps as CONFIG_ERROR without attempting
         for (const remainingId of stepIds.slice(results.length)) {
           results.push({
             stepId: remainingId,
@@ -435,6 +447,16 @@ export async function sendBatch(stepIds: string[]): Promise<BatchSendResult> {
 
     // Stop if we hit a config error — all remaining will fail the same way
     if (result.outcome === "CONFIG_ERROR") break;
+
+    // Human-like random delay between sends (15–45 seconds).
+    // Sending emails back-to-back instantly is a strong bulk-sender pattern that
+    // Gmail's anti-spam systems flag. A random delay mimics natural human behavior
+    // and significantly improves inbox placement.
+    if (i < stepIds.length - 1 && result.outcome === "SENT") {
+      const delayMs = 15000 + Math.floor(Math.random() * 30000); // 15s to 45s
+      gmailLog("gmail_human_delay", { stepId, delayMs, nextStepIndex: i + 1 });
+      await sleep(delayMs);
+    }
   }
 
   const finishedAt = new Date();

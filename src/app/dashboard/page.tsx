@@ -138,7 +138,7 @@ export default function DashboardPage() {
             <p className="text-muted-foreground mt-1 text-sm flex items-center gap-2">
               {bannerState.message}
               {bannerState.actionLabel && bannerState.actionTarget && (
-                <Link href={bannerState.actionTarget} className="text-primary font-medium hover:underline flex items-center gap-1">
+                <Link prefetch={true} href={bannerState.actionTarget} className="text-primary font-medium hover:underline flex items-center gap-1">
                   {bannerState.actionLabel} &rarr;
                 </Link>
               )}
@@ -195,7 +195,7 @@ export default function DashboardPage() {
                 Clear
               </Button>
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/replies">View all</Link>
+                <Link prefetch={true} href="/replies">View all</Link>
               </Button>
             </div>
           </CardHeader>
@@ -219,7 +219,7 @@ export default function DashboardPage() {
               return (
                 <div className="space-y-1 mt-2">
                   {visibleReplies.map(reply => (
-                    <Link 
+                    <Link prefetch={true} 
                       key={reply.id} 
                       href={`/replies?id=${reply.id}`}
                       className="flex items-center justify-between p-3 hover:bg-muted/50 rounded-lg transition-colors border border-transparent hover:border-border cursor-pointer group"

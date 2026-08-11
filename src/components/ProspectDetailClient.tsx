@@ -1,13 +1,25 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Prospect } from "@prisma/client";
 import type { SequenceWithSteps } from "@/lib/db/sequences";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Mail, Building, Globe, Clock, Plus } from "lucide-react";
+import { ArrowLeft, Mail, Building, Globe, Clock, Plus, Loader2 } from "lucide-react";
 
 import { AnimatedPage } from "@/components/ui/animated";
 import { Button } from "@/components/ui/button";
@@ -16,6 +28,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ProspectForm from "@/components/ProspectForm";
+import { QuickEmailComposer } from "@/components/QuickEmailComposer";
 import useSWR from "swr";
 import { LegacyLoadingState as LoadingState, LegacyErrorState as ErrorState } from "@/components/ui/legacy-adapters";
 import { Check, X, Play, MessageSquare } from "lucide-react";
@@ -29,21 +42,29 @@ interface ProspectDetailClientProps {
 
 function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailClientProps) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
 
-  const { data: activityData, error: activityError, isLoading: isActivityLoading } = useSWR(`/api/prospects/${prospect.id}/activity`, fetcher);
+  const { data: activityData, error: activityError, isLoading: isActivityLoading, mutate: mutateActivity } = useSWR(`/api/prospects/${prospect.id}/activity`, fetcher);
   
   const activity = activityData?.activity || [];
 
   let prospectBadgeStatus = 'none';
-  if (prospect.status === "ACTIVE") prospectBadgeStatus = 'active';
-  else if (prospect.status === "REPLIED") prospectBadgeStatus = 'completed';
+  if (prospect.status === "ACTIVE") {
+    if (!sequence && activity.filter((a: any) => a.type.includes("EMAIL")).length === 0) {
+      prospectBadgeStatus = 'uncontacted';
+    } else {
+      prospectBadgeStatus = 'active';
+    }
+  }
+  else if (prospect.status === "REPLIED") prospectBadgeStatus = 'completed'; // Replied maps to completed style usually or replied if defined
   else if (prospect.status === "STOPPED") prospectBadgeStatus = 'error';
   else if (prospect.status === "COMPLETED") prospectBadgeStatus = 'completed';
 
   return (
     <AnimatedPage className="space-y-6">
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-        <Link href="/prospects" className="hover:text-foreground flex items-center gap-1">
+        <Link prefetch={true} href="/prospects" className="hover:text-foreground flex items-center gap-1">
           <ArrowLeft className="h-3 w-3" /> Back to prospects
         </Link>
       </div>
@@ -57,17 +78,79 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
                 {prospect.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="gap-2">
+                    Reset Prospect
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete all sent emails, sequence enrollments, and activity history for <strong>{prospect.name}</strong>. They will look like a brand new prospect. This action cannot be reversed.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`/api/prospects/${prospect.id}/reset`, { method: "DELETE" });
+                          if (!res.ok) throw new Error("Failed to reset");
+                          toast.success("Prospect history completely wiped!");
+                          mutateActivity();
+                          router.refresh();
+                        } catch (error) {
+                          toast.error("Failed to reset prospect");
+                        }
+                      }}
+                    >
+                      Yes, reset prospect
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <Button variant="outline" size="sm" asChild>
-                <Link href={`/prospects/${prospect.id}/edit`}>Edit</Link>
+                <Link prefetch={true} href={`/prospects/${prospect.id}/edit`}>Edit</Link>
               </Button>
-              <Button size="sm" className="gap-2" asChild>
-                <Link href={`/prospects/${prospect.id}/sequence`}>
-                  <Plus className="h-4 w-4" /> {sequence ? "View Sequence" : "Add to Sequence"}
-                </Link>
+              
+              <Button 
+                variant="secondary"
+                size="sm" 
+                className="gap-2"
+                onClick={() => setIsComposerOpen(true)}
+              >
+                <Mail className="h-4 w-4" />
+                Send Email
+              </Button>
+
+              <Button 
+                size="sm" 
+                className="gap-2 min-w-[150px]" 
+                disabled={isPending}
+                onClick={() => {
+                  startTransition(() => router.push(`/prospects/${prospect.id}/sequence`));
+                }}
+              >
+                {isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  sequence ? <Play className="h-4 w-4" /> : <Plus className="h-4 w-4" />
+                )}
+                {isPending ? "Loading..." : (sequence ? "View Sequence" : "Add to Sequence")}
               </Button>
             </div>
           </div>
+          
+          <QuickEmailComposer
+            prospectId={prospect.id}
+            isOpen={isComposerOpen}
+            onOpenChange={setIsComposerOpen}
+            hasActiveSequence={sequence?.status === "ACTIVE"}
+          />
           
           <div className="mt-4">
             <div className="flex items-center gap-3">
@@ -110,18 +193,29 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
               <CardTitle className="text-lg">Recent Activity</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
+              <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
                 {isActivityLoading ? (
                   <LoadingState message="Loading activity timeline..." />
                 ) : activityError ? (
                   <ErrorState title="Failed to load activity" message="An error occurred while loading the timeline." />
-                ) : activity.map((event: any, index: number) => {
-                  let Icon = Plus;
+                ) : (() => {
+                  const filteredActivity = activity.filter((e: any) => ["EMAIL_SENT", "REPLY", "FAILED"].includes(e.type));
+                  
+                  if (filteredActivity.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-muted-foreground text-sm relative z-10 bg-card rounded-xl border border-border shadow-sm max-w-sm mx-auto">
+                        No emails sent yet
+                      </div>
+                    );
+                  }
+
+                  return filteredActivity.map((event: any, index: number) => {
+                    let Icon = Plus;
                   let iconColor = "text-primary";
                   let badgeStatus = "none";
                   let bgVariant = "bg-primary/10";
                   
-                  if (event.type === "SENT") {
+                  if (event.type === "EMAIL_SENT") {
                     Icon = Check;
                     iconColor = "text-green-500";
                     badgeStatus = "completed";
@@ -141,30 +235,69 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
                     iconColor = "text-blue-500";
                     badgeStatus = "active";
                     bgVariant = "bg-blue-500/10";
+                  } else if (event.type === "SCHEDULED_EMAIL") {
+                    Icon = Clock;
+                    iconColor = "text-purple-500";
+                    badgeStatus = "pending";
+                    bgVariant = "bg-purple-500/10";
                   }
 
                   return (
-                    <div key={event.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                      <div className={`flex items-center justify-center w-10 h-10 rounded-full border border-border shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm z-10 ${bgVariant}`}>
-                        <Icon className={`h-4 w-4 ${iconColor}`} />
-                      </div>
-                      <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-border bg-card shadow-sm">
-                        <div className="flex items-center justify-between mb-1">
-                          <StatusBadge status={badgeStatus as any} label={event.type} />
-                          <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}
-                          </span>
+                    <div key={event.id} className="relative flex items-start gap-4 group is-active">
+                      {/* Solid bg-card wrapper to hide the vertical line, then colored background */}
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full border border-border shrink-0 shadow-sm z-10 bg-card p-[2px]">
+                        <div className={`flex items-center justify-center w-full h-full rounded-full ${bgVariant}`}>
+                          <Icon className={`h-4 w-4 ${iconColor}`} />
                         </div>
-                        <p className="text-sm text-foreground mt-2">{event.description}</p>
+                      </div>
+                      <div className="flex-1 p-4 rounded-xl border border-border bg-card shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-3">
+                            <StatusBadge status={badgeStatus as any} label={event.type.replace("_", " ")} />
+                            {event.isManual && (
+                              <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                                Manual Email
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-xs font-medium text-muted-foreground whitespace-nowrap cursor-help">
+                                    {event.type === "SCHEDULED_EMAIL" ? "Scheduled for " : ""}
+                                    {formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{format(new Date(event.createdAt), "MMM d, yyyy h:mm a")}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <span className="hidden sm:inline-block text-xs text-muted-foreground/40 mx-2">•</span>
+                            <span className="hidden sm:inline-block text-xs font-medium text-muted-foreground whitespace-nowrap">
+                              {format(new Date(event.createdAt), "MMM d, yyyy h:mm a")}
+                            </span>
+                          </div>
+                        </div>
+
+                        {event.type.includes("EMAIL") ? (
+                          <div className="mt-2 space-y-2">
+                            <h4 className="text-sm font-semibold text-foreground">{event.description}</h4>
+                            {event.bodyPreview && (
+                              <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border border-border/50 line-clamp-3 whitespace-pre-wrap font-mono text-[13px]">
+                                {event.bodyPreview}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-foreground mt-2 font-medium">{event.description}</p>
+                        )}
                       </div>
                     </div>
                   );
-                })}
-                {!isActivityLoading && !activity.length && (
-                  <div className="text-center py-8 text-muted-foreground text-sm relative z-10 bg-card rounded-xl border border-border shadow-sm max-w-sm mx-auto">
-                    No activity recorded yet
-                  </div>
-                )}
+                })})()}
               </div>
             </CardContent>
           </Card>
@@ -185,7 +318,7 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
                   : "This prospect is not currently enrolled in any active sequences. Add them to a sequence to start automated outreach."}
               </p>
               <Button asChild>
-                <Link href={`/prospects/${prospect.id}/sequence`}>
+                <Link prefetch={true} href={`/prospects/${prospect.id}/sequence`}>
                   {sequence ? "View Sequence" : "Enroll in Sequence"}
                 </Link>
               </Button>

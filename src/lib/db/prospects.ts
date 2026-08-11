@@ -19,6 +19,7 @@ export interface CreateProspectData {
   email: string;
   timezone: string;
   notes?: string;
+  user_id: string;
 }
 
 export interface UpdateProspectData {
@@ -82,6 +83,7 @@ export async function createProspect(
         email: data.email,
         timezone: data.timezone,
         notes: data.notes ?? null,
+        user_id: data.user_id,
       },
     });
     return { ok: true, data: prospect };

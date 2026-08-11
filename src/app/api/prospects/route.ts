@@ -12,6 +12,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listProspects, createProspect } from "@/lib/db/prospects";
 import { validateProspectCreate } from "@/lib/validations/prospect";
+import prisma from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -52,7 +55,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = await createProspect(validation.sanitized!);
+  // Get a valid user from the database to avoid foreign key constraint errors
+  const firstUser = await prisma.users.findFirst();
+  if (!firstUser) {
+    return NextResponse.json({ error: "No users exist in the system to assign this prospect to." }, { status: 500 });
+  }
+
+  const prospectData = {
+    ...validation.sanitized!,
+    user_id: firstUser.id
+  };
+
+  const result = await createProspect(prospectData);
 
   if (!result.ok) {
     if (result.error === "DUPLICATE_EMAIL") {

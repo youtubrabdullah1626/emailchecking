@@ -136,7 +136,7 @@ export default function SequencesPage() {
         description="Active outreach campaigns running for your prospects."
       >
         <Button className="gap-2" asChild>
-          <Link href="/prospects">
+          <Link prefetch={true} href="/prospects">
             <Plus className="h-4 w-4" />
             Create Sequence
           </Link>
@@ -157,7 +157,7 @@ export default function SequencesPage() {
             Create your first sequence to start automating your outreach. You can add multiple steps with delays between them.
           </p>
           <Button asChild>
-            <Link href="/prospects">Create Sequence</Link>
+            <Link prefetch={true} href="/prospects">Create Sequence</Link>
           </Button>
         </div>
       ) : (
@@ -205,11 +205,11 @@ export default function SequencesPage() {
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                              <Link href={`/prospects/${seq.prospect.id}/sequence`} className="font-semibold text-sm hover:text-primary transition-colors line-clamp-1">
+                              <Link prefetch={true} href={`/prospects/${seq.prospect.id}/sequence`} className="font-semibold text-sm hover:text-primary transition-colors line-clamp-1">
                                 {firstSubject || `Sequence for ${seq.prospect.name}`}
                               </Link>
                               <span className="text-xs text-muted-foreground mt-0.5">
-                                to <Link href={`/prospects/${seq.prospect.id}`} className="font-medium text-foreground hover:underline">{seq.prospect.name}</Link>
+                                to <Link prefetch={true} href={`/prospects/${seq.prospect.id}`} className="font-medium text-foreground hover:underline">{seq.prospect.name}</Link>
                                 {seq.prospect.company && ` at ${seq.prospect.company}`}
                               </span>
                             </div>
@@ -253,7 +253,7 @@ export default function SequencesPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem asChild>
-                                <Link href={`/prospects/${seq.prospect.id}/sequence`} className="cursor-pointer">
+                                <Link prefetch={true} href={`/prospects/${seq.prospect.id}/sequence`} className="cursor-pointer">
                                   <ExternalLink className="mr-2 h-4 w-4" />
                                   View Sequence
                                 </Link>

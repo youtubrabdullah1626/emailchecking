@@ -7,10 +7,11 @@
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   // Prospect statuses
-  ACTIVE:    { label: "Active",    className: "chip chip-active"    },
-  REPLIED:   { label: "Replied",   className: "chip chip-replied"   },
-  STOPPED:   { label: "Stopped",   className: "chip chip-stopped"   },
-  COMPLETED: { label: "Completed", className: "chip chip-completed" },
+  ACTIVE:      { label: "Active",      className: "chip chip-active"    },
+  UNCONTACTED: { label: "Uncontacted", className: "chip chip-pending bg-slate-100 text-slate-600 border-slate-200" },
+  REPLIED:     { label: "Replied",     className: "chip chip-replied"   },
+  STOPPED:     { label: "Stopped",     className: "chip chip-stopped"   },
+  COMPLETED:   { label: "Completed",   className: "chip chip-completed" },
   // Sequence-only status
   DRAFT:     { label: "Draft",     className: "chip chip-pending"   },
 };

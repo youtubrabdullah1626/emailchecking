@@ -166,7 +166,7 @@ export async function saveAccountOAuthTokens(
     where: { email },
     create: {
       email,
-      user_id: userId ?? null,
+      user_id: userId ?? "admin_demo_user",
       refresh_token: refreshToken,
       connection_status: "CONNECTED",
     },

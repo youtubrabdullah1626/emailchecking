@@ -14,7 +14,7 @@ export default function NewProspectPage() {
     <AnimatedPage className="space-y-6">
       <PageHeader title="Add Prospect">
         <Button variant="outline" asChild>
-          <Link href="/prospects">Cancel</Link>
+          <Link prefetch={true} href="/prospects">Cancel</Link>
         </Button>
       </PageHeader>
       

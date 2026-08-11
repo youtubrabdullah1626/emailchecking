@@ -87,7 +87,7 @@ export function SchedulingPreviewWorkspace() {
         <Card className="border-border shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between space-y-0 pb-2">
-              <p className="text-sm font-medium">Total Emails to Send</p>
+              <p className="text-sm font-medium">Total New Emails to Send</p>
               <Layers className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="text-2xl font-bold">{effectiveQueueSummary.totalItems.toLocaleString()}</div>
@@ -95,6 +95,11 @@ export function SchedulingPreviewWorkspace() {
               <p className="text-xs text-muted-foreground mt-1">
                 + {effectiveQueueSummary.existingQueueMetrics.totalExistingScheduled} already scheduled
               </p>
+            )}
+            {appendTargetSessionId && effectiveQueueSummary.totalItems === 0 && (
+               <p className="text-xs text-amber-600 mt-2 font-medium bg-amber-50 p-2 rounded border border-amber-200">
+                 These contacts are already in this campaign! To protect your sender reputation and avoid emailing them twice, they were safely skipped.
+               </p>
             )}
           </CardContent>
         </Card>

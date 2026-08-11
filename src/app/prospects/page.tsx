@@ -165,7 +165,7 @@ export default function ProspectsPage() {
               </DropdownMenuContent>
             </DropdownMenu>
             <Button className="gap-2" asChild>
-              <Link href="/prospects/new">
+              <Link prefetch={true} href="/prospects/new">
                 <Plus className="h-4 w-4" />
                 Add Prospect
               </Link>
@@ -216,7 +216,7 @@ export default function ProspectsPage() {
                   </p>
                   {!search && (
                     <Button asChild>
-                      <Link href="/prospects/new">Add Your First Prospect</Link>
+                      <Link prefetch={true} href="/prospects/new">Add Your First Prospect</Link>
                     </Button>
                   )}
                 </div>
@@ -269,7 +269,14 @@ export default function ProspectsPage() {
                           prospectBadgeStatus = 'completed';
                           displayStatus = 'Completed';
                         } else {
-                          prospectBadgeStatus = 'active';
+                          // ACTIVE
+                          if (!prospect.sequence) {
+                            prospectBadgeStatus = 'uncontacted';
+                            displayStatus = 'Uncontacted';
+                          } else {
+                            prospectBadgeStatus = 'active';
+                            displayStatus = 'Active';
+                          }
                         }
 
                         return (
@@ -303,7 +310,7 @@ export default function ProspectsPage() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem asChild>
-                                    <Link href={`/prospects/${prospect.id}`} className="cursor-pointer">
+                                    <Link prefetch={true} href={`/prospects/${prospect.id}`} className="cursor-pointer">
                                       <ExternalLink className="mr-2 h-4 w-4" />
                                       View Profile
                                     </Link>

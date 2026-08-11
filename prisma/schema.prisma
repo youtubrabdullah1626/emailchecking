@@ -14,16 +14,21 @@ model Prospect {
   id                    String                @id @default(cuid())
   name                  String
   company               String
-  email                 String                @unique
+  email                 String
   timezone              String
   notes                 String?
   status                ProspectStatus        @default(ACTIVE)
   created_at            DateTime              @default(now())
+  user_id               String
+  users                 users                 @relation(fields: [user_id], references: [id])
   reply_classifications ReplyClassification[]
   sequences             Sequence[]
+  adhoc_emails          AdhocEmail[]
 
+  @@unique([user_id, email])
   @@index([created_at])
   @@index([status])
+  @@index([user_id, created_at])
   @@map("prospects")
 }
 
@@ -31,17 +36,22 @@ model Prospect {
 /// A prospect can have at most one sequence (enforced by @unique on prospect_id).
 model Sequence {
   id          String         @id @default(cuid())
-  prospect_id String         
+  prospect_id String
   status      SequenceStatus @default(DRAFT)
   started_at  DateTime?
   stopped_at  DateTime?
   created_at  DateTime       @default(now())
+  user_id     String
   steps       SequenceStep[]
   prospect    Prospect       @relation(fields: [prospect_id], references: [id], onDelete: Cascade)
+  users       users          @relation(fields: [user_id], references: [id])
 
   @@index([prospect_id, status])
   @@index([created_at])
   @@index([status])
+  @@index([user_id, created_at])
+  @@index([user_id, status, created_at])
+  @@index([user_id, status])
   @@map("sequences")
 }
 
@@ -71,6 +81,7 @@ model SequenceStep {
   @@unique([sequence_id, step_number])
   @@index([gmail_thread_id])
   @@index([status, scheduled_at_utc])
+  @@index([status, retry_count])
   @@map("sequence_steps")
 }
 
@@ -87,6 +98,7 @@ model EmailEvent {
   step             SequenceStep   @relation(fields: [sequence_step_id], references: [id], onDelete: Cascade)
 
   @@index([occurred_at])
+  @@index([event_type, occurred_at])
   @@map("email_events")
 }
 
@@ -111,6 +123,7 @@ model ReplyClassification {
 
   @@index([gmail_thread_id])
   @@index([reply_type, review_status])
+  @@index([reply_type, classified_at])
   @@map("reply_classifications")
 }
 
@@ -150,27 +163,57 @@ model EmailAccount {
   created_at        DateTime  @default(now())
   refresh_token     String?
   token_expires_at  DateTime?
+  updated_at        DateTime  @default(now()) @updatedAt
+  user_id           String
   last_login_at     DateTime?
   last_seen_at      DateTime?
-  updated_at        DateTime  @default(now()) @updatedAt
-  user_id           String?
+  users             users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
+  @@index([user_id, connection_status])
+  @@index([user_id])
+  @@index([user_id, updated_at])
   @@map("email_accounts")
 }
 
 /// Enterprise Audit System
 /// Complete history of user and system actions for accountability.
 model AuditLog {
-  id          String          @id @default(cuid())
-  action_type AuditActionType
-  action      String
-  user_id     String?
-  prospect_id String?
-  sequence_id String?
-  metadata    Json?
-  created_at  DateTime        @default(now())
+  id              String           @id @default(cuid())
+  action_type     AuditActionType?
+  action          String
+  user_id         String?
+  prospect_id     String?
+  sequence_id     String?
+  metadata        Json?
+  created_at      DateTime         @default(now())
+  actor_email     String?
+  actor_id        String?
+  actor_name      String?
+  actor_type      ActorType        @default(USER)
+  category        AuditCategory    @default(SYSTEM)
+  correlation_id  String?
+  country         String?
+  description     String?
+  duration_ms     Int?
+  error_message   String?
+  ip_address      String?
+  new_values      Json?
+  old_values      Json?
+  request_id      String?
+  resource_id     String?
+  session_id      String?
+  severity        AuditSeverity    @default(INFO)
+  status          AuditStatus      @default(SUCCESS)
+  target_resource String?
+  user_agent      String?
 
   @@index([created_at])
+  @@index([action])
+  @@index([actor_id, created_at])
+  @@index([actor_id])
+  @@index([category])
+  @@index([correlation_id])
+  @@index([target_resource, resource_id])
   @@map("audit_logs")
 }
 
@@ -199,8 +242,234 @@ model GmailWatchState {
   last_error     String?
   /// Timestamp of last successful history delta sync
   last_synced_at DateTime?
+  user_id        String?
 
+  @@index([user_id])
   @@map("gmail_watch_state")
+}
+
+/// Global System Settings
+model SystemSettings {
+  id                         String   @id @default("global")
+  scheduler_enabled          Boolean  @default(true)
+  scheduler_cron             String   @default("*/15 * * * *")
+  gemini_enabled             Boolean  @default(true)
+  gemini_model               String   @default("gemini-1.5-pro-latest")
+  notifications_global       Boolean  @default(true)
+  notify_on_reply            Boolean  @default(true)
+  notify_on_failure          Boolean  @default(true)
+  retry_failed_emails        Boolean  @default(true)
+  max_retries                Int      @default(3)
+  updated_at                 DateTime @default(now()) @updatedAt
+  auto_closer_auto_draft     Boolean  @default(true)
+  auto_closer_enabled        Boolean  @default(true)
+  auto_closer_rebuttal_style String   @default("AGGRESSIVE")
+  monthly_ai_credit_limit    Int      @default(50000)
+  smart_deliverability       Boolean  @default(true)
+
+  @@map("system_settings")
+}
+
+/// Enterprise Universal Email Tracking Engine
+/// A provider-agnostic representation of an outgoing email.
+model TrackedEmail {
+  id                  String          @id @default(cuid())
+  provider            String
+  sender_email        String
+  recipient_email     String
+  subject             String?
+  source_type         String
+  source_id           String?
+  provider_message_id String?         @unique
+  provider_thread_id  String?
+  status              String          @default("QUEUED")
+  open_count          Int             @default(0)
+  click_count         Int             @default(0)
+  first_opened_at     DateTime?
+  last_opened_at      DateTime?
+  replied_at          DateTime?
+  bounced_at          DateTime?
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+  user_id             String?
+  events              TrackingEvent[]
+
+  @@index([provider_message_id])
+  @@index([source_type, source_id])
+  @@index([status])
+  @@index([user_id, status, created_at])
+  @@map("tracked_emails")
+}
+
+/// Immutable Event Log for Tracking
+model TrackingEvent {
+  id               String       @id @default(cuid())
+  tracked_email_id String
+  event_type       String
+  occurred_at      DateTime     @default(now())
+  ip_address       String?
+  user_agent       String?
+  metadata         Json?
+  tracked_email    TrackedEmail @relation(fields: [tracked_email_id], references: [id], onDelete: Cascade)
+
+  @@index([tracked_email_id, event_type])
+  @@index([occurred_at])
+  @@map("tracking_events")
+}
+
+/// 100% Honest AI Usage Tracking
+model AiUsageLog {
+  id          String   @id @default(cuid())
+  email       String
+  feature     String
+  tokens_used Int
+  occurred_at DateTime @default(now())
+  metadata    Json?
+
+  @@index([email, occurred_at])
+  @@map("ai_usage_logs")
+}
+
+model accounts {
+  id                String  @id
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  users             users   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model announcements {
+  id          String    @id
+  title       String
+  message     String
+  type        String
+  link        String?
+  buttonText  String?
+  scheduledAt DateTime  @default(now())
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  authorId    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+
+  @@index([scheduledAt, isActive])
+}
+
+model config_versions {
+  id                String   @id
+  version           Int      @unique @default(autoincrement())
+  actor             String
+  timestamp         DateTime @default(now())
+  reason            String
+  target_id         String?
+  affected_settings Json
+  snapshot          Json
+}
+
+model feature_flags {
+  id               String         @id
+  name             String
+  description      String
+  category         ConfigCategory
+  status           FeatureStatus  @default(DISABLED)
+  rollout_percent  Int            @default(100)
+  rollout_audience String         @default("Everyone")
+  risk_level       RiskLevel      @default(SAFE)
+  updated_by       String
+  last_updated     DateTime       @default(now())
+}
+
+model oauth_states {
+  id         String   @id
+  token      String   @unique
+  user_id    String
+  expires_at DateTime
+  used       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  @@index([expires_at])
+  @@index([token])
+  @@index([user_id])
+}
+
+model platform_configs {
+  id            String         @id
+  name          String
+  description   String
+  category      ConfigCategory
+  data_type     DataType
+  current_value String
+  allowed_range String?
+  risk_level    RiskLevel      @default(WARNING)
+  updated_by    String
+  last_updated  DateTime       @default(now())
+}
+
+model provider_configs {
+  id              String         @id
+  service         String
+  description     String
+  active_provider String
+  category        ConfigCategory
+  updated_by      String
+  last_updated    DateTime       @default(now())
+}
+
+model sessions {
+  id           String   @id
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  users        users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model users {
+  id             String         @id
+  name           String?
+  email          String?        @unique
+  emailVerified  DateTime?
+  image          String?
+  role           String         @default("USER")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime
+  adminNotes     String?
+  isSuspended    Boolean        @default(false)
+  accounts       accounts[]
+  email_accounts EmailAccount[]
+  prospects      Prospect[]
+  sequences      Sequence[]
+  sessions       sessions[]
+}
+
+model verification_tokens {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model waitlist {
+  id          String         @id
+  email       String         @unique
+  status      WaitlistStatus @default(PENDING)
+  position    Int            @unique
+  created_at  DateTime       @default(now())
+  approved_at DateTime?
+  pre_added   Boolean        @default(false)
+
+  @@index([position])
+  @@index([status])
 }
 
 enum ProspectStatus {
@@ -213,9 +482,9 @@ enum ProspectStatus {
 enum SequenceStatus {
   DRAFT
   ACTIVE
-  PAUSED
   STOPPED
   COMPLETED
+  PAUSED
   FAILED
   CANCELLED
   ARCHIVED
@@ -267,93 +536,94 @@ enum AuditActionType {
   SYSTEM_ACTION
 }
 
-/// Global System Settings
-model SystemSettings {
-  id                   String   @id @default("global")
-  scheduler_enabled    Boolean  @default(true)
-  scheduler_cron       String   @default("*/15 * * * *")
-  gemini_enabled       Boolean  @default(true)
-  gemini_model         String   @default("gemini-1.5-pro-latest")
-  notifications_global Boolean  @default(true)
-  notify_on_reply      Boolean  @default(true)
-  notify_on_failure    Boolean  @default(true)
-  retry_failed_emails  Boolean  @default(true)
-  max_retries          Int      @default(3)
-  auto_closer_enabled       Boolean  @default(true)
-  auto_closer_rebuttal_style String  @default("AGGRESSIVE")
-  auto_closer_auto_draft    Boolean  @default(true)
-  smart_deliverability      Boolean  @default(true) // 🛡 Smart Deliverability ON / OFF
-  monthly_ai_credit_limit   Int      @default(50000) // Default 50k tokens or credits
-  updated_at           DateTime @default(now()) @updatedAt
-
-  @@map("system_settings")
+enum ActorType {
+  USER
+  SYSTEM
+  ADMIN
 }
 
-/// Enterprise Universal Email Tracking Engine
-/// A provider-agnostic representation of an outgoing email.
-model TrackedEmail {
-  id                  String    @id @default(cuid())
-  provider            String    // e.g., "GMAIL", "MS_GRAPH", "SMTP"
-  sender_email        String
-  recipient_email     String
-  subject             String?
-  
-  // Polymorphic Association
-  source_type         String    // e.g., "SEQUENCE_STEP", "MANUAL", "AI_OUTREACH"
-  source_id           String?
-
-  // External Mapping
-  provider_message_id String?   @unique
-  provider_thread_id  String?
-  
-  // State Machine Status (String to allow future extension without migrations)
-  status              String    @default("QUEUED") // QUEUED, SENT, OPENED, CLICKED, REPLIED, BOUNCED
-  
-  // Denormalized Metrics for O(1) Dashboard Queries
-  open_count          Int       @default(0)
-  click_count         Int       @default(0)
-  first_opened_at     DateTime?
-  last_opened_at      DateTime?
-  replied_at          DateTime?
-  bounced_at          DateTime?
-  
-  created_at          DateTime  @default(now())
-  updated_at          DateTime  @updatedAt
-
-  events              TrackingEvent[]
-
-  @@index([provider_message_id])
-  @@index([source_type, source_id])
-  @@index([status])
-  @@map("tracked_emails")
+enum AuditCategory {
+  AUTHENTICATION
+  USER_MANAGEMENT
+  BILLING
+  CAMPAIGN
+  PROSPECT
+  SEQUENCE
+  EMAIL
+  GMAIL_INTEGRATION
+  AI_PROCESSING
+  SCHEDULER
+  SYSTEM
+  ADMIN
 }
 
-/// Immutable Event Log for Tracking
-model TrackingEvent {
-  id               String    @id @default(cuid())
-  tracked_email_id String
-  event_type       String    // "OPENED", "CLICKED", "DELIVERED", "BOUNCED"
-  occurred_at      DateTime  @default(now())
-  ip_address       String?
-  user_agent       String?   
-  metadata         Json?     
-  
-  tracked_email    TrackedEmail @relation(fields: [tracked_email_id], references: [id], onDelete: Cascade)
-  
-  @@index([tracked_email_id, event_type])
-  @@index([occurred_at])
-  @@map("tracking_events")
+enum AuditSeverity {
+  INFO
+  WARNING
+  CRITICAL
 }
 
-/// 100% Honest AI Usage Tracking
-model AiUsageLog {
-  id              String   @id @default(cuid())
-  email           String   // The account that used it
-  feature         String   // e.g. "AutoReply", "SequenceGen"
-  tokens_used     Int
-  occurred_at     DateTime @default(now())
-  metadata        Json?
+enum AuditStatus {
+  SUCCESS
+  FAILURE
+}
 
-  @@index([email, occurred_at])
-  @@map("ai_usage_logs")
+enum ConfigCategory {
+  AI
+  SCHEDULER
+  OUTREACH
+  INTEGRATION
+  DATA
+  INFRASTRUCTURE
+  SECURITY
+}
+
+enum DataType {
+  NUMBER
+  STRING
+  JSON
+  BOOLEAN
+  ENUM
+}
+
+enum FeatureStatus {
+  ENABLED
+  DISABLED
+  MAINTENANCE
+}
+
+enum RiskLevel {
+  SAFE
+  WARNING
+  RESTRICTED
+}
+
+enum WaitlistStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AdhocEmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+/// Manual one-off emails sent outside of automated sequences.
+model AdhocEmail {
+  id               String   @id @default(cuid())
+  prospect_id      String
+  subject          String
+  body             String
+  status           AdhocEmailStatus @default(SENT)
+  scheduled_at     DateTime?
+  sent_at          DateTime?
+  error_message    String?
+  gmail_message_id String?
+  gmail_thread_id  String?
+  prospect         Prospect @relation(fields: [prospect_id], references: [id], onDelete: Cascade)
+
+  @@index([prospect_id, sent_at])
+  @@map("adhoc_emails")
 }

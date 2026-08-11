@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { errorTracker } from "@/lib/observability/errors";
+import { auditService } from "@/lib/audit/audit.service";
+import { getSessionUser } from "@/lib/audit/rbac";
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +23,19 @@ export async function POST(request: NextRequest) {
           }
         }
       });
+      
+      const user = await getSessionUser();
+      auditService.logAction(
+        user?.id || 'system',
+        user?.email || 'system',
+        'PROSPECTS_DELETED',
+        'DELETE',
+        `${result.count} Prospects`,
+        'Prospect Batch',
+        'SUCCESS',
+        { metadata: { count: result.count, emails: lowercaseEmails } }
+      );
+      
       return NextResponse.json({ ok: true, count: result.count, action: "DELETE" });
     } else if (action === "CANCEL") {
       // Set prospect status to STOPPED instead of deleting
@@ -34,6 +49,19 @@ export async function POST(request: NextRequest) {
           status: "STOPPED"
         }
       });
+      
+      const user = await getSessionUser();
+      auditService.logAction(
+        user?.id || 'system',
+        user?.email || 'system',
+        'PROSPECTS_STOPPED',
+        'UPDATE',
+        `${result.count} Prospects`,
+        'Prospect Batch',
+        'SUCCESS',
+        { metadata: { count: result.count } }
+      );
+      
       return NextResponse.json({ ok: true, count: result.count, action: "CANCEL" });
     }
 

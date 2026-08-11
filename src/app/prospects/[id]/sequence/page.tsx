@@ -44,7 +44,7 @@ export default async function SequencePage({ params }: Props) {
     <AnimatedPage className="space-y-6">
       <PageHeader title="Outreach Sequence">
         <Button variant="outline" asChild>
-          <Link href={`/prospects/${id}`}>Cancel</Link>
+          <Link prefetch={true} href={`/prospects/${id}`}>Cancel</Link>
         </Button>
       </PageHeader>
 

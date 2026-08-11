@@ -30,6 +30,10 @@ import { scanForReplies } from "@/lib/reply/scanner";
 import { timingSafeEqual, createHash } from "crypto";
 import { logger } from "@/lib/observability/logger";
 import { withObservability } from "@/lib/observability/middleware";
+import prisma from "@/lib/prisma";
+import { google } from "googleapis";
+import { getOAuthConfig, createOAuth2Client } from "@/lib/gmail/oauth";
+import { buildGmailMessage } from "@/lib/gmail/message";
 
 function verifyCronSecret(request: NextRequest): boolean {
   const cronSecret = process.env.CRON_SECRET;
@@ -101,6 +105,74 @@ async function runFullPipeline(request: NextRequest): Promise<NextResponse> {
     }
   }
 
+  // ── Step 2.5: Send scheduled Ad-hoc emails ────────────────────────────────
+  let sentAdhocEmails = 0;
+  try {
+    const dueAdhocs = await prisma.adhocEmail.findMany({
+      where: {
+        status: "PENDING",
+        scheduled_at: { lte: new Date() }
+      },
+      include: {
+        prospect: true
+      },
+      take: 20
+    });
+
+    if (dueAdhocs.length > 0) {
+      const config = getOAuthConfig();
+      if (config) {
+        const oauth2Client = createOAuth2Client();
+        const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+        for (const adhoc of dueAdhocs) {
+          try {
+            const messagePayload = buildGmailMessage({
+              from: config.senderEmail,
+              to: adhoc.prospect.email,
+              toName: adhoc.prospect.name,
+              subject: adhoc.subject,
+              body: adhoc.body,
+              threadId: adhoc.gmail_thread_id ?? undefined
+            });
+
+            const sendResponse = await gmail.users.messages.send({
+              userId: "me",
+              requestBody: { raw: messagePayload.raw }
+            });
+
+            const gmailMessageId = sendResponse.data.id;
+            const gmailThreadId = sendResponse.data.threadId;
+
+            if (gmailMessageId) {
+              await prisma.adhocEmail.update({
+                where: { id: adhoc.id },
+                data: {
+                  status: "SENT",
+                  sent_at: new Date(),
+                  gmail_message_id: gmailMessageId,
+                  gmail_thread_id: gmailThreadId
+                }
+              });
+              sentAdhocEmails++;
+            }
+          } catch (error: any) {
+            await prisma.adhocEmail.update({
+              where: { id: adhoc.id },
+              data: {
+                status: "FAILED",
+                error_message: error.message || "Failed to send scheduled email"
+              }
+            });
+            logger.error("cron_adhoc_send_failed", { detail: error.message, adhocId: adhoc.id });
+          }
+        }
+      }
+    }
+  } catch (err) {
+    logger.error("cron_adhoc_processing_failed", { detail: err instanceof Error ? err.message : String(err) });
+  }
+
   // ── Step 3: Run reply scanner ─────────────────────────────────────────────
   let scannerResult = null;
   try {
@@ -108,6 +180,22 @@ async function runFullPipeline(request: NextRequest): Promise<NextResponse> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     logger.error("cron_scanner_failed", { detail: msg });
+  }
+
+  // ── Step 4: Audit Log Cleanup (1 Month Retention) ─────────────────────────
+  let deletedAuditLogs = 0;
+  try {
+    // We can conditionally run this only once a day if we want, 
+    // but running it every cron cycle (15 min) deleting 0-1 rows is harmless and fast.
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    
+    // Lazy load service to avoid top-level issues if any
+    const { auditService } = await import("@/lib/audit/audit.service");
+    // Passing null since system is the actor, and true for isSystem flag
+    deletedAuditLogs = await auditService.clearOldLogs(null, oneMonthAgo, true);
+  } catch (err) {
+    logger.error("cron_audit_cleanup_failed", { detail: err instanceof Error ? err.message : "Unknown error" });
   }
 
   const totalDurationMs = Date.now() - pipelineStart;
