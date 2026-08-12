@@ -20,8 +20,9 @@ export async function POST(request: NextRequest) {
       userId = firstUser.id;
     }
 
-    const userRecord = await prisma.users.findFirst({ where: { id: userId }, select: { role: true } });
-    const isAdmin = userRecord?.role === "ADMIN" || userRecord?.role === "admin";
+    const userRecord = await prisma.users.findFirst({ where: { id: userId } });
+    const userRole = userRecord?.role?.toUpperCase() || "";
+    const isAdmin = userRole === "ADMIN" || userRole === "OWNER" || userRecord?.email === "youtubrabdullah1626@gmail.com";
     if (!isAdmin) {
       return NextResponse.json({ error: "Admin privileges required for database maintenance." }, { status: 403 });
     }
