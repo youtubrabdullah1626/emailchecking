@@ -300,6 +300,26 @@ export function ImportHistoryWorkspace() {
                 >
                   <Eye className="h-4 w-4" /> {session.status === "COMPLETED" || session.lastCheckpoint === "EXECUTION_STARTED" ? "View Prospects" : (session.sessionId === sessionId ? "Currently Viewing" : "View Details")}
                 </Button>
+                {(session.status === "COMPLETED" || session.lastCheckpoint === "EXECUTION_STARTED") && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={async () => {
+                      try {
+                        const dataset = await storage.loadHeavyDataset(session.sessionId);
+                        const campaignId = dataset?.campaignId;
+                        if (campaignId) {
+                           window.location.href = `/sequences?campaignId=${campaignId}`;
+                           return;
+                        }
+                      } catch (e) {}
+                      window.location.href = `/sequences`;
+                    }} 
+                    className="gap-2 shadow-sm border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                  >
+                    <FileText className="h-4 w-4" /> View Details
+                  </Button>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
