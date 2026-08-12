@@ -16,7 +16,8 @@ import {
   UserCheck,
   FileUp,
   Shield,
-  Sliders
+  Sliders,
+  Megaphone
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 
@@ -44,6 +45,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
   ];
 
   const adminNavigation = [
+    { name: "Announcements", href: "/admin/announcements", icon: Megaphone },
     { name: "Platform Config", href: "/admin/platform", icon: Sliders },
     { name: "Audit Log", href: "/admin/audit", icon: Shield },
     { name: "Active Users", href: "/admin/users", icon: UserCheck },
@@ -130,16 +132,6 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
                 (schedulerStatus === 'error' || schedulerStatus === 'failed') ? "bg-red-500" : "bg-amber-500"
               )} />
               <span className="text-xs text-sidebar-foreground">{schedulerStatus}</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground font-medium">Gemini AI</span>
-            <div className="flex items-center gap-1.5">
-              <span className={cn(
-                "h-2 w-2 rounded-full",
-                geminiStatus === 'connected' ? "bg-emerald-500" : "bg-red-500"
-              )} />
-              <span className="text-xs text-sidebar-foreground">{geminiStatus}</span>
             </div>
           </div>
         </div>

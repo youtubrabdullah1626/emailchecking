@@ -19,7 +19,7 @@ import {
   DialogContent,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { AlertCircle, MessageSquare } from "lucide-react";
+import { AlertCircle, MessageSquare, Rocket, AlertTriangle, Info } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { ImageCropper } from "./ImageCropper";
@@ -187,13 +187,13 @@ export function Header({ onMenuClick }: HeaderProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-2">
-              <span className="font-semibold text-sm">Important Notifications</span>
+              <span className="font-semibold text-sm">Global Announcements</span>
               {notifications.length > 0 && !isClearing && (
                 <button 
                   onClick={handleClearAll}
                   className="text-xs text-muted-foreground hover:text-foreground font-medium transition-colors"
                 >
-                  Clear All
+                  Mark all as read
                 </button>
               )}
             </div>
@@ -201,17 +201,19 @@ export function Header({ onMenuClick }: HeaderProps) {
             <div className={cn("max-h-[300px] overflow-y-auto transition-all duration-400 ease-in-out", isClearing ? "opacity-0 translate-x-8" : "opacity-100 translate-x-0")}>
               {notifications.length === 0 ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">
-                  No new notifications
+                  You're all caught up!
                 </div>
               ) : (
                 notifications.map((notif: any) => (
                   <DropdownMenuItem key={notif.id} asChild className="cursor-pointer">
-                    <Link href={notif.link} prefetch={true} className="flex items-start gap-3 p-3 w-full">
+                    <Link href={notif.link || "#"} prefetch={true} className="flex items-start gap-3 p-3 w-full">
                       <div className="mt-0.5 flex-shrink-0">
-                        {notif.type === "error" ? (
-                          <AlertCircle className="h-4 w-4 text-destructive" />
+                        {notif.type === "feature" ? (
+                          <Rocket className="h-4 w-4 text-purple-500" />
+                        ) : notif.type === "warning" ? (
+                          <AlertTriangle className="h-4 w-4 text-orange-500" />
                         ) : (
-                          <MessageSquare className="h-4 w-4 text-primary" />
+                          <Info className="h-4 w-4 text-blue-500" />
                         )}
                       </div>
                       <div className="flex flex-col gap-1">
