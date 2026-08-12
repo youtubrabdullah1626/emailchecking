@@ -14,6 +14,19 @@ import { StorageEngine } from "@/lib/storage/StorageEngine";
 import { DiagnosticsEngine, DiagnosticIssue } from "@/lib/diagnostics/DiagnosticsEngine";
 import { PerformanceMonitor, PerformanceMetrics } from "@/lib/performance/PerformanceMonitor";
 
+// Bulk import progress — tracks live chunked upload state
+export interface BulkImportProgress {
+  jobId: string | null;
+  campaignId: string | null;
+  totalChunks: number;
+  chunksLoaded: number;
+  totalRows: number;
+  successCount: number;
+  failureCount: number;
+  isComplete: boolean;
+  isAborted: boolean;
+}
+
 interface ImportContextType {
   status: ImportStatus;
   errorMessage: string | null;
@@ -26,6 +39,7 @@ interface ImportContextType {
   diagnostics: DiagnosticIssue[];
   performanceMetrics: PerformanceMetrics | null;
   sessionId: string | null;
+  bulkProgress: BulkImportProgress | null;
   getRecords: () => ImportRecord[];
   getSequences: () => CampaignSequence[];
   getExecutionQueue: () => ExecutionQueueItem[];
@@ -84,6 +98,10 @@ export function ImportProvider({ children }: { children: ReactNode }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [diagnostics, setDiagnostics] = useState<DiagnosticIssue[]>([]);
   const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetrics | null>(null);
+
+  // Enterprise Bulk Progress (chunked upload tracking)
+  const [bulkProgress, setBulkProgress] = useState<BulkImportProgress | null>(null);
+  const CHUNK_SIZE = 250; // 250 sequences per chunk — safe for all hosting tiers
   const [appendTargetSessionId, setAppendTargetSessionIdState] = useState<string | null>(() => {
     if (typeof sessionStorage !== "undefined") {
       return sessionStorage.getItem("smart_import_append_target");
@@ -481,55 +499,100 @@ export function ImportProvider({ children }: { children: ReactNode }) {
 
   const approveImport = async () => {
     perfMonitor.startPhase();
-    setStatus("EXECUTING"); // Add loading state
-    try {
-      // 1. Prepare payload for Handoff API
-      const payload = {
-        campaignName: uploadedFile?.name || "Smart Import Campaign",
-        validatedRecords: recordsRef.current,
-        sequences: sequencesRef.current,
-        executionQueue: queueRef.current
-      };
+    setStatus("EXECUTING");
+    const sequences = sequencesRef.current;
+    const executionQueue = queueRef.current;
+    const totalRows = sequences.length;
+    const totalChunks = Math.ceil(totalRows / CHUNK_SIZE);
 
-      // 2. Call Handoff API
-      const response = await fetch("/api/campaigns/handoff", {
+    try {
+      // ── PHASE 1: Create the job + campaign in the DB ─────────────────────────
+      const jobRes = await fetch("/api/smart-import/create-job", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: uploadedFile?.name || "bulk-import.csv",
+          totalRows,
+          campaignName: uploadedFile?.name?.replace(/\.[^/.]+$/, "") || "Smart Import Campaign",
+          chunksTotal: totalChunks,
+        })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to commit campaign to database.");
+      if (!jobRes.ok) {
+        const e = await jobRes.json().catch(() => ({}));
+        throw new Error(e.error || "Failed to initialize import session.");
       }
 
-      const responseData = await response.json();
-      const newCampaignId = responseData.campaignId || responseData.data?.campaignId;
+      const { jobId, campaignId } = await jobRes.json();
 
-      if (!newCampaignId) {
-        throw new Error("API succeeded but did not return a campaign ID.");
+      // Initialize live progress state
+      const progress: BulkImportProgress = {
+        jobId, campaignId, totalChunks, chunksLoaded: 0,
+        totalRows, successCount: 0, failureCount: 0,
+        isComplete: false, isAborted: false,
+      };
+      setBulkProgress({ ...progress });
+
+      // ── PHASE 2: Upload chunks sequentially ───────────────────────────────────
+      for (let i = 0; i < totalChunks; i++) {
+        // Safety: if user somehow aborted, stop sending
+        if (progress.isAborted) break;
+
+        const chunkSequences = sequences.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        const chunkIds = new Set(chunkSequences.map((s: any) => s.recordId));
+        const chunkQueue = executionQueue.filter((q: any) => chunkIds.has(q.recordId));
+
+        const chunkRes = await fetch("/api/smart-import/upload-chunk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jobId,
+            chunkIndex: i,
+            totalChunks,
+            campaignId,
+            sequences: chunkSequences,
+            executionQueue: chunkQueue,
+          })
+        });
+
+        if (!chunkRes.ok) {
+          const e = await chunkRes.json().catch(() => ({}));
+          // Non-fatal: log and continue — one bad chunk does not abort all
+          console.error(`[import] Chunk ${i} failed:`, e.error);
+          progress.failureCount += chunkSequences.length;
+        } else {
+          const result = await chunkRes.json();
+          progress.successCount += result.saved || 0;
+          progress.failureCount += result.failed || 0;
+        }
+
+        progress.chunksLoaded = i + 1;
+        setBulkProgress({ ...progress });
       }
 
-      // 3. Mark Session as Live instead of purging
+      // ── PHASE 3: Mark complete ────────────────────────────────────────────────
+      progress.isComplete = true;
+      setBulkProgress({ ...progress });
+      perfMonitor.endPhase("handoffTimeMs");
+
+      // Save checkpoint and redirect after a short success delay
       if (sessionId) {
         await recoveryEngine.saveCheckpoint("EXECUTION_STARTED", {
           status: "EXECUTING",
-          heavyData: { campaignId: newCampaignId }
+          heavyData: { campaignId }
         });
         setSessionId(null);
       }
 
-      perfMonitor.endPhase("handoffTimeMs");
+      setTimeout(() => {
+        window.location.href = `/prospects?source=smart_import`;
+      }, 2500);
 
-      // 4. Redirect to the Prospects page filtered by this campaign
-      window.location.href = `/prospects?source=smart_import`;
-      
     } catch (error: any) {
-      console.error("Handoff failed", error);
-      setErrorMessage(error.message || "Failed to start campaign.");
+      console.error("[approveImport] Failed:", error);
+      setErrorMessage(error.message || "Failed to start import.");
       setStatus("ERROR");
+      setBulkProgress(null);
     }
   };
 
@@ -593,6 +656,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     setSummary(null);
     setDiagnostics([]);
     setPerformanceMetrics(null);
+    setBulkProgress(null);
   };
 
   const deleteQueueItem = async (queueId: string) => {
@@ -620,6 +684,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         diagnostics,
         performanceMetrics,
         sessionId,
+        bulkProgress,
         getRecords,
         getSequences,
         getExecutionQueue,

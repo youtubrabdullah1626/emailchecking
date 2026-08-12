@@ -17,7 +17,8 @@ import {
   FileUp,
   Shield,
   Sliders,
-  Megaphone
+  Megaphone,
+  History
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 
@@ -46,6 +47,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
 
   const adminNavigation = [
     { name: "Announcements", href: "/admin/announcements", icon: Megaphone },
+    { name: "Import History", href: "/admin/import-history", icon: History },
     { name: "Platform Config", href: "/admin/platform", icon: Sliders },
     { name: "Audit Log", href: "/admin/audit", icon: Shield },
     { name: "Active Users", href: "/admin/users", icon: UserCheck },
