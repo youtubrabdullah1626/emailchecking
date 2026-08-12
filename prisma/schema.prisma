@@ -504,28 +504,44 @@ model users {
 /// Every import session creates one record here — the permanent source of truth.
 /// Supports chunked uploads for 10,000+ row imports without timeouts.
 model ImportJob {
-  id           String    @id @default(cuid())
+  id           String        @id @default(cuid())
   userId       String
-  status       String    @default("PENDING") // PENDING | PROCESSING | COMPLETED | FAILED | ABORTED
+  status       String        @default("PENDING") // PENDING | PROCESSING | COMPLETED | FAILED | ABORTED | REVERTED
   fileName     String
-  totalRows    Int       @default(0)
-  successCount Int       @default(0)
-  failureCount Int       @default(0)
-  skippedCount Int       @default(0)
-  errorLog     Json?     // Array of { row, email, reason }
+  totalRows    Int           @default(0)
+  successCount Int           @default(0)
+  failureCount Int           @default(0)
+  skippedCount Int           @default(0)
   campaignId   String?
   campaignName String?
-  importTag    String?   // Auto-tag applied to all contacts in this batch
-  chunksTotal  Int       @default(1)
-  chunksLoaded Int       @default(0)
-  createdAt    DateTime  @default(now())
+  importTag    String?       // Auto-tag applied to all contacts in this batch
+  chunksTotal  Int           @default(1)
+  chunksLoaded Int           @default(0)
+  createdAt    DateTime      @default(now())
   completedAt  DateTime?
-  updatedAt    DateTime  @updatedAt
-  users        users     @relation(fields: [userId], references: [id])
+  revertedAt   DateTime?
+  updatedAt    DateTime      @updatedAt
+  users        users         @relation(fields: [userId], references: [id])
+  errors       ImportError[] // Relational error log — no JSON memory bomb
 
   @@index([userId, createdAt])
   @@index([status])
   @@map("import_jobs")
+}
+
+/// Immutable error record per failed row in a bulk import.
+/// One row per failure — no giant JSON blobs, no race conditions.
+model ImportError {
+  id        String    @id @default(cuid())
+  jobId     String
+  email     String?
+  rowIndex  Int?
+  reason    String
+  createdAt DateTime  @default(now())
+  job       ImportJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("import_errors")
 }
 
 model verification_tokens {

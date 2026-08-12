@@ -6,7 +6,12 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/admin/import-history
+ *
  * Admin-level view of ALL import jobs across ALL users.
+ *
+ * FIX 1 (Memory Bomb): The `errors` relation is intentionally NEVER included
+ * in this list query. Error data can be gigabytes for large failed imports.
+ * Use GET /api/smart-import/errors/[jobId]?format=csv to download errors.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -28,10 +33,24 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
         skip,
         take: limit,
-        include: {
-          users: {
-            select: { name: true, email: true }
-          }
+        // CRITICAL: only select metadata columns — NEVER include `errors` relation
+        select: {
+          id: true,
+          status: true,
+          fileName: true,
+          totalRows: true,
+          successCount: true,
+          failureCount: true,
+          skippedCount: true,
+          campaignId: true,
+          campaignName: true,
+          importTag: true,
+          chunksTotal: true,
+          chunksLoaded: true,
+          createdAt: true,
+          completedAt: true,
+          revertedAt: true,
+          users: { select: { name: true, email: true } }
         }
       }),
       prisma.importJob.count()
@@ -42,6 +61,7 @@ export async function GET(request: NextRequest) {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
     });
   } catch (error: any) {
+    console.error("[admin/import-history] Failed:", error);
     return NextResponse.json({ error: "Failed to fetch import history" }, { status: 500 });
   }
 }

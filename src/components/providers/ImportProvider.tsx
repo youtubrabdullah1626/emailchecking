@@ -503,7 +503,27 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     const sequences = sequencesRef.current;
     const executionQueue = queueRef.current;
     const totalRows = sequences.length;
-    const totalChunks = Math.ceil(totalRows / CHUNK_SIZE);
+
+    // FIX 4: Dynamic chunk sizing — Vercel has a hard 4.5MB request body limit.
+    // We measure actual byte size of a 5-row sample to compute a safe chunk size.
+    const MAX_SAFE_PAYLOAD_BYTES = 3_500_000;
+    const MIN_CHUNK_SIZE = 10;
+    let dynamicChunkSize = CHUNK_SIZE;
+    if (sequences.length > 0) {
+      try {
+        const sampleCount = Math.min(5, sequences.length);
+        const sampleSeqs = sequences.slice(0, sampleCount);
+        const sampleIds = new Set(sampleSeqs.map((s: any) => s.recordId));
+        const sampleQueue = executionQueue.filter((q: any) => sampleIds.has(q.recordId));
+        const sampleBytes = new TextEncoder().encode(
+          JSON.stringify({ sequences: sampleSeqs, executionQueue: sampleQueue })
+        ).length;
+        const bytesPerRow = sampleBytes / sampleCount;
+        const calculated = Math.floor(MAX_SAFE_PAYLOAD_BYTES / bytesPerRow);
+        dynamicChunkSize = Math.max(MIN_CHUNK_SIZE, Math.min(CHUNK_SIZE, calculated));
+      } catch { dynamicChunkSize = 100; }
+    }
+    const totalChunks = Math.ceil(totalRows / dynamicChunkSize);
 
     try {
       // ── PHASE 1: Create the job + campaign in the DB ─────────────────────────
@@ -538,7 +558,8 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         // Safety: if user somehow aborted, stop sending
         if (progress.isAborted) break;
 
-        const chunkSequences = sequences.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        const start = i * dynamicChunkSize;
+        const chunkSequences = sequences.slice(start, start + dynamicChunkSize);
         const chunkIds = new Set(chunkSequences.map((s: any) => s.recordId));
         const chunkQueue = executionQueue.filter((q: any) => chunkIds.has(q.recordId));
 
