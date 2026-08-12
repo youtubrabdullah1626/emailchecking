@@ -53,7 +53,6 @@ export async function POST(request: NextRequest) {
         importTag: importTag || null,
         chunksTotal: Number(chunksTotal),
         chunksLoaded: 0,
-        errorLog: [],
       }
     });
 

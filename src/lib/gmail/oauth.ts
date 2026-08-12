@@ -158,20 +158,22 @@ export async function createOAuth2ClientForAccount(
 export async function saveAccountOAuthTokens(
   email: string,
   refreshToken: string,
-  userId?: string
+  userId: string
 ): Promise<void> {
   const { default: prisma } = await import("@/lib/prisma");
+
+  if (!userId) throw new Error("Strict Multi-Tenancy: userId is required to save an email account.");
 
   await prisma.emailAccount.upsert({
     where: { email },
     create: {
       email,
-      user_id: userId ?? "admin_demo_user",
+      user_id: userId,
       refresh_token: refreshToken,
       connection_status: "CONNECTED",
     },
     update: {
-      user_id: userId ?? undefined,
+      user_id: userId,
       refresh_token: refreshToken,
       connection_status: "CONNECTED",
     },
@@ -199,7 +201,7 @@ export async function disconnectAccount(email: string): Promise<void> {
  * Generate the Google OAuth consent URL for the one-time setup flow.
  * The user visits this URL in their browser to authorise the application.
  */
-export function getAuthUrl(redirectUri: string): string {
+export function getAuthUrl(redirectUri: string, state?: string): string {
   // Create a temporary client with just client ID/secret for the auth URL
   const client = new google.auth.OAuth2(
     process.env.GMAIL_CLIENT_ID,
@@ -211,6 +213,7 @@ export function getAuthUrl(redirectUri: string): string {
     access_type: "offline",   // ensures a refresh token is returned
     prompt: "consent",        // forces consent screen to always return refresh_token
     scope: GMAIL_SCOPES,
+    state,
   });
 }
 

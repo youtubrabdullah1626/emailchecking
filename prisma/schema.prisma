@@ -15,7 +15,7 @@ model Campaign {
   created_at DateTime   @default(now())
   updated_at DateTime   @updatedAt
   user_id    String
-  users      users      @relation(fields: [user_id], references: [id])
+  users      users      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   prospects  Prospect[]
 
   @@index([user_id, created_at])
@@ -38,7 +38,7 @@ model Prospect {
   source                ProspectSource        @default(MANUAL)
   adhoc_emails          AdhocEmail[]
   campaign              Campaign?             @relation(fields: [campaign_id], references: [id])
-  users                 users                 @relation(fields: [user_id], references: [id])
+  users                 users                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
   reply_classifications ReplyClassification[]
   sequences             Sequence[]
 
@@ -61,7 +61,7 @@ model Sequence {
   user_id     String
   steps       SequenceStep[]
   prospect    Prospect       @relation(fields: [prospect_id], references: [id], onDelete: Cascade)
-  users       users          @relation(fields: [user_id], references: [id])
+  users       users          @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([prospect_id, status])
   @@index([created_at])
@@ -309,6 +309,7 @@ model TrackedEmail {
   created_at          DateTime        @default(now())
   updated_at          DateTime        @updatedAt
   user_id             String?
+  users               users?          @relation(fields: [user_id], references: [id], onDelete: Cascade)
   events              TrackingEvent[]
 
   @@index([provider_message_id])
@@ -498,6 +499,7 @@ model users {
   prospects      Prospect[]
   sequences      Sequence[]
   sessions       sessions[]
+  tracked_emails TrackedEmail[]
 }
 
 /// Enterprise Bulk Import Job Tracker
@@ -521,7 +523,7 @@ model ImportJob {
   completedAt  DateTime?
   revertedAt   DateTime?
   updatedAt    DateTime      @updatedAt
-  users        users         @relation(fields: [userId], references: [id])
+  users        users         @relation(fields: [userId], references: [id], onDelete: Cascade)
   errors       ImportError[] // Relational error log — no JSON memory bomb
 
   @@index([userId, createdAt])

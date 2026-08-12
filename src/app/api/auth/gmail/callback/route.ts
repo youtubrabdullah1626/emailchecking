@@ -11,7 +11,7 @@ import { getAppUrl } from "@/lib/env";
 import { withObservability } from "@/lib/observability/middleware";
 import { logger } from "@/lib/observability/logger";
 import { auditService } from "@/lib/audit/audit.service";
-import { getSessionUser } from "@/lib/audit/rbac";
+import { getSession } from "@/lib/auth/session";
 
 const CALLBACK_PATH = "/api/auth/gmail/callback";
 
@@ -19,8 +19,23 @@ export const GET = withObservability(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const error = searchParams.get("error");
+  const stateUserId = searchParams.get("state"); // Contains the user.id we passed in route.ts
   
   const dashboardUrl = new URL("/dashboard", getAppUrl());
+
+  const session = await getSession();
+  if (!session?.user) {
+    logger.error("OAuth callback: No active session found.");
+    dashboardUrl.searchParams.set("error", "Unauthorized. Please log in first.");
+    return NextResponse.redirect(dashboardUrl);
+  }
+
+  // Security Check: Ensure the user who initiated the flow is the one completing it
+  if (stateUserId && stateUserId !== session.user.id) {
+    logger.error("OAuth callback: Session mismatch. Possible CSRF attack.", { stateUserId, sessionId: session.user.id });
+    dashboardUrl.searchParams.set("error", "Security error: Session mismatch.");
+    return NextResponse.redirect(dashboardUrl);
+  }
 
   // Handle user denying consent
   if (error) {
@@ -45,9 +60,9 @@ export const GET = withObservability(async (request: NextRequest) => {
     ({ refreshToken, email } = await exchangeCodeForRefreshToken(code, redirectUri));
 
     if (email && refreshToken) {
-      // 1. Multi-User SaaS Token Persistence
+      // 1. Multi-User SaaS Token Persistence (Strict User Scoping)
       const { saveAccountOAuthTokens } = await import("@/lib/gmail/oauth");
-      await saveAccountOAuthTokens(email, refreshToken);
+      await saveAccountOAuthTokens(email, refreshToken, session.user.id);
 
       // 1.5 Honest Metric: Track real authentication timestamp
       const prisma = (await import("@/lib/prisma")).default;
@@ -60,10 +75,9 @@ export const GET = withObservability(async (request: NextRequest) => {
       const { autoRepairAccount } = await import("@/lib/reply-tracker/health-monitor");
       await autoRepairAccount(email);
       
-      const user = await getSessionUser();
       auditService.logAction(
-        user?.id || 'system',
-        user?.email || 'system',
+        session.user.id,
+        session.user.email,
         'GMAIL_CONNECTED',
         'AUTHENTICATION',
         `Gmail (${email})`,

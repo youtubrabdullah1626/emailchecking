@@ -20,10 +20,19 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getTenantPrisma } from "@/lib/db/tenant-prisma";
+import { getSession } from "@/lib/auth/session";
 import { getSchedulerHealth } from "@/lib/scheduler/health";
 
 export async function GET() {
   try {
+    const session = await getSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const tenantPrisma = getTenantPrisma(session.user.id);
+    const userId = session.user.id;
+
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);
 
@@ -49,35 +58,45 @@ export async function GET() {
       bannerThemeConfig,
       emailsSentThisHour,
     ] = await Promise.all([
-      prisma.sequence.count({ where: { status: "ACTIVE" } }),
+      tenantPrisma.sequence.count({ where: { status: "ACTIVE" } }),
       prisma.emailEvent.count({
         where: {
           event_type: "SENT",
           occurred_at: { gte: startOfDay },
+          step: { sequence: { user_id: userId } }
         },
       }),
       prisma.adhocEmail.count({
         where: {
           sent_at: { gte: startOfDay },
+          prospect: { user_id: userId }
         },
       }),
       prisma.replyClassification.count({
         where: { 
           reply_type: "REAL_REPLY",
-          classified_at: { gte: startOfDay }
+          classified_at: { gte: startOfDay },
+          prospect: { user_id: userId }
         },
       }),
       prisma.replyClassification.count({
         where: {
           reply_type: "NEEDS_REVIEW",
           review_status: "PENDING",
+          prospect: { user_id: userId }
         },
       }),
-      prisma.sequenceStep.count({ where: { status: "FAILED" } }),
-      prisma.sequence.count({ where: { status: "STOPPED" } }),
+      prisma.sequenceStep.count({ 
+        where: { 
+          status: "FAILED",
+          sequence: { user_id: userId }
+        } 
+      }),
+      tenantPrisma.sequence.count({ where: { status: "STOPPED" } }),
       prisma.emailEvent.findMany({
         take: 20,
         orderBy: { occurred_at: "desc" },
+        where: { step: { sequence: { user_id: userId } } },
         include: {
           step: {
             select: {
@@ -93,14 +112,16 @@ export async function GET() {
       prisma.replyClassification.findMany({
         take: 10,
         orderBy: { classified_at: "desc" },
+        where: { prospect: { user_id: userId } },
         include: { prospect: { select: { name: true, company: true } } }
       }),
       prisma.auditLog.findMany({
         take: 10,
-        orderBy: { created_at: "desc" }
+        orderBy: { created_at: "desc" },
+        where: { user_id: userId }
       }),
       getSchedulerHealth(),
-      prisma.emailAccount.findFirst({
+      tenantPrisma.emailAccount.findFirst({
         orderBy: { updated_at: "desc" },
         select: { email: true, connection_status: true }
       }),
@@ -120,6 +141,7 @@ export async function GET() {
         where: {
           event_type: "SENT",
           occurred_at: { gte: oneHourAgo },
+          step: { sequence: { user_id: userId } }
         },
       }),
     ]);

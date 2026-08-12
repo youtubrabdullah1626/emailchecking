@@ -175,8 +175,12 @@ export function LiveExecutionDashboard() {
       const now = new Date();
       const currentItems = liveItemsRef.current;
 
-      currentItems.forEach(item => {
-        if (item.liveStatus === "SCHEDULED") {
+      // FIX: Burst Rate Limiting (Google API Protection)
+      // Gmail allows max 2-3 emails per second. If 100 emails are scheduled 
+      // for 09:00:00, firing 100 requests instantly will trigger 429 errors.
+      // We filter the ready items, then slice(0, 2) to only process 2 per second.
+      const readyItems = currentItems.filter(item => {
+        if (item.liveStatus !== "SCHEDULED") return false;
           // Helper to get current time in target timezone
           const targetTimezone = item.timezone || "UTC"; // fallback
           let tzNowStr = "";
@@ -193,8 +197,11 @@ export function LiveExecutionDashboard() {
           }
 
           const itemScheduledStr = `${item.scheduledDate}T${item.scheduledTime}:00`;
+          return tzNowStr >= itemScheduledStr;
+      });
 
-          if (tzNowStr >= itemScheduledStr) {
+      // Take max 2 items per second to stay safely below Google API burst limits
+      readyItems.slice(0, 2).forEach(item => {
             // 1. Immediately mark as PROCESSING in state to prevent next tick from picking it up
             setLiveItems(prev => prev.map(i =>
               i.queueId === item.queueId ? { ...i, liveStatus: "PROCESSING" as any } : i
@@ -249,8 +256,6 @@ export function LiveExecutionDashboard() {
                   }
               }
             });
-          }
-        }
       });
     }, 1000);
 

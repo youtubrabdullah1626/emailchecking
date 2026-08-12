@@ -22,7 +22,8 @@ import { getCurrentHistoryId } from "@/lib/reply-tracker/gmail";
 import { scanForReplies } from "@/lib/reply/scanner";
 import { verifySchedulerSecret, unauthorizedResponse } from "@/lib/auth/scheduler-auth";
 import { auditService } from "@/lib/audit/audit.service";
-import { getSessionUser } from "@/lib/audit/rbac";
+import { getSession } from "@/lib/auth/session";
+import { getTenantPrisma } from "@/lib/db/tenant-prisma";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const isSameOrigin =
@@ -36,17 +37,29 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
+    const session = await getSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const tenantPrisma = getTenantPrisma(session.user.id);
+
+    // Only fetch accounts belonging to the authenticated user
+    const userAccounts = await tenantPrisma.emailAccount.findMany({
+      select: { email: true, sent_today: true, health_score: true, connection_status: true }
+    });
+
     const healthSummaries = await listAllAccountHealth();
 
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);
 
     const accountDetails = await Promise.all(
-      healthSummaries.map(async (summary) => {
-        const account = await prisma.emailAccount.findUnique({
-          where: { email: summary.email },
-          select: { sent_today: true, health_score: true },
-        });
+      userAccounts.map(async (account) => {
+        const summary = healthSummaries.find(h => h.email === account.email) || {
+          email: account.email,
+          healthStatus: account.connection_status === "CONNECTED" ? "HEALTHY" : "DISCONNECTED",
+          errorCount: 0,
+        };
 
         return {
           ...summary,
@@ -94,6 +107,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Missing account email parameter." }, { status: 400 });
   }
 
+  const session = await getSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const tenantPrisma = getTenantPrisma(session.user.id);
+
+  // Strict Tenant Isolation: Ensure the user actually owns this email account before acting on it
+  const account = await tenantPrisma.emailAccount.findUnique({ where: { email } });
+  if (!account) {
+    return NextResponse.json({ error: "Unauthorized: Account not found or belongs to another user." }, { status: 403 });
+  }
+
   try {
     if (action === "TEST_CONNECTION") {
       const historyId = await getCurrentHistoryId(email);
@@ -127,10 +152,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (action === "DISCONNECT") {
       await disconnectAccount(email);
       
-      const user = await getSessionUser();
       auditService.logAction(
-        user?.id || 'system',
-        user?.email || 'system',
+        session.user.id,
+        session.user.email,
         'GMAIL_DISCONNECTED',
         'AUTHENTICATION',
         `Gmail (${email})`,
@@ -147,13 +171,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     if (action === "DELETE_ACCOUNT") {
-      await prisma.emailAccount.deleteMany({ where: { email } });
+      await tenantPrisma.emailAccount.deleteMany({ where: { email } });
       await prisma.gmailWatchState.deleteMany({ where: { email } });
       
-      const user = await getSessionUser();
       auditService.logAction(
-        user?.id || 'system',
-        user?.email || 'system',
+        session.user.id,
+        session.user.email,
         'GMAIL_DELETED',
         'AUTHENTICATION',
         `Gmail (${email})`,

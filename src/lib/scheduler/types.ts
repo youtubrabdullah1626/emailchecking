@@ -1,5 +1,5 @@
 /**
- * Scheduler Types — Phase 4 / Phase 8 hardened
+ * Scheduler Types — Enterprise Hardened
  *
  * All types used by the scheduler engine. Centralised here to make the
  * contract between layers explicit and testable.
@@ -9,57 +9,30 @@
 
 export type SchedulerRunStatus = "SUCCESS" | "PARTIAL_FAILURE" | "FAILED";
 
-/**
- * Structured result returned by every scheduler run.
- * Returned from the API and logged to stdout.
- */
 export interface SchedulerRunResult {
-  /** Unique identifier for this scheduler run (cuid). */
   runId: string;
-  /** ISO 8601 UTC timestamp when the run started. */
   startedAt: string;
-  /** ISO 8601 UTC timestamp when the run finished. */
   finishedAt: string;
-  /** Wall-clock duration of the run in milliseconds. */
   durationMs: number;
-  /** Total steps found by the initial DB query (PENDING, due, ACTIVE sequence+prospect). */
   candidatesFound: number;
-  /** Steps that passed the eligibility re-check. Should equal candidatesFound unless race conditions. */
   eligibleSteps: number;
-  /** Steps successfully claimed (PENDING → PROCESSING). */
   claimedSteps: number;
-  /** Steps skipped because another concurrent run already claimed them (race condition losers). */
   skippedSteps: number;
-  /** Steps where the claim attempt threw an unexpected error. */
   errorSteps: number;
-  /** Human-readable error messages for any errorSteps. */
   errors: string[];
-  /**
-   * IDs of successfully claimed steps.
-   * Phase 5 Gmail integration will read these and send each email,
-   * then mark each as SENT (or FAILED on error).
-   */
   claimedStepIds: string[];
-  /** Whether this was a dry run (no state changes). */
   dryRun: boolean;
-  /** Overall run status. */
   status: SchedulerRunStatus;
-  /**
-   * Phase 8: Steps currently stuck in PROCESSING (claimed but not advanced).
-   * Observed but NOT automatically reset — manual recovery required.
-   * Steps here are NOT in claimedStepIds.
-   */
   staleProcessingSteps: StaleStepInfo[];
 }
 
-// ── Stale step info (Phase 8 observability) ─────────────────────────────────
+// ── Stale step info (Phase 8 observability) ──────────────────────────────────
 
 export interface StaleStepInfo {
   stepId: string;
   stepNumber: number;
   sequenceId: string;
   prospectId: string;
-  /** How long (in ms) the step has been stuck in PROCESSING */
   staleDurationMs: number;
 }
 
@@ -98,17 +71,7 @@ export interface CandidateStep {
 // ── Scheduler run options ─────────────────────────────────────────────────────
 
 export interface SchedulerRunOptions {
-  /**
-   * When true, the scheduler identifies and validates due steps but does NOT
-   * change any statuses. Returns what would be claimed without side effects.
-   * Default: false.
-   */
   dryRun?: boolean;
-  /**
-   * Maximum number of steps to claim in a single run.
-   * Prevents runaway behaviour in large backlogs.
-   * Default: 50.
-   */
   maxClaims?: number;
 }
 
@@ -124,9 +87,11 @@ export type SchedulerLogEvent =
   | "step_claim_error"
   | "scheduler_run_completed"
   | "scheduler_run_failed"
-  | "stale_processing_steps_detected";
+  | "stale_processing_steps_detected"
+  | "scheduler_skipped_due_to_limits"
+  | "scheduler_limit_check_failed";
 
-// -- Smart Scheduler Pure Engine Types -----------------------------------------
+// ── Smart Scheduler Pure Engine Types ─────────────────────────────────────────
 
 export enum SchedulingReason {
   BUSINESS_HOURS_SHIFT = 'BUSINESS_HOURS_SHIFT',
@@ -138,22 +103,19 @@ export enum SchedulingReason {
 }
 
 export interface BusinessHours {
-  readonly activeDays: number[]; 
-  readonly startTime: string; 
-  readonly endTime: string; 
+  readonly activeDays: number[];
+  readonly startTime: string;
+  readonly endTime: string;
 }
 
 export interface SchedulingContext {
   readonly currentUtcTime: Date;
   readonly randomJitterSeconds: number;
-  
   readonly recipientTimezone?: string;
   readonly campaignDefaultTimezone?: string;
-  
   readonly minIntervalSeconds: number;
   readonly maxIntervalSeconds: number;
   readonly businessHours: BusinessHours;
-  
   readonly holidayCalendar?: string[];
   readonly recipientActivityWindows?: unknown[];
   readonly providerRestrictions?: unknown;
