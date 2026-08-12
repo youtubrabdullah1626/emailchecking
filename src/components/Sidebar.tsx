@@ -18,7 +18,8 @@ import {
   Shield,
   Sliders,
   Megaphone,
-  History
+  History,
+  Database
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 
@@ -52,6 +53,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
     { name: "Audit Log", href: "/admin/audit", icon: Shield },
     { name: "Active Users", href: "/admin/users", icon: UserCheck },
     { name: "Analytics", href: "/admin/analytics", icon: Activity },
+    { name: "DB Cleanup", href: "/admin/database-maintenance", icon: Database },
     { name: "System Health", href: "/system-health", icon: Activity },
     { name: "Scheduler", href: "/scheduler", icon: ServerCog },
   ];
