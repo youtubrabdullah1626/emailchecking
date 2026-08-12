@@ -39,6 +39,7 @@ export interface AuditLogEvent {
   requestId: string;
   apiSource: string;
   environment: string;
+  severity?: "CRITICAL" | "WARNING" | "INFO";
   oldValues?: Record<string, any>;
   newValues?: Record<string, any>;
   metadata?: Record<string, any>;

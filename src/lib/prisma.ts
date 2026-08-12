@@ -1,5 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import { getEnv } from "@/lib/env";
+
+export { Prisma };
 
 // Ensure environment is valid on startup before any DB connection is made
 getEnv();

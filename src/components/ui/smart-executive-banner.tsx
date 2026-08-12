@@ -23,7 +23,7 @@ export function useSmartExecutiveBannerLogic(stats: any, recentReplies: any[]): 
   let state: BannerState = {
     priority: 6,
     icon: <Sparkles className="h-5 w-5 text-emerald-600" />,
-    title: `👋 Good Morning, ${name}`,
+    title: `Good Morning, ${name}`,
     message: "Everything is running smoothly.",
   };
 
@@ -34,7 +34,7 @@ export function useSmartExecutiveBannerLogic(stats: any, recentReplies: any[]): 
     state = {
       priority: 1,
       icon: <MessageSquare className="h-5 w-5 text-blue-600" />,
-      title: `👋 Good Morning, ${name}`,
+      title: `Good Morning, ${name}`,
       message: `${stats.pendingReviews} new replies are waiting for your review.`,
       actionLabel: "View Replies",
       actionTarget: "/replies",
@@ -46,7 +46,7 @@ export function useSmartExecutiveBannerLogic(stats: any, recentReplies: any[]): 
     state = {
       priority: 2,
       icon: <Target className="h-5 w-5 text-indigo-600" />,
-      title: `👋 Good Morning, ${name}`,
+      title: `Good Morning, ${name}`,
       message: `${interestedCount} potential customer${interestedCount > 1 ? 's' : ''} need your attention.`,
       actionLabel: "View Prospects",
       actionTarget: "/prospects",
@@ -57,7 +57,7 @@ export function useSmartExecutiveBannerLogic(stats: any, recentReplies: any[]): 
     state = {
       priority: 3,
       icon: <CheckCircle2 className="h-5 w-5 text-emerald-600" />,
-      title: `👋 Good Morning, ${name}`,
+      title: `Good Morning, ${name}`,
       message: `${stats.stoppedSequences} sequence${stats.stoppedSequences > 1 ? 's' : ''} finished successfully.`,
       actionLabel: "View Sequences",
       actionTarget: "/sequences",
@@ -68,7 +68,7 @@ export function useSmartExecutiveBannerLogic(stats: any, recentReplies: any[]): 
     state = {
       priority: 4,
       icon: <AlertCircle className="h-5 w-5 text-amber-600" />,
-      title: `👋 Good Morning, ${name}`,
+      title: `Good Morning, ${name}`,
       message: `${stats.failedSteps} step${stats.failedSteps > 1 ? 's' : ''} failed to send and need attention.`,
       actionLabel: "View Errors",
       actionTarget: "/system-health",
@@ -79,7 +79,7 @@ export function useSmartExecutiveBannerLogic(stats: any, recentReplies: any[]): 
     state = {
       priority: 5,
       icon: <ShieldAlert className="h-5 w-5 text-orange-600" />,
-      title: `👋 Good Morning, ${name}`,
+      title: `Good Morning, ${name}`,
       message: "Warmup limit reached. Sending resumes tomorrow.",
     };
   }
@@ -137,17 +137,39 @@ export function SmartExecutiveBanner({ stats, recentReplies }: { stats: any, rec
     6: 'bg-slate-50/50'
   };
 
-  const priorityBorder = borderColors[bannerState.priority] || 'border-l-slate-300';
-  const iconBg = bgColors[bannerState.priority] || 'bg-slate-50';
+  const defaultPriorityBorder = borderColors[bannerState.priority] || 'border-l-slate-300';
+  const defaultIconBg = bgColors[bannerState.priority] || 'bg-slate-50';
+
+  // ── Global Theme Override (from Admin Panel) ──────────────────────────────
+  const theme = stats?.bannerTheme || "DEFAULT";
+  let themeContainerClass = `bg-card border-y border-r border-l-4 ${defaultPriorityBorder} border-y-border border-r-border shadow-sm rounded-xl`;
+  let themeIconClass = defaultIconBg;
+
+  if (theme === "GREEN") {
+    themeContainerClass = "bg-gradient-to-r from-emerald-50/80 to-card border border-emerald-100 shadow-sm rounded-xl";
+    themeIconClass = "bg-emerald-100/50 text-emerald-600";
+  } else if (theme === "RED") {
+    themeContainerClass = "bg-gradient-to-r from-rose-50/80 to-card border border-rose-100 shadow-sm rounded-xl";
+    themeIconClass = "bg-rose-100/50 text-rose-600";
+  } else if (theme === "BLUE") {
+    themeContainerClass = "bg-gradient-to-r from-blue-50/80 to-card border border-blue-100 shadow-sm rounded-xl";
+    themeIconClass = "bg-blue-100/50 text-blue-600";
+  } else if (theme === "ORANGE") {
+    themeContainerClass = "bg-gradient-to-r from-orange-50/80 to-card border border-orange-100 shadow-sm rounded-xl";
+    themeIconClass = "bg-orange-100/50 text-orange-600";
+  } else if (theme === "PURPLE") {
+    themeContainerClass = "bg-gradient-to-r from-purple-50/80 to-card border border-purple-100 shadow-sm rounded-xl";
+    themeIconClass = "bg-purple-100/50 text-purple-600";
+  }
 
   return (
     <div 
-      className={`relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 mb-8 bg-card border-y border-r border-l-4 ${priorityBorder} border-y-border border-r-border shadow-sm rounded-xl transition-all duration-500 ease-in-out ${
+      className={`relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 mb-8 transition-all duration-500 ease-in-out ${themeContainerClass} ${
         isVisible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
       }`}
     >
       <div className="flex items-center gap-4">
-        <div className={`flex items-center justify-center p-3 rounded-full ${iconBg}`}>
+        <div className={`flex items-center justify-center p-3 rounded-full ${themeIconClass}`}>
           {bannerState.icon}
         </div>
         <div className="flex flex-col">

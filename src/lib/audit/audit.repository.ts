@@ -5,6 +5,8 @@ export interface AuditLogFilters {
   search?: string;
   category?: string;
   status?: string;
+  severity?: string;
+  time?: string;
   actorId?: string;
   resourceId?: string;
   startDate?: Date;
@@ -55,6 +57,22 @@ export class AuditRepository {
       orderBy: { created_at: "asc" }, // Ascending for timeline view
       take: 100 // Prevent unbounded queries
     });
+  }
+
+  /**
+   * Fetches real-time metrics based on the current filters.
+   */
+  async getAuditStats(filters: AuditLogFilters) {
+    const where = this.buildWhereClause(filters);
+    
+    const [total, successCount, warningCount, criticalCount] = await Promise.all([
+      prisma.auditLog.count({ where }),
+      prisma.auditLog.count({ where: { ...where, status: "SUCCESS", severity: "INFO" } }),
+      prisma.auditLog.count({ where: { ...where, severity: "WARNING" } }),
+      prisma.auditLog.count({ where: { ...where, severity: "CRITICAL" } })
+    ]);
+
+    return { total, successCount, warningCount, criticalCount };
   }
 
   /**
@@ -114,7 +132,19 @@ export class AuditRepository {
       where.resource_id = filters.resourceId;
     }
 
-    if (filters.startDate || filters.endDate) {
+    if (filters.severity) {
+      where.severity = filters.severity as any;
+    }
+
+    if (filters.time) {
+      const now = new Date();
+      where.created_at = {};
+      if (filters.time === "24h") {
+        where.created_at.gte = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      } else if (filters.time === "7d") {
+        where.created_at.gte = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      }
+    } else if (filters.startDate || filters.endDate) {
       where.created_at = {};
       if (filters.startDate) where.created_at.gte = filters.startDate;
       if (filters.endDate) where.created_at.lte = filters.endDate;

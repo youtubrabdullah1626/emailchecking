@@ -119,7 +119,7 @@ export type DbPaginatedResult<T> =
 /**
  * List all prospects, newest first, with pagination.
  */
-export async function listProspects(options?: PaginationOptions): Promise<DbPaginatedResult<Prospect & { sequences?: { id: string; status: string; steps: { id: string; step_number: number; status: string }[] }[] | null }>> {
+export async function listProspects(options?: PaginationOptions): Promise<DbPaginatedResult<Prospect & { campaign?: { id: string, name: string } | null, sequences?: { id: string; status: string; steps: { id: string; step_number: number; status: string }[] }[] | null }>> {
   try {
     const page = options?.page ?? 1;
     const limit = options?.limit ?? 50;
@@ -132,6 +132,12 @@ export async function listProspects(options?: PaginationOptions): Promise<DbPagi
         take: limit,
         orderBy: { created_at: "desc" },
         include: {
+          campaign: {
+            select: {
+              id: true,
+              name: true,
+            }
+          },
           sequences: {
             orderBy: { created_at: "desc" },
             take: 1,

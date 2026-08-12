@@ -81,11 +81,6 @@ Return only the CSV content with the required headers. No markdown, explanations
         </Alert>
       )}
 
-      {/* Import History */}
-      {(status === "IDLE" || status === "ERROR") && (
-        <ImportHistoryWorkspace />
-      )}
-
       {/* Main Drop Zone */}
       {(status === "IDLE" || status === "PARSING" || status === "VALIDATING" || status === "ERROR") && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -95,6 +90,13 @@ Return only the CSV content with the required headers. No markdown, explanations
           <div className="lg:col-span-1">
             <SupportedFormats />
           </div>
+        </div>
+      )}
+
+      {/* Import History */}
+      {(status === "IDLE" || status === "ERROR") && (
+        <div className="pt-8 mt-8 border-t border-border">
+          <ImportHistoryWorkspace />
         </div>
       )}
 

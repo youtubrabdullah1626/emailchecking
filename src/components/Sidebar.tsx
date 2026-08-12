@@ -15,7 +15,8 @@ import {
   ServerCog,
   UserCheck,
   FileUp,
-  Shield
+  Shield,
+  Sliders
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 
@@ -37,12 +38,13 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
   const mainNavigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Prospects", href: "/prospects", icon: Users },
+    { name: "Sequences", href: "/sequences", icon: Activity },
     { name: "Smart Import", href: "/smart-import", icon: FileUp },
-    { name: "Sequences", href: "/sequences", icon: Layers },
     { name: "Replies", href: "/replies", icon: MessageSquareReply },
   ];
 
   const adminNavigation = [
+    { name: "Platform Config", href: "/admin/platform", icon: Sliders },
     { name: "Audit Log", href: "/admin/audit", icon: Shield },
     { name: "Active Users", href: "/admin/users", icon: UserCheck },
     { name: "Analytics", href: "/admin/analytics", icon: Activity },
@@ -79,10 +81,10 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
                 prefetch={true}
                 onClick={handleLinkClick}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-sm font-medium transition-colors",
+                  "flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-sm font-medium transition-all duration-200",
                   isActive 
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm" 
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                    ? "bg-primary/15 text-primary shadow-sm border-r-4 border-primary rounded-r-none" 
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:translate-x-1"
                 )}
               >
                 <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
@@ -103,10 +105,10 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
                 prefetch={true}
                 onClick={handleLinkClick}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-sm font-medium transition-colors",
+                  "flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-sm font-medium transition-all duration-200",
                   isActive 
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm" 
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                    ? "bg-primary/15 text-primary shadow-sm border-r-4 border-primary rounded-r-none" 
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:translate-x-1"
                 )}
               >
                 <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
@@ -118,22 +120,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
       </nav>
       
       <div className="p-4 border-t border-sidebar-border">
-        <Link 
-          href="/settings"
-          prefetch={true}
-          onClick={handleLinkClick}
-          className={cn(
-            "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-            pathname.startsWith("/settings") 
-              ? "bg-sidebar-accent text-sidebar-accent-foreground" 
-              : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-          )}
-        >
-          <Settings className={cn("h-4 w-4", pathname.startsWith("/settings") ? "text-primary" : "text-muted-foreground")} />
-          Settings
-        </Link>
-        
-        <div className="mt-4 px-3 space-y-3">
+        <div className="px-3 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground font-medium">Scheduler</span>
             <div className="flex items-center gap-1.5">

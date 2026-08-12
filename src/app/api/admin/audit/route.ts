@@ -26,6 +26,8 @@ export async function GET(req: NextRequest) {
       search: searchParams.get("q") || undefined,
       category: searchParams.get("category") || undefined,
       status: searchParams.get("status") || undefined,
+      severity: searchParams.get("severity") || undefined,
+      time: searchParams.get("time") || undefined,
       actorId: searchParams.get("actorId") || undefined,
       resourceId: searchParams.get("resourceId") || undefined,
     };

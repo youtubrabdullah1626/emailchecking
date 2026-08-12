@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
-import { RefreshCw, Bell, Menu, Zap, TrendingUp, Camera, X } from "lucide-react";
+import { RefreshCw, Bell, Menu, Zap, TrendingUp, Camera, X, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -113,18 +113,18 @@ export function Header({ onMenuClick }: HeaderProps) {
           <Menu className="h-5 w-5" />
         </Button>
         <div className="hidden lg:flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 px-3 py-1.5 rounded-full border border-indigo-500/20 shadow-sm">
+          <div className="flex items-center gap-2 bg-primary/5 backdrop-blur-sm px-3 py-1.5 rounded-full border border-primary/20 shadow-sm transition-colors hover:bg-primary/10">
             <div className="flex -space-x-2 mr-1">
-              <span className="h-6 w-6 rounded-full bg-indigo-500 flex items-center justify-center text-white shadow-sm ring-2 ring-background">
-                <Zap className="h-3 w-3 fill-white" />
+              <span className="h-6 w-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground shadow-sm ring-2 ring-background">
+                <Zap className="h-3 w-3 fill-current" />
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 leading-none tracking-wide uppercase flex items-center gap-1">
+              <span className="text-[11px] font-bold text-foreground leading-none tracking-wide uppercase flex items-center gap-1">
                 Outreach Flow
               </span>
               <span className="text-[10px] text-muted-foreground font-medium leading-none mt-0.5 flex items-center gap-1">
-                <TrendingUp className="h-3 w-3 text-emerald-500" />
+                <TrendingUp className="h-3 w-3 text-primary" />
                 {summary ? `${summary.emailsSentToday || 0} Sent Today • ${summary.repliesToday || 0} Replies Today` : 'Calculating metrics...'}
               </span>
             </div>
@@ -230,21 +230,44 @@ export function Header({ onMenuClick }: HeaderProps) {
         </DropdownMenu>
         
         <Dialog>
-          <DialogTrigger asChild>
-            <button className="relative ml-4 group block rounded-full overflow-hidden border-2 border-transparent ring-2 ring-primary/20 transition-all duration-300 hover:ring-primary/50 shadow-md hover:shadow-lg focus:outline-none">
-              <Avatar className="h-11 w-11 border border-border/50">
-                {avatarUrl && <AvatarImage src={avatarUrl} alt="User Avatar" className="object-cover" />}
-                <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-bold tracking-wider">
-                  IQ
-                </AvatarFallback>
-              </Avatar>
-            </button>
-          </DialogTrigger>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="relative ml-4 group block rounded-full overflow-hidden border-2 border-transparent ring-2 ring-primary/30 transition-all duration-300 hover:ring-primary/60 shadow-sm hover:shadow-md focus:outline-none hover:-translate-y-0.5">
+                <Avatar className="h-10 w-10 border border-primary/20">
+                  {avatarUrl && <AvatarImage src={avatarUrl} alt="User Avatar" className="object-cover" />}
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold tracking-wider">
+                    IQ
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 font-medium">
+              <div className="px-2 py-1.5 text-xs text-muted-foreground font-semibold uppercase tracking-wider">My Account</div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link prefetch={true} href="/settings" className="w-full cursor-pointer flex items-center py-2">
+                  <Settings className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <span>Settings</span>
+                </Link>
+              </DropdownMenuItem>
+              <DialogTrigger asChild>
+                <DropdownMenuItem className="cursor-pointer flex items-center py-2">
+                  <Camera className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <span>Change Photo</span>
+                </DropdownMenuItem>
+              </DialogTrigger>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer flex items-center py-2 text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/50">
+                <LogOut className="mr-2 h-4 w-4 text-red-600" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-md border-border flex flex-col items-center justify-center py-12">
             <div className="relative group rounded-full overflow-hidden ring-4 ring-primary/20 shadow-2xl">
-              <Avatar className="h-56 w-56 border-4 border-background">
+              <Avatar className="h-56 w-56 border-4 border-background bg-primary/5">
                 {avatarUrl && <AvatarImage src={avatarUrl} alt="User Avatar" className="object-cover" />}
-                <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-7xl font-bold tracking-wider">
+                <AvatarFallback className="bg-primary/10 text-primary text-7xl font-bold tracking-wider">
                   IQ
                 </AvatarFallback>
               </Avatar>

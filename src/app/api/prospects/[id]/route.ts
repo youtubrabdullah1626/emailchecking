@@ -11,6 +11,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProspect, updateProspect, deleteProspect } from "@/lib/db/prospects";
 import { validateProspectUpdate } from "@/lib/validations/prospect";
+import prisma from "@/lib/prisma";
+import { auditService } from "@/lib/audit/audit.service";
+import { getNetworkContext } from "@/lib/audit/network";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -72,11 +75,39 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 export async function DELETE(_req: NextRequest, { params }: RouteContext) {
   const { id } = await params;
 
+  const prospectToLog = await getProspect(id);
+  const emailToLog = prospectToLog.ok ? prospectToLog.data.email : id;
+
   const result = await deleteProspect(id);
 
   if (!result.ok) {
     const status = result.error === "NOT_FOUND" ? 404 : 500;
     return NextResponse.json({ error: result.message }, { status });
+  }
+
+  const firstUser = await prisma.users.findFirst();
+  if (firstUser) {
+    const network = getNetworkContext(_req);
+    auditService.logAction(
+      firstUser.id,
+      firstUser.email || "user@system",
+      "Prospect Deleted",
+      "PROSPECT",
+      emailToLog,
+      "Prospect",
+      "SUCCESS",
+      { 
+        resourceId: id,
+        ipAddress: network.ipAddress,
+        deviceInfo: network.deviceInfo,
+        oldValues: prospectToLog.ok ? prospectToLog.data : undefined,
+        metadata: {
+          country: network.country,
+          browser: network.browser,
+          os: network.os
+        }
+      }
+    );
   }
 
   return new NextResponse(null, { status: 204 });

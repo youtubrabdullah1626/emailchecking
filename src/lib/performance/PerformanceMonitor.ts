@@ -5,6 +5,7 @@ export interface PerformanceMetrics {
   sequenceGenTimeMs: number;
   schedulingTimeMs: number;
   fastTrackAppendTimeMs: number;
+  handoffTimeMs: number;
   totalTimeMs: number;
   memoryEstimateMB: number;
 }
@@ -48,6 +49,7 @@ export class PerformanceMonitor {
       sequenceGenTimeMs: this.metrics.sequenceGenTimeMs || 0,
       schedulingTimeMs: this.metrics.schedulingTimeMs || 0,
       fastTrackAppendTimeMs: this.metrics.fastTrackAppendTimeMs || 0,
+      handoffTimeMs: this.metrics.handoffTimeMs || 0,
       totalTimeMs: total,
       memoryEstimateMB: this.metrics.memoryEstimateMB || 0,
     };

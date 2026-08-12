@@ -16,7 +16,7 @@ import { Progress } from "@/components/ui/progress";
 import { SystemCertification } from "./SystemCertification";
 
 export function SchedulingPreviewWorkspace() {
-  const { queueSummary, getExecutionQueue, approveImport, appendTargetSessionId, startScheduling, setStatus } = useImport() as any;
+  const { queueSummary, getExecutionQueue, approveImport, appendTargetSessionId, startScheduling, setStatus, status } = useImport() as any;
   const { data: warmupStatus } = useSWR("/api/warmup/status", url => apiClient<any>(url));
   const { data: warmupSettings } = useSWR("/api/warmup/settings", url => apiClient<any>(url));
   const [queueSlice, setQueueSlice] = useState<ExecutionQueueItem[]>([]);
@@ -222,9 +222,22 @@ export function SchedulingPreviewWorkspace() {
       </div>
 
       <div className="flex justify-end pt-6 border-t border-border">
-        <Button onClick={approveImport} className="gap-2 shadow-md bg-emerald-600 hover:bg-emerald-700 text-white px-8">
-          <Check className="h-4 w-4" />
-          {appendTargetSessionId ? "🚀 Confirm Append to Live Campaign" : "🚀 Start Sending Campaign"}
+        <Button 
+          onClick={approveImport} 
+          disabled={status === "EXECUTING"}
+          className="gap-2 shadow-md bg-emerald-600 hover:bg-emerald-700 text-white px-8 transition-all duration-300 min-w-[240px]"
+        >
+          {status === "EXECUTING" ? (
+            <>
+              <div className="animate-spin h-4 w-4 border-2 border-white/20 border-t-white rounded-full mr-2" />
+              Syncing to Database...
+            </>
+          ) : (
+            <>
+              <Check className="h-4 w-4" />
+              {appendTargetSessionId ? "🚀 Confirm Append to Live Campaign" : "🚀 Start Sending Campaign"}
+            </>
+          )}
         </Button>
       </div>
     </div>

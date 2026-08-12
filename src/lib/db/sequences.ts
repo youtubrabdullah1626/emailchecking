@@ -285,12 +285,13 @@ export async function createSequence(
     
     // Log Audit Event safely
     const user = await getSessionUser();
+    const prospect = await prisma.prospect.findUnique({ where: { id: prospectId } });
     auditService.logAction(
       user?.id || 'system',
       user?.email || 'system',
       'SEQUENCE_CREATED',
       'CAMPAIGN',
-      `Sequence (${sequence.id})`,
+      prospect ? `Sequence for ${prospect.email}` : `Sequence (${sequence.id})`,
       'Sequence',
       'SUCCESS',
       { resourceId: sequence.id, metadata: { prospectId, steps: steps.length } }
@@ -377,12 +378,13 @@ export async function updateSequence(
     });
 
     const user = await getSessionUser();
+    const prospect = await prisma.prospect.findUnique({ where: { id: sequence.prospect_id } });
     auditService.logAction(
       user?.id || 'system',
       user?.email || 'system',
       'SEQUENCE_UPDATED',
       'CAMPAIGN',
-      `Sequence (${sequence.id})`,
+      prospect ? `Sequence for ${prospect.email}` : `Sequence (${sequence.id})`,
       'Sequence',
       'SUCCESS',
       { resourceId: sequence.id, metadata: { steps: steps.length } }
@@ -446,12 +448,13 @@ export async function startSequence(
     });
 
     const user = await getSessionUser();
+    const prospect = await prisma.prospect.findUnique({ where: { id: sequence.prospect_id } });
     auditService.logAction(
       user?.id || 'system',
       user?.email || 'system',
       'SEQUENCE_STARTED',
       'CAMPAIGN',
-      `Sequence (${sequence.id})`,
+      prospect ? `Sequence for ${prospect.email}` : `Sequence (${sequence.id})`,
       'Sequence',
       'SUCCESS',
       { resourceId: sequence.id }
@@ -494,8 +497,15 @@ export async function deleteSequence(
 
     // Allow deleting in any state so users can clear up the UI.
     // The cascade delete will safely remove steps.
-
-    await prisma.sequence.delete({ where: { id: sequenceId } });
+    const sequenceToLog = await prisma.sequence.findUnique({ 
+      where: { id: sequenceId },
+      include: { prospect: true }
+    });
+    
+    await prisma.$transaction([
+      prisma.sequenceStep.deleteMany({ where: { sequence_id: sequenceId } }),
+      prisma.sequence.delete({ where: { id: sequenceId } }),
+    ]);
     
     const user = await getSessionUser();
     auditService.logAction(
@@ -503,7 +513,7 @@ export async function deleteSequence(
       user?.email || 'system',
       'SEQUENCE_DELETED',
       'CAMPAIGN',
-      `Sequence (${sequenceId})`,
+      sequenceToLog?.prospect ? `Sequence for ${sequenceToLog.prospect.email}` : `Sequence (${sequenceId})`,
       'Sequence',
       'SUCCESS',
       { resourceId: sequenceId }

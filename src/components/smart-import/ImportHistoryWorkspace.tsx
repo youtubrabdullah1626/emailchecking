@@ -6,7 +6,7 @@ import { StorageEngine, ImportSessionMetadata } from "@/lib/storage/StorageEngin
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { History, Play, Trash2, CheckCircle2, Clock, AlertTriangle, Eye, Plus, MoreVertical, Edit2, Info } from "lucide-react";
+import { History, Play, Trash2, CheckCircle2, Clock, AlertTriangle, Eye, Plus, MoreVertical, Edit2, Info, Users, Calendar, FileText } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -176,13 +176,32 @@ export function ImportHistoryWorkspace() {
 
   if (sessions.length === 0) return null;
 
+  const handleActionClick = async (session: ImportSessionMetadata) => {
+    if (session.status === "COMPLETED" || session.lastCheckpoint === "EXECUTION_STARTED") {
+       try {
+         const dataset = await storage.loadHeavyDataset(session.sessionId);
+         const campaignId = dataset?.campaignId;
+         if (campaignId) {
+            window.location.href = `/prospects?source=smart_import`;
+            return;
+         }
+       } catch (e) {
+         console.error("Failed to load campaignId", e);
+       }
+       // Fallback for old sessions that didn't have campaignId saved
+       window.location.href = `/prospects`;
+    } else {
+       handleResume(session.sessionId);
+    }
+  };
+
   return (
-    <Card className="border-border shadow-sm animate-in fade-in slide-in-from-bottom-4">
+    <Card className="border-border shadow-sm mb-8 animate-in fade-in slide-in-from-top-4 duration-500 overflow-hidden">
       <input type="file" ref={fileInputRef} className="hidden" accept=".csv,.xlsx" onChange={onFileSelected} />
       <CardHeader className="bg-muted/5 border-b border-border py-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold flex items-center gap-2.5">
-            <History className="h-5 w-5 text-muted-foreground" />
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <History className="h-4 w-4 text-muted-foreground" />
             Full History
             <TooltipProvider>
               <Tooltip delayDuration={200}>
@@ -209,54 +228,56 @@ export function ImportHistoryWorkspace() {
       <CardContent className="p-0">
         <div className="divide-y divide-border">
           {sessions.filter(s => !hiddenSessions.has(s.sessionId)).map(session => (
-            <div key={session.sessionId} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors">
-              <div className="space-y-1">
-                <div className="flex items-center gap-3">
-                  <span className="font-semibold">{session.campaignName || "Untitled Campaign"}</span>
+            <div key={session.sessionId} className="p-4 flex flex-col sm:flex-row sm:items-center gap-4 justify-between hover:bg-muted/10 transition-colors">
+              <div className="space-y-2 flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="font-semibold truncate max-w-full">{session.campaignName || "Untitled Campaign"}</span>
                   <Badge variant={
                     session.status === "COMPLETED" ? "default" :
                     session.status === "FAILED" ? "destructive" :
                     session.lastCheckpoint === "EXECUTION_STARTED" ? "default" :
                     "secondary"
                   } className={
-                    session.status === "COMPLETED" ? "bg-blue-500 hover:bg-blue-600 text-[10px] flex items-center gap-1" :
-                    session.lastCheckpoint === "EXECUTION_STARTED" ? "bg-emerald-500 hover:bg-emerald-600 text-[10px] flex items-center gap-1" : 
-                    "text-[10px]"
+                    session.status === "COMPLETED" ? "bg-blue-500 hover:bg-blue-600 text-[10px] flex items-center gap-1 shrink-0" :
+                    session.lastCheckpoint === "EXECUTION_STARTED" ? "bg-emerald-500 hover:bg-emerald-600 text-[10px] flex items-center gap-1 shrink-0" : 
+                    "text-[10px] shrink-0"
                   }>
                     {session.status === "COMPLETED" && <CheckCircle2 className="h-3 w-3" />}
                     {session.lastCheckpoint === "EXECUTION_STARTED" && <Play className="h-3 w-3 fill-current" />}
                     {session.status === "COMPLETED" ? "COMPLETED" : session.lastCheckpoint === "EXECUTION_STARTED" ? "LIVE CAMPAIGN" : session.status}
                   </Badge>
                   {session.status === "DRAFT" && session.lastCheckpoint !== "EXECUTION_STARTED" && (
-                    <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200 bg-amber-50">
+                    <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200 bg-amber-50 shrink-0">
                       Checkpoint: {session.lastCheckpoint}
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" />
-                    {session.totalRecords.toLocaleString()} Records
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground mt-1">
+                  <span className="flex items-center gap-1.5 whitespace-nowrap">
+                    <Users className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                    <span className="font-medium text-foreground/80">{session.totalRecords.toLocaleString()}</span> {session.totalRecords === 1 ? 'Lead' : 'Leads'}
                   </span>
-                  {session.estimatedCompletion && (
-                    <span className="flex items-center gap-1 text-primary">
-                      <Clock className="h-3 w-3" />
-                      Finishes: {session.estimatedCompletion}
+                  
+                  {session.estimatedCompletion && session.status !== "COMPLETED" && (
+                    <span className="flex items-center gap-1.5 text-primary whitespace-nowrap bg-primary/5 px-2 py-0.5 rounded-full">
+                      <Clock className="h-3.5 w-3.5 shrink-0" />
+                      Ends {session.estimatedCompletion}
                     </span>
                   )}
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {session.lastCheckpoint === "EXECUTION_STARTED" ? "Started " : "Draft created "}
-                    {formatDistanceToNow(new Date(session.importDate))} ago
+                  
+                  <span className="flex items-center gap-1.5 whitespace-nowrap">
+                    <Calendar className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                    {formatDistanceToNow(new Date(session.importDate), { addSuffix: true })}
                   </span>
-                  <span className="flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    {session.fileName}
+                  
+                  <span className="flex items-center gap-1.5 max-w-[180px] sm:max-w-[220px] md:max-w-[300px]" title={session.fileName}>
+                    <FileText className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                    <span className="truncate">{session.fileName}</span>
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 {session.lastCheckpoint === "EXECUTION_STARTED" && (
                   <Button 
                     variant="outline" 
@@ -268,16 +289,17 @@ export function ImportHistoryWorkspace() {
                     <span className="hidden sm:inline-block">Add Leads</span>
                   </Button>
                 )}
-                {session.sessionId !== sessionId && (
-                  <Button variant="secondary" size="sm" onClick={() => handleResume(session.sessionId)} className="gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100 shadow-sm">
-                    <Eye className="h-4 w-4" /> View Details
-                  </Button>
-                )}
-                {session.sessionId === sessionId && (
-                  <Button variant="secondary" size="sm" disabled className="gap-2">
-                    Active Session
-                  </Button>
-                )}
+                <Button 
+                  variant={session.sessionId === sessionId ? "default" : "secondary"} 
+                  size="sm" 
+                  onClick={() => handleActionClick(session)} 
+                  className={session.sessionId === sessionId 
+                    ? "gap-2 shadow-sm"
+                    : "gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100 shadow-sm"
+                  }
+                >
+                  <Eye className="h-4 w-4" /> {session.status === "COMPLETED" || session.lastCheckpoint === "EXECUTION_STARTED" ? "View Prospects" : (session.sessionId === sessionId ? "Currently Viewing" : "View Details")}
+                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">

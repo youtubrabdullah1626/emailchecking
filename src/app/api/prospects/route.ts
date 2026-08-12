@@ -13,6 +13,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { listProspects, createProspect } from "@/lib/db/prospects";
 import { validateProspectCreate } from "@/lib/validations/prospect";
 import prisma from "@/lib/prisma";
+import { auditService } from "@/lib/audit/audit.service";
+import { getNetworkContext } from "@/lib/audit/network";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +82,30 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ error: result.message }, { status: 500 });
   }
+
+  const network = getNetworkContext(request);
+
+  auditService.logAction(
+    firstUser.id,
+    firstUser.email || "user@system",
+    "Prospect Created",
+    "PROSPECT",
+    result.data.email,
+    "Prospect",
+    "SUCCESS",
+    {
+      resourceId: result.data.id,
+      ipAddress: network.ipAddress,
+      deviceInfo: network.deviceInfo,
+      metadata: { 
+        source: "MANUAL", 
+        company: result.data.company,
+        country: network.country,
+        browser: network.browser,
+        os: network.os
+      }
+    }
+  );
 
   return NextResponse.json({ data: result.data }, { status: 201 });
 }

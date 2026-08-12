@@ -38,6 +38,16 @@ export function AuditEventDrawer({ event, isOpen, onClose }: AuditEventDrawerPro
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-semibold text-foreground tracking-tight">{event.action}</h2>
               <StatusBadge status={event.status} />
+              {event.severity === "CRITICAL" && (
+                <span className="px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-xs font-semibold uppercase tracking-wider">
+                  Critical
+                </span>
+              )}
+              {event.severity === "WARNING" && (
+                <span className="px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-500 text-xs font-semibold uppercase tracking-wider">
+                  High Risk
+                </span>
+              )}
             </div>
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               <CalendarDays className="w-4 h-4" />
@@ -66,47 +76,63 @@ export function AuditEventDrawer({ event, isOpen, onClose }: AuditEventDrawerPro
               <InfoCard label="Category" value={<ActionBadge action={event.action} category={event.category} />} />
               <InfoCard label="Resource Type" value={event.resourceType} />
               <InfoCard label="Resource Name" value={event.resourceName} />
-              <InfoCard label="Resource ID" value={event.resourceId} monospace />
+              {event.resourceId && <InfoCard label="Resource ID" value={event.resourceId} monospace />}
               <InfoCard label="Status" value={event.status} />
             </MetadataGrid>
           </section>
 
           {/* Device & Network Section */}
-          <section className="flex flex-col gap-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <MonitorSmartphone className="w-4 h-4" />
-              Device & Network
-            </h3>
-            <MetadataGrid>
-              <InfoCard label="IP Address" value={event.ipAddress} monospace />
-              <InfoCard label="Country" value={event.country} />
-              <InfoCard label="Device" value={event.device} />
-              <InfoCard label="Browser" value={event.browser} />
-              <InfoCard label="Operating System" value={event.os} />
-              <InfoCard label="Environment" value={event.environment} />
-            </MetadataGrid>
-          </section>
+          {(event.ipAddress || event.country || (event.device && event.device !== "Unknown Device") || event.browser || event.os || event.environment) ? (
+            <section className="flex flex-col gap-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <MonitorSmartphone className="w-4 h-4" />
+                Device & Network
+              </h3>
+              <MetadataGrid>
+                {event.ipAddress && <InfoCard label="IP Address" value={event.ipAddress} monospace />}
+                {event.country && <InfoCard label="Country" value={event.country} />}
+                {event.device && event.device !== "Unknown Device" && <InfoCard label="Device" value={event.device} />}
+                {event.browser && <InfoCard label="Browser" value={event.browser} />}
+                {event.os && <InfoCard label="Operating System" value={event.os} />}
+                {event.environment && <InfoCard label="Environment" value={event.environment} />}
+              </MetadataGrid>
+            </section>
+          ) : null}
 
           {/* System Context */}
-          <section className="flex flex-col gap-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Server className="w-4 h-4" />
-              System Context
-            </h3>
-            <MetadataGrid>
-              <InfoCard label="Session ID" value={event.sessionId} monospace />
-              <InfoCard label="Request ID" value={event.requestId} monospace />
-              <InfoCard label="API Source" value={event.apiSource} />
-            </MetadataGrid>
-          </section>
+          {(event.sessionId || event.requestId || event.apiSource) ? (
+            <section className="flex flex-col gap-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <Server className="w-4 h-4" />
+                System Context
+              </h3>
+              <MetadataGrid>
+                {event.sessionId && <InfoCard label="Session ID" value={event.sessionId} monospace />}
+                {event.requestId && <InfoCard label="Request ID" value={event.requestId} monospace />}
+                {event.apiSource && <InfoCard label="API Source" value={event.apiSource} />}
+              </MetadataGrid>
+            </section>
+          ) : null}
 
           {/* Changes / Metadata */}
           {(event.oldValues || event.newValues || event.metadata || event.errorMsg) && (
             <section className="flex flex-col gap-4">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <KeyRound className="w-4 h-4" />
-                Payload & Details
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <KeyRound className="w-4 h-4" />
+                  Payload & Details
+                </h3>
+                {event.oldValues && (
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(JSON.stringify(event.oldValues, null, 2));
+                    }}
+                    className="text-xs font-medium bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1 rounded-md transition-colors"
+                  >
+                    Copy Restoration Payload
+                  </button>
+                )}
+              </div>
               
               {event.errorMsg && (
                 <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-md">
@@ -116,28 +142,52 @@ export function AuditEventDrawer({ event, isOpen, onClose }: AuditEventDrawerPro
               )}
 
               {event.oldValues && event.newValues && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-muted/20 border border-border rounded-md">
-                    <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider block mb-2">Previous State</span>
-                    <pre className="text-sm text-foreground font-mono overflow-x-auto">
-                      {JSON.stringify(event.oldValues, null, 2)}
-                    </pre>
-                  </div>
-                  <div className="p-4 bg-primary/5 border border-primary/20 rounded-md">
-                    <span className="text-xs font-semibold uppercase text-primary tracking-wider block mb-2">New State</span>
-                    <pre className="text-sm text-foreground font-mono overflow-x-auto">
-                      {JSON.stringify(event.newValues, null, 2)}
-                    </pre>
+                <div className="flex flex-col gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-2">
+                      <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider block">Previous State</span>
+                      <div className="flex flex-col bg-muted/20 rounded-md border border-border p-3 gap-2">
+                        {Object.entries(event.oldValues).map(([key, value]) => (
+                          <div key={key} className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">{key.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                            <span className="font-medium text-slate-700">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <span className="text-xs font-semibold uppercase text-primary tracking-wider block">New State</span>
+                      <div className="flex flex-col bg-primary/5 rounded-md border border-primary/20 p-3 gap-2">
+                        {Object.entries(event.newValues).map(([key, value]) => (
+                          <div key={key} className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">{key.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                            <span className="font-medium text-slate-900">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {event.metadata && (
-                <div className="p-4 bg-muted/30 border border-border rounded-md">
-                  <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider block mb-2">Event Metadata</span>
-                  <pre className="text-sm text-foreground font-mono overflow-x-auto">
-                    {JSON.stringify(event.metadata, null, 2)}
-                  </pre>
+              {event.metadata && Object.keys(event.metadata).filter(k => !['resourceName', 'country', 'browser', 'os'].includes(k)).length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider block">Additional Details</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {Object.entries(event.metadata)
+                      .filter(([k]) => !['resourceName', 'country', 'browser', 'os'].includes(k))
+                      .map(([key, value]) => (
+                        <div key={key} className="flex flex-col bg-muted/20 p-3 rounded-md border border-border">
+                          <span className="text-[11px] font-medium uppercase text-muted-foreground tracking-wider mb-1">
+                            {key.replace(/([A-Z])/g, ' $1').trim()}
+                          </span>
+                          <span className="text-[13px] font-medium text-slate-700">
+                            {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                          </span>
+                        </div>
+                      ))
+                    }
+                  </div>
                 </div>
               )}
             </section>

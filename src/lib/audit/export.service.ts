@@ -19,27 +19,39 @@ export class ExportService {
       "Timestamp",
       "Action",
       "Category",
+      "Severity",
       "Status",
       "Actor Name",
       "Actor Email",
-      "Target Resource",
+      "Resource Type",
+      "Resource Name",
       "Resource ID",
       "IP Address",
-      "Correlation ID"
+      "Country",
+      "Device",
+      "Old Values",
+      "New Values",
+      "Metadata"
     ];
 
-    const rows = logs.map(log => [
+    const rows = logs.map((log: any) => [
       log.id,
       log.created_at.toISOString(),
       log.action,
       log.category,
+      log.severity || log.metadata?.riskLevel || "INFO",
       log.status,
-      log.actor_name || "",
-      log.actor_email || "",
+      log.actor_name || log.actor_id || "System",
+      log.actor_email || "system@internal",
       log.target_resource || "",
+      log.metadata?.resourceName || "",
       log.resource_id || "",
       log.ip_address || "",
-      log.correlation_id || ""
+      log.metadata?.country || "",
+      log.user_agent || log.metadata?.browser || "",
+      log.old_values ? JSON.stringify(log.old_values) : "",
+      log.new_values ? JSON.stringify(log.new_values) : "",
+      log.metadata ? JSON.stringify(log.metadata) : ""
     ].map(val => this.escapeCSV(val)));
 
     return [headers.join(","), ...rows.map(r => r.join(","))].join("\n");

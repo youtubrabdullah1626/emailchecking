@@ -14,6 +14,7 @@ export interface ImportSessionMetadata {
 
 export interface HeavyDataset {
   sessionId: string;
+  campaignId?: string;
   rawRows?: any[];
   validatedRecords?: any[];
   sequences?: any[];

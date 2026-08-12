@@ -27,6 +27,9 @@ export async function GET() {
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);
 
+    const oneHourAgo = new Date();
+    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+
     const [
       activeSequences,
       sequenceEmailsSentToday,
@@ -40,6 +43,11 @@ export async function GET() {
       recentAudits,
       schedulerHealth,
       emailAccount,
+      dailyLimitConfig,
+      hourlyLimitConfig,
+      sequenceLimitConfig,
+      bannerThemeConfig,
+      emailsSentThisHour,
     ] = await Promise.all([
       prisma.sequence.count({ where: { status: "ACTIVE" } }),
       prisma.emailEvent.count({
@@ -95,6 +103,24 @@ export async function GET() {
       prisma.emailAccount.findFirst({
         orderBy: { updated_at: "desc" },
         select: { email: true, connection_status: true }
+      }),
+      prisma.platform_configs.findFirst({
+        where: { key: "MAX_DAILY_EMAILS" }
+      }),
+      prisma.platform_configs.findFirst({
+        where: { key: "HOURLY_EMAIL_LIMIT" }
+      }),
+      prisma.platform_configs.findFirst({
+        where: { key: "MAX_ACTIVE_SEQUENCES" }
+      }),
+      prisma.platform_configs.findFirst({
+        where: { key: "BANNER_THEME" }
+      }),
+      prisma.emailEvent.count({
+        where: {
+          event_type: "SENT",
+          occurred_at: { gte: oneHourAgo },
+        },
       }),
     ]);
 
@@ -176,6 +202,11 @@ export async function GET() {
       ),
       geminiConfigured: !!process.env.GEMINI_API_KEY,
       systemTimestamp: new Date().toISOString(),
+      dailyLimit: dailyLimitConfig?.value ? parseInt(String(dailyLimitConfig.value), 10) : 500,
+      hourlyLimit: hourlyLimitConfig?.value ? parseInt(String(hourlyLimitConfig.value), 10) : 50,
+      sequenceLimit: sequenceLimitConfig?.value ? parseInt(String(sequenceLimitConfig.value), 10) : 5,
+      emailsSentThisHour: emailsSentThisHour ?? 0,
+      bannerTheme: bannerThemeConfig?.value ? String(bannerThemeConfig.value) : "DEFAULT",
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to load dashboard metrics";

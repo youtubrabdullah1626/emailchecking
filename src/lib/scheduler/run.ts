@@ -22,6 +22,7 @@ import { findCandidateSteps, findStaleProcessingSteps } from "./query";
 import { isStepFullyEligible } from "./eligibility";
 import { claimStep } from "./claim";
 import { log } from "./logger";
+import prisma from "@/lib/prisma";
 import type {
   SchedulerRunOptions,
   SchedulerRunResult,
@@ -41,7 +42,7 @@ const DEFAULT_MAX_CLAIMS = 50;
 export async function runScheduler(
   options: SchedulerRunOptions = {}
 ): Promise<SchedulerRunResult> {
-  const { dryRun = false, maxClaims = DEFAULT_MAX_CLAIMS } = options;
+  let { dryRun = false, maxClaims = DEFAULT_MAX_CLAIMS } = options;
   const runId = randomUUID();
   const startedAt = new Date();
 
@@ -61,6 +62,67 @@ export async function runScheduler(
   const claimedStepIds: string[] = [];
   const errors: string[] = [];
   let staleProcessingSteps: StaleStepInfo[] = [];
+
+  // ── Capacity Enforcement (Hourly & Daily Limits) ──────────────────────────
+  try {
+    const oneHourAgo = new Date();
+    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+
+    const startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const [
+      dailyLimitConfig,
+      hourlyLimitConfig,
+      emailsSentThisHour,
+      emailsSentToday,
+    ] = await Promise.all([
+      prisma.platform_configs.findFirst({ where: { key: "MAX_DAILY_EMAILS" } }),
+      prisma.platform_configs.findFirst({ where: { key: "HOURLY_EMAIL_LIMIT" } }),
+      prisma.emailEvent.count({ where: { event_type: "SENT", occurred_at: { gte: oneHourAgo } } }),
+      prisma.emailEvent.count({ where: { event_type: "SENT", occurred_at: { gte: startOfDay } } }),
+    ]);
+
+    const maxDaily = dailyLimitConfig?.value ? parseInt(String(dailyLimitConfig.value), 10) : 500;
+    const maxHourly = hourlyLimitConfig?.value ? parseInt(String(hourlyLimitConfig.value), 10) : 50;
+
+    const availableDaily = Math.max(0, maxDaily - emailsSentToday);
+    const availableHourly = Math.max(0, maxHourly - emailsSentThisHour);
+
+    const dynamicMaxClaims = Math.min(availableDaily, availableHourly, maxClaims);
+
+    if (dynamicMaxClaims <= 0) {
+      log("scheduler_skipped_due_to_limits", {
+        runId,
+        availableDaily,
+        availableHourly,
+        emailsSentToday,
+        emailsSentThisHour
+      });
+      return {
+        runId,
+        startedAt: startedAt.toISOString(),
+        finishedAt: new Date().toISOString(),
+        durationMs: Date.now() - startedAt.getTime(),
+        candidatesFound: 0,
+        eligibleSteps: 0,
+        claimedSteps: 0,
+        skippedSteps: 0,
+        errorSteps: 0,
+        errors: [],
+        claimedStepIds: [],
+        dryRun,
+        status: "SUCCESS", // Or SKIPPED, but SUCCESS avoids alerting
+        staleProcessingSteps: [],
+      };
+    }
+    
+    // Override maxClaims for this run based on available capacity
+    maxClaims = dynamicMaxClaims;
+  } catch (err) {
+    log("scheduler_limit_check_failed", { runId, error: String(err) });
+    // If limits check fails, continue with default maxClaims to avoid halting completely
+  }
 
   try {
     // ── Step 1: query candidates ──────────────────────────────────────────────

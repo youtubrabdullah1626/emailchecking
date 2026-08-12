@@ -480,88 +480,57 @@ export function ImportProvider({ children }: { children: ReactNode }) {
   };
 
   const approveImport = async () => {
-    // We defer setting status to EXECUTING until AFTER the merge is complete
-    // so the LiveExecutionDashboard doesn't mount and read a partial queueRef.
-    
-    // If appending, we need to merge queues into the TARGET session
-    if (appendTargetSessionId) {
-      // 1. Load target session heavy data
-      const targetData = await recoveryEngine.restoreSession(appendTargetSessionId);
-      const targetHeavyData = targetData?.heavyData || {};
-      
-      // Merge Queue
-      const existingQ = targetHeavyData.executionQueue || [];
-      const existingIds = new Set(existingQ.map((i: any) => i.queueId));
-      const existingQClean = existingQ.map((i: any) => ({ ...i, isNew: false }));
-      
-      const newUniqueItems = queueRef.current
-        .filter(i => !existingIds.has(i.queueId))
-        .map(i => ({ ...i, isNew: true }));
-        
-      const mergedQueue = [...existingQClean, ...newUniqueItems];
-      
-      // Merge Records
-      const existingRecords = targetHeavyData.validatedRecords || [];
-      const existingRecEmails = new Set(existingRecords.map((i: any) => i.email));
-      const newUniqueRecords = recordsRef.current.filter(i => !existingRecEmails.has(i.email));
-      const mergedRecords = [...existingRecords, ...newUniqueRecords];
-
-      // Merge Sequences
-      const existingSeq = targetHeavyData.sequences || [];
-      const existingSeqIds = new Set(existingSeq.map((i: any) => i.recordId));
-      const newUniqueSeq = sequencesRef.current.filter(i => !existingSeqIds.has(i.recordId));
-      const mergedSeq = [...existingSeq, ...newUniqueSeq];
-
-      // Recompute summary for target session
-      const mergedSummary: QueueSummary = {
-        totalItems: mergedQueue.length,
-        totalDays: Object.keys(mergedQueue.reduce((acc, item) => ({...acc, [item.scheduledDate]: true}), {})).length,
-        startDate: mergedQueue[0]?.scheduledDate || "",
-        endDate: mergedQueue[mergedQueue.length - 1]?.scheduledDate || "",
-        itemsPerDay: {},
-        warmupLimitsHit: []
+    perfMonitor.startPhase();
+    setStatus("EXECUTING"); // Add loading state
+    try {
+      // 1. Prepare payload for Handoff API
+      const payload = {
+        campaignName: uploadedFile?.name || "Smart Import Campaign",
+        validatedRecords: recordsRef.current,
+        sequences: sequencesRef.current,
+        executionQueue: queueRef.current
       };
-      
-      // IMPORTANT: We must switch the active session BEFORE calling saveCheckpoint!
-      const tempSessionId = sessionId;
-      await recoveryEngine.restoreSession(appendTargetSessionId);
-      setSessionId(appendTargetSessionId);
 
-      // Update in-memory state so the LiveExecutionDashboard shows ALL items
-      queueRef.current = mergedQueue;
-      recordsRef.current = mergedRecords;
-      sequencesRef.current = mergedSeq;
-      setQueueSummary(mergedSummary);
-
-      // 2. Save merged data directly to the TARGET session
-      await recoveryEngine.saveCheckpoint("EXECUTION_STARTED", {
-        status: "EXECUTING",
-        heavyData: { 
-          ...targetHeavyData, 
-          executionQueue: mergedQueue,
-          validatedRecords: mergedRecords,
-          sequences: mergedSeq,
-          queueSummary: mergedSummary 
-        }
+      // 2. Call Handoff API
+      const response = await fetch("/api/campaigns/handoff", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
       });
-      
-      // 3. Delete the temporary continuation session from history
-      if (tempSessionId && tempSessionId !== appendTargetSessionId) {
-        const storage = new StorageEngine();
-        await storage.deleteSession(tempSessionId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to commit campaign to database.");
       }
-      
-      // 4. Clear the append target so future uploads start fresh
-      setAppendTargetSessionId(null);
-    } else {
-      await recoveryEngine.saveCheckpoint("EXECUTION_STARTED", {
-        status: "EXECUTING"
-      });
-    }
 
-    // Now that in-memory refs and database are fully merged and saved, 
-    // safely trigger the UI transition to mount the Live Execution Dashboard
-    setStatus("EXECUTING");
+      const responseData = await response.json();
+      const newCampaignId = responseData.campaignId || responseData.data?.campaignId;
+
+      if (!newCampaignId) {
+        throw new Error("API succeeded but did not return a campaign ID.");
+      }
+
+      // 3. Mark Session as Live instead of purging
+      if (sessionId) {
+        await recoveryEngine.saveCheckpoint("EXECUTION_STARTED", {
+          status: "EXECUTING",
+          heavyData: { campaignId: newCampaignId }
+        });
+        setSessionId(null);
+      }
+
+      perfMonitor.endPhase("handoffTimeMs");
+
+      // 4. Redirect to the Prospects page filtered by this campaign
+      window.location.href = `/prospects?source=smart_import`;
+      
+    } catch (error: any) {
+      console.error("Handoff failed", error);
+      setErrorMessage(error.message || "Failed to start campaign.");
+      setStatus("ERROR");
+    }
   };
 
   const updateQueueItemState = async (queueId: string, liveStatus: any, lastEventTime: string) => {

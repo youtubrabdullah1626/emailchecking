@@ -7,7 +7,7 @@ export function StatusBadge({ status }: { status: AuditStatus }) {
   const getBadgeProps = () => {
     switch (status) {
       case "Success":
-        return { variant: "success" as const, icon: <CheckCircle2 className="w-3 h-3 mr-1" />, label: "Success" };
+        return { variant: "success" as const, icon: <Clock className="w-3 h-3 mr-1" />, label: "Success" };
       case "Failed":
         return { variant: "danger" as const, icon: <XCircle className="w-3 h-3 mr-1" />, label: "Failed" };
       case "Warning":
@@ -19,16 +19,17 @@ export function StatusBadge({ status }: { status: AuditStatus }) {
   };
 
   const props = getBadgeProps();
-  // Using custom styling to match the screenshot (very light background, colored text/border)
+  
+  // Premium soft-tinted badges
   return (
-    <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-      props.variant === 'info' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-      props.variant === 'success' ? 'bg-green-50 text-green-700 border-green-200' :
-      props.variant === 'danger' ? 'bg-red-50 text-red-700 border-red-200' :
-      'bg-amber-50 text-amber-700 border-amber-200'
+    <div className={`inline-flex items-center whitespace-nowrap px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide border ${
+      props.variant === 'info' ? 'bg-slate-50 text-slate-600 border-slate-200/60' :
+      props.variant === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' :
+      props.variant === 'danger' ? 'bg-red-50 text-red-700 border-red-200/60' :
+      'bg-amber-50 text-amber-700 border-amber-200/60'
     }`}>
       {props.icon}
-      {status === "Pending" ? "Pending" : status} 
+      {status === "Pending" ? "PENDING" : status.toUpperCase()} 
     </div>
   );
 }
@@ -46,22 +47,20 @@ export function ActionBadge({ action, category }: { action: string, category: Ac
   const formattedAction = formatAction(action);
   
   // Choose color based on keywords to match screenshot (e.g. Config updated = yellow, Login = blue)
-  let colorClass = "bg-slate-50 text-slate-700 border-slate-200";
+  let colorClass = "bg-slate-100 text-slate-700";
   
   const lower = formattedAction.toLowerCase();
   if (lower.includes("update") || lower.includes("config") || lower.includes("edit")) {
-    colorClass = "bg-amber-50 text-amber-700 border-amber-200";
-  } else if (lower.includes("login") || lower.includes("approve") || lower.includes("create")) {
-    colorClass = "bg-blue-50 text-blue-700 border-blue-200";
-  } else if (lower.includes("delete") || lower.includes("remove")) {
-    colorClass = "bg-red-50 text-red-700 border-red-200";
-  } else {
-    colorClass = "bg-slate-50 text-slate-700 border-slate-200"; // default
+    colorClass = "bg-amber-100 text-amber-800";
+  } else if (lower.includes("login") || lower.includes("approve") || lower.includes("create") || lower.includes("start")) {
+    colorClass = "bg-blue-100 text-blue-700";
+  } else if (lower.includes("delete") || lower.includes("remove") || lower.includes("stop")) {
+    colorClass = "bg-red-100 text-red-700";
   }
 
   return (
-    <div className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border whitespace-nowrap ${colorClass}`}>
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide ${colorClass}`}>
       {formattedAction}
-    </div>
+    </span>
   );
 }

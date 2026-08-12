@@ -28,11 +28,15 @@ export class AuditService {
     const safeLimit = Math.min(Math.max(limit, 1), 100);
     const { logs, nextCursor } = await this.repository.getAuditLogs(filters, safeLimit, cursor);
 
-    // 3. Sanitize data before returning
+    // 3. Fetch Real-time Stats
+    const stats = await this.repository.getAuditStats(filters);
+
+    // 4. Sanitize data before returning
     const sanitizedLogs = logs.map(this.sanitizeEvent);
 
     return {
       data: sanitizedLogs,
+      stats,
       pagination: { nextCursor, limit: safeLimit },
       filters,
     };
@@ -108,6 +112,14 @@ export class AuditService {
     };
   };
 
+  private computeSeverity(action: string, category: string, status: string): "CRITICAL" | "WARNING" | "INFO" {
+    if (status === "FAILURE") return "CRITICAL";
+    if (category === "AUTHENTICATION" || category === "BILLING" || category === "SECURITY") return "WARNING";
+    if (action.toLowerCase().includes("delete")) return "WARNING";
+    if (action.toLowerCase().includes("export") || action.toLowerCase().includes("import")) return "WARNING";
+    return "INFO";
+  }
+
   /**
    * Fast, non-blocking logger for system actions.
    * This is a fire-and-forget mechanism to ensure logging NEVER hangs or crashes the main request.
@@ -125,11 +137,16 @@ export class AuditService {
       ipAddress?: string;
       deviceInfo?: string;
       metadata?: any;
+      oldValues?: any;
+      newValues?: any;
+      severity?: "CRITICAL" | "WARNING" | "INFO";
     } = {}
   ) {
     // Fire-and-forget promise to prevent blocking the HTTP response
     Promise.resolve().then(async () => {
       try {
+        const severity = details.severity || this.computeSeverity(action, category, status);
+        
         await this.repository.logEvent({
           actor_id: actorId || 'system',
           actor_email: actorEmail || 'system@internal',
@@ -138,14 +155,14 @@ export class AuditService {
           resource_id: details.resourceId || null,
           target_resource: resourceType,
           status: status,
-          severity: status === "FAILURE" ? "CRITICAL" : "INFO",
+          severity: severity,
           ip_address: details.ipAddress || undefined,
           user_agent: details.deviceInfo || undefined,
           session_id: undefined,
           correlation_id: undefined,
-          old_values: undefined,
-          new_values: undefined,
-          metadata: details.metadata || undefined,
+          old_values: details.oldValues ? JSON.parse(JSON.stringify(details.oldValues)) : undefined,
+          new_values: details.newValues ? JSON.parse(JSON.stringify(details.newValues)) : undefined,
+          metadata: { ...details.metadata, resourceName, riskLevel: severity },
         });
       } catch (error) {
         // Silently catch audit log failures so they don't bring down the production app

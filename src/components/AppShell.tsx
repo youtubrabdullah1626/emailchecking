@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { SWRConfig } from 'swr';
+import useSWR, { SWRConfig } from 'swr';
 import { apiClient } from '@/lib/api-client';
 
 import { usePathname } from 'next/navigation';
@@ -11,6 +11,13 @@ import { usePathname } from 'next/navigation';
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const pathname = usePathname();
+
+  // Fetch global configuration (like bannerTheme)
+  const { data: stats } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url).catch(() => null), {
+    refreshInterval: 15000,
+    dedupingInterval: 5000,
+  });
+  const theme = stats?.bannerTheme || "DEFAULT";
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -58,7 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         fetcher: (url: string) => apiClient<any>(url).catch(() => null)
       }}
     >
-      <div className="flex h-screen w-full bg-background overflow-hidden">
+      <div className="flex h-screen w-full bg-background overflow-hidden transition-colors duration-500" data-theme={theme !== "DEFAULT" ? theme : undefined}>
         {/* Desktop Sidebar (hidden on mobile) */}
         <div className="hidden md:block h-full">
           <Sidebar />

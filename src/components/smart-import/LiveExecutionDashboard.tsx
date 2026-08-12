@@ -601,7 +601,7 @@ export function LiveExecutionDashboard() {
           <ScrollArea className="flex-1 p-6">
             <div className="space-y-8 relative pb-8">
               {/* Vertical connecting line for micro-timeline */}
-              <div className="absolute left-6 top-4 bottom-8 w-px bg-border/60" />
+              <div className="absolute left-6 top-4 bottom-8 w-px bg-slate-200" />
 
               {selectedLeadItems.map((item, idx) => {
                 const step = item.sequenceStep.stepNumber;
@@ -619,40 +619,40 @@ export function LiveExecutionDashboard() {
                 const exactDate = format(parseISO(item.scheduledDate), "MMM do");
 
                 return (
-                  <div key={item.queueId} className="relative pl-14">
+                  <div key={item.queueId} className="relative pl-10 group">
                     {/* Step Marker */}
-                    <div className="absolute left-[20px] top-1 h-2 w-2 rounded-full bg-primary ring-4 ring-background shadow-sm" />
+                    <div className="absolute left-[20px] top-1.5 h-2.5 w-2.5 rounded-full bg-indigo-500 ring-4 ring-background shadow-sm z-10" />
 
-                    <div className="bg-background rounded-lg border border-border shadow-sm p-4 space-y-3">
-
+                    <div className="flex flex-col space-y-2 pb-6">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary shadow-none">
+                        <div className="flex items-center gap-2.5">
+                          <span className="font-semibold text-slate-900 text-[13px] tracking-tight">
                             {step === 1 ? "Initial Email" : `Follow-up ${step - 1}`}
-                          </Badge>
-                          <span className="text-xs font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                          </span>
+                          <span className="text-[11px] font-medium text-slate-400 bg-slate-100/50 px-2 py-0.5 rounded-full">
                             {delayStr}
                           </span>
                         </div>
-                        {getStatusBadge(item.liveStatus)}
-                      </div>
-
-                      <div className="bg-muted/30 rounded-md p-3 border border-border/50">
-                        <div className="text-sm text-foreground/90 whitespace-pre-wrap font-sans">
-                          {item.sequenceStep.content}
+                        <div className="scale-[0.85] origin-right">
+                          {getStatusBadge(item.liveStatus)}
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/50">
-                        <div className="flex items-center gap-1.5 font-medium">
-                          <CalendarIcon className="h-3.5 w-3.5" />
-                          {exactDate} <span className="mx-0.5">•</span> {item.scheduledTime}
-                        </div>
-                        {item.liveStatus !== "SCHEDULED" && (
-                          <div className="flex items-center gap-1">
+                      <div className="bg-slate-50/50 rounded-xl p-3.5 text-[13px] text-slate-600 border border-slate-100 leading-relaxed shadow-sm hover:shadow transition-shadow">
+                        {item.sequenceStep.content}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-[11px] text-slate-400 pt-1 font-medium">
+                        {item.liveStatus === "SCHEDULED" ? (
+                          <>
+                            <CalendarIcon className="h-3 w-3" />
+                            Scheduled for {exactDate} at {item.scheduledTime}
+                          </>
+                        ) : (
+                          <>
                             <Activity className="h-3 w-3" />
-                            {item.liveStatus.toLowerCase()} at {item.lastEventTime}
-                          </div>
+                            <span className="capitalize">{item.liveStatus.toLowerCase()}</span> on {exactDate} at {item.lastEventTime}
+                          </>
                         )}
                       </div>
                     </div>
@@ -661,9 +661,9 @@ export function LiveExecutionDashboard() {
               })}
 
               {selectedLeadItems.length > 0 && (
-                <div className="relative pl-14 pt-2">
-                  <div className="absolute left-[20px] top-4 h-2 w-2 rounded-full bg-muted ring-4 ring-background border border-border" />
-                  <span className="text-sm font-medium text-muted-foreground">Journey Ends</span>
+                <div className="relative pl-10 pt-2">
+                  <div className="absolute left-[20px] top-4 h-2.5 w-2.5 rounded-full bg-slate-200 ring-4 ring-background z-10" />
+                  <span className="text-[13px] font-medium text-slate-400 tracking-tight">Journey Ends</span>
                 </div>
               )}
             </div>

@@ -377,3 +377,43 @@
     inset: -1px;
   }
 }
+/* -- GLOBAL THEME OVERRIDES -- */
+[data-theme="GREEN"] {
+  --primary: 142 71% 45%;
+  --sidebar-primary: 142 71% 45%;
+  --sidebar-ring: 142 71% 45%;
+  --ring: 142 71% 45%;
+  --chart-1: 142 71% 45%;
+}
+
+[data-theme="RED"] {
+  --primary: 346 87% 61%;
+  --sidebar-primary: 346 87% 61%;
+  --sidebar-ring: 346 87% 61%;
+  --ring: 346 87% 61%;
+  --chart-1: 346 87% 61%;
+}
+
+[data-theme="BLUE"] {
+  --primary: 221 83% 53%;
+  --sidebar-primary: 221 83% 53%;
+  --sidebar-ring: 221 83% 53%;
+  --ring: 221 83% 53%;
+  --chart-1: 221 83% 53%;
+}
+
+[data-theme="ORANGE"] {
+  --primary: 24 98% 50%;
+  --sidebar-primary: 24 98% 50%;
+  --sidebar-ring: 24 98% 50%;
+  --ring: 24 98% 50%;
+  --chart-1: 24 98% 50%;
+}
+
+[data-theme="PURPLE"] {
+  --primary: 271 91% 65%;
+  --sidebar-primary: 271 91% 65%;
+  --sidebar-ring: 271 91% 65%;
+  --ring: 271 91% 65%;
+  --chart-1: 271 91% 65%;
+}

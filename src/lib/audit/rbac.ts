@@ -32,9 +32,8 @@ export function requireAdminRole(user: SessionUser | null | undefined): void {
  * Placeholder for actual NextAuth / Supabase session retrieval.
  */
 export async function getSessionUser(): Promise<SessionUser | null> {
-  // In a real application, this would decode the JWT or query the DB.
-  // For now, we mock a SUPER_ADMIN session for development/demonstration.
-  // TODO: Replace with actual session logic (`await getServerSession(authOptions)`)
+  // Integration Point: Replace with real Identity Provider session in future phase
+  // (e.g. `await getServerSession(authOptions)` or `supabase.auth.getSession()`)
   return {
     id: "mock_admin_123",
     email: "admin@enterprise.local",

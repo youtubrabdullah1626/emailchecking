@@ -6,6 +6,7 @@ interface StatCardProps {
   title: string;
   value: string | number;
   icon?: ReactNode;
+  iconBg?: string;
   trend?: {
     value: number;
     isPositive: boolean;
@@ -17,13 +18,17 @@ interface StatCardProps {
   badge?: ReactNode; // Temporarily added for existing Next.js pages
 }
 
-export function StatCard({ title, value, icon, trend, sparkline, className, subtitle, badge }: StatCardProps) {
+export function StatCard({ title, value, icon, iconBg, trend, sparkline, className, subtitle, badge }: StatCardProps) {
   return (
-    <Card className={cn("hover-elevate transition-shadow", className)}>
+    <Card className={cn("hover-elevate transition-all duration-300", className)}>
       <CardContent className="p-6">
         <div className="flex justify-between items-start">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          {icon && <div className="text-muted-foreground/70">{icon}</div>}
+          {icon && (
+            <div className={cn("flex items-center justify-center rounded-lg p-2 transition-colors", iconBg || "text-muted-foreground/70")}>
+              {icon}
+            </div>
+          )}
         </div>
         {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
         <div className="mt-4 flex items-baseline gap-4">

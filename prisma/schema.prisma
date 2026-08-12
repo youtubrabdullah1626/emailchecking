@@ -8,6 +8,20 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model Campaign {
+  id         String     @id @default(cuid())
+  name       String
+  status     String     @default("ACTIVE")
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
+  user_id    String
+  users      users      @relation(fields: [user_id], references: [id])
+  prospects  Prospect[]
+
+  @@index([user_id, created_at])
+  @@map("campaigns")
+}
+
 /// A prospect is a person being outreached.
 /// One prospect has at most one active outreach sequence.
 model Prospect {
@@ -20,10 +34,13 @@ model Prospect {
   status                ProspectStatus        @default(ACTIVE)
   created_at            DateTime              @default(now())
   user_id               String
+  campaign_id           String?
+  source                ProspectSource        @default(MANUAL)
+  adhoc_emails          AdhocEmail[]
+  campaign              Campaign?             @relation(fields: [campaign_id], references: [id])
   users                 users                 @relation(fields: [user_id], references: [id])
   reply_classifications ReplyClassification[]
   sequences             Sequence[]
-  adhoc_emails          AdhocEmail[]
 
   @@unique([user_id, email])
   @@index([created_at])
@@ -377,16 +394,28 @@ model config_versions {
 }
 
 model feature_flags {
-  id               String         @id
+  id               String          @id @default(cuid())
+  key              String          @unique
   name             String
-  description      String
+  description      String?
   category         ConfigCategory
-  status           FeatureStatus  @default(DISABLED)
-  rollout_percent  Int            @default(100)
-  rollout_audience String         @default("Everyone")
-  risk_level       RiskLevel      @default(SAFE)
-  updated_by       String
-  last_updated     DateTime       @default(now())
+  enabled          Boolean         @default(true)
+  risk_level       RiskLevel       @default(SAFE)
+  is_safe_runtime  Boolean         @default(true)
+  requires_reason  Boolean         @default(false)
+  rollout_strategy RolloutStrategy @default(GLOBAL)
+  rollout_percent  Int?
+  rollout_rules    Json?
+  depends_on       String[]
+  environment      String          @default("production")
+  updated_by       String?
+  updated_at       DateTime        @updatedAt
+  created_at       DateTime        @default(now())
+  history          flag_history[]
+
+  @@index([key])
+  @@index([category])
+  @@index([environment])
 }
 
 model oauth_states {
@@ -403,26 +432,44 @@ model oauth_states {
 }
 
 model platform_configs {
-  id            String         @id
-  name          String
-  description   String
-  category      ConfigCategory
-  data_type     DataType
-  current_value String
-  allowed_range String?
-  risk_level    RiskLevel      @default(WARNING)
-  updated_by    String
-  last_updated  DateTime       @default(now())
+  id               String         @id @default(cuid())
+  key              String         @unique
+  name             String
+  description      String?
+  category         ConfigCategory
+  data_type        DataType
+  value            Json
+  default_value    Json
+  validation_rules Json?
+  is_safe_runtime  Boolean        @default(true)
+  requires_reason  Boolean        @default(false)
+  risk_level       RiskLevel      @default(SAFE)
+  environment      String         @default("production")
+  updated_by       String?
+  updated_at       DateTime       @updatedAt
+  created_at       DateTime       @default(now())
+  history          config_history[]
+
+  @@index([key])
+  @@index([category])
+  @@index([environment])
 }
 
 model provider_configs {
-  id              String         @id
-  service         String
-  description     String
-  active_provider String
-  category        ConfigCategory
-  updated_by      String
-  last_updated    DateTime       @default(now())
+  id               String            @id @default(cuid())
+  key              String            @unique
+  name             String
+  description      String?
+  active_provider  String
+  allowed_values   String[]
+  environment      String            @default("production")
+  updated_by       String?
+  updated_at       DateTime          @updatedAt
+  created_at       DateTime          @default(now())
+  history          provider_history[]
+
+  @@index([key])
+  @@index([environment])
 }
 
 model sessions {
@@ -445,6 +492,7 @@ model users {
   adminNotes     String?
   isSuspended    Boolean        @default(false)
   accounts       accounts[]
+  campaigns      Campaign[]
   email_accounts EmailAccount[]
   prospects      Prospect[]
   sequences      Sequence[]
@@ -470,6 +518,30 @@ model waitlist {
 
   @@index([position])
   @@index([status])
+}
+
+/// Manual one-off emails sent outside of automated sequences.
+model AdhocEmail {
+  id               String           @id @default(cuid())
+  prospect_id      String
+  subject          String
+  body             String
+  sent_at          DateTime?
+  gmail_message_id String?
+  gmail_thread_id  String?
+  error_message    String?
+  scheduled_at     DateTime?
+  status           AdhocEmailStatus @default(SENT)
+  prospect         Prospect         @relation(fields: [prospect_id], references: [id], onDelete: Cascade)
+
+  @@index([prospect_id, sent_at])
+  @@map("adhoc_emails")
+}
+
+enum ProspectSource {
+  MANUAL
+  SMART_IMPORT
+  API
 }
 
 enum ProspectStatus {
@@ -610,20 +682,62 @@ enum AdhocEmailStatus {
   FAILED
 }
 
-/// Manual one-off emails sent outside of automated sequences.
-model AdhocEmail {
-  id               String   @id @default(cuid())
-  prospect_id      String
-  subject          String
-  body             String
-  status           AdhocEmailStatus @default(SENT)
-  scheduled_at     DateTime?
-  sent_at          DateTime?
-  error_message    String?
-  gmail_message_id String?
-  gmail_thread_id  String?
-  prospect         Prospect @relation(fields: [prospect_id], references: [id], onDelete: Cascade)
 
-  @@index([prospect_id, sent_at])
-  @@map("adhoc_emails")
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 17 — Enterprise History Models & Supporting Enums
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum RolloutStrategy {
+  GLOBAL
+  PERCENTAGE
+  USER_LIST
+  ROLE
+  PLAN
+  COUNTRY
 }
+
+/// Immutable change history for Feature Flags
+model flag_history {
+  id          String        @id @default(cuid())
+  flag        feature_flags @relation(fields: [flag_id], references: [id], onDelete: Cascade)
+  flag_id     String
+  old_value   Json
+  new_value   Json
+  reason      String?
+  is_rollback Boolean       @default(false)
+  changed_by  String
+  changed_at  DateTime      @default(now())
+
+  @@index([flag_id, changed_at])
+}
+
+/// Immutable change history for Platform Configuration
+model config_history {
+  id         String          @id @default(cuid())
+  config     platform_configs @relation(fields: [config_id], references: [id], onDelete: Cascade)
+  config_id  String
+  old_value  Json
+  new_value  Json
+  reason     String?
+  is_rollback Boolean        @default(false)
+  changed_by String
+  changed_at DateTime        @default(now())
+
+  @@index([config_id, changed_at])
+}
+
+/// Immutable change history for Provider Configuration
+model provider_history {
+  id          String          @id @default(cuid())
+  provider    provider_configs @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+  provider_id String
+  old_value   Json
+  new_value   Json
+  reason      String?
+  is_rollback Boolean         @default(false)
+  changed_by  String
+  changed_at  DateTime        @default(now())
+
+  @@index([provider_id, changed_at])
+}
+

@@ -23,18 +23,26 @@ import { AuditEventDrawer } from "./components/AuditEventDrawer";
 import { useAuditLogs } from "./hooks/useAuditLogs";
 
 export default function AuditPage() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [filterState, setFilterState] = useState({ category: "", severity: "", status: "", time: "" });
   const [selectedEvent, setSelectedEvent] = useState<AuditLogEvent | null>(null);
+  const [isLiveMode, setIsLiveMode] = useState(false);
 
   // SWR Hook for Infinite Scrolling / Cursor Pagination
   const { 
     logs, 
+    stats,
     isLoading, 
     isLoadingMore, 
     isReachingEnd, 
     loadMore, 
-    refresh 
-  } = useAuditLogs({ q: searchQuery }, 50);
+    refresh,
+    isRefreshing
+  } = useAuditLogs({ 
+    category: filterState.category, 
+    status: filterState.status,
+    severity: filterState.severity,
+    time: filterState.time
+  }, 50, isLiveMode);
 
   const [isClearing, setIsClearing] = useState(false);
   const [deleteMode, setDeleteMode] = useState<"month" | "all" | null>(null);
@@ -42,7 +50,8 @@ export default function AuditPage() {
   const handleExport = () => {
     // Basic export redirect (we built an endpoint for this!)
     const url = new URL("/api/admin/audit/export", window.location.origin);
-    if (searchQuery) url.searchParams.set("q", searchQuery);
+    if (filterState.category) url.searchParams.set("category", filterState.category);
+    if (filterState.status) url.searchParams.set("status", filterState.status);
     window.location.href = url.toString();
   };
 
@@ -78,53 +87,109 @@ export default function AuditPage() {
           description="Track important actions across the platform."
           actions={
             <div className="flex items-center gap-3">
-              <button 
-                onClick={refresh}
-                disabled={isLoading || isClearing}
-                className="p-2 border border-border rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
-                title="Refresh"
+              <button
+                onClick={() => setIsLiveMode(!isLiveMode)}
+                className={`px-4 py-2 rounded-md shadow-sm text-[13px] font-medium transition-all flex items-center gap-2 ${
+                  isLiveMode 
+                    ? "bg-green-500 text-white shadow-green-500/20" 
+                    : "bg-background border border-border text-foreground hover:bg-muted"
+                }`}
               >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-              </button>
-              
-              <button 
-                onClick={() => setDeleteMode("month")}
-                disabled={isClearing}
-                className="px-4 py-2 bg-background border border-border text-foreground rounded-md shadow-sm text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
-              >
-                Clear &gt; 1 Month
+                <span className={`w-2 h-2 rounded-full ${isLiveMode ? "bg-white animate-pulse" : "bg-slate-400"}`}></span>
+                Live Mode
               </button>
 
               <button 
                 onClick={() => setDeleteMode("all")}
                 disabled={isClearing}
-                className="px-4 py-2 bg-destructive/10 border border-destructive/20 text-destructive rounded-md shadow-sm text-sm font-medium hover:bg-destructive/20 transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-red-500 text-white rounded-md shadow-sm text-[13px] font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
               >
-                Clear All
+                Clear All Logs
+              </button>
+
+              <button 
+                onClick={refresh}
+                disabled={isLoading || isRefreshing || isClearing || isLiveMode}
+                className="px-4 py-2 bg-background border border-border text-foreground rounded-md shadow-sm text-[13px] font-medium hover:bg-muted transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing && !isLiveMode ? "animate-spin" : ""}`} />
+                Refresh
               </button>
 
               <button 
                 onClick={handleExport}
-                className="px-4 py-2 bg-background border border-border text-foreground rounded-md shadow-sm text-sm font-medium hover:bg-muted transition-colors flex items-center gap-2"
+                className="px-4 py-2 bg-background border border-border text-foreground rounded-md shadow-sm text-[13px] font-medium hover:bg-muted transition-colors flex items-center gap-2"
               >
-                <Download className="w-4 h-4 text-muted-foreground" />
+                <Download className="w-3.5 h-3.5 text-slate-500" />
                 Export CSV
               </button>
             </div>
           }
         />
 
-        <div className="animate-in fade-in duration-500">
-          <Card className="overflow-hidden border border-border shadow-sm">
-            <AuditFilters 
-              onSearch={setSearchQuery} 
-              onClear={() => setSearchQuery("")} 
-            />
-            
+        <div className="animate-in fade-in duration-500 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="relative overflow-hidden p-5 rounded-2xl border border-blue-100/50 bg-gradient-to-b from-blue-50/50 to-transparent shadow-sm flex flex-col justify-between group">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[13px] font-medium text-slate-600 tracking-tight">Total Events</span>
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center transition-transform group-hover:scale-110">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-3xl font-bold text-slate-900 tracking-tight">{stats?.total || 0}</span>
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden p-5 rounded-2xl border border-emerald-100/50 bg-gradient-to-b from-emerald-50/50 to-transparent shadow-sm flex flex-col justify-between group">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[13px] font-medium text-slate-600 tracking-tight">Success</span>
+                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center transition-transform group-hover:scale-110">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-3xl font-bold text-slate-900 tracking-tight">{stats?.successCount || 0}</span>
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden p-5 rounded-2xl border border-amber-100/50 bg-gradient-to-b from-amber-50/50 to-transparent shadow-sm flex flex-col justify-between group">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[13px] font-medium text-slate-600 tracking-tight">Failed / Warnings</span>
+                <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center transition-transform group-hover:scale-110">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-3xl font-bold text-slate-900 tracking-tight">{stats?.warningCount || 0}</span>
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden p-5 rounded-2xl border border-red-200/60 bg-gradient-to-b from-red-50 to-transparent shadow-sm flex flex-col justify-between group">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[13px] font-medium text-red-700 tracking-tight">Critical Alerts</span>
+                <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm shadow-red-200">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-3xl font-bold text-red-700 tracking-tight">{stats?.criticalCount || 0}</span>
+              </div>
+            </div>
+          </div>
+          
+          <AuditFilters 
+            filters={filterState}
+            setFilters={setFilterState}
+            onClear={() => setFilterState({ category: "", severity: "", status: "", time: "" })} 
+          />
+          
+          <Card className="flex-1 flex flex-col border-none sm:border-solid bg-transparent sm:bg-card overflow-hidden shadow-sm">
             <AuditDataTable 
               logs={logs as any} 
               onRowClick={setSelectedEvent} 
               isLoading={isLoading && logs.length === 0}
+              isRefreshing={isRefreshing}
             />
 
             <div className="p-4 border-t border-border flex items-center justify-between text-sm text-muted-foreground bg-muted/30">
