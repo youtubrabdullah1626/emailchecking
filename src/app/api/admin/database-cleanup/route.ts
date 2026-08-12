@@ -41,9 +41,9 @@ export async function POST(request: NextRequest) {
     const queries = {
       expiredTokens: { expires: { lt: now } },
       staleOauth: { created_at: { lt: oneDayAgo } }, // OAuth states only last 10 mins normally
-      oldErrors: { created_at: { lt: thirtyDaysAgo } }, // System Error logs
+      oldErrors: { lastSeen: { lt: thirtyDaysAgo } }, // System Error logs
       oldAuditLogs: { created_at: { lt: ninetyDaysAgo } }, // Audit logs > 90 days
-      oldAiLogs: { created_at: { lt: ninetyDaysAgo } }, // AI Usage logs > 90 days
+      oldAiLogs: { occurred_at: { lt: ninetyDaysAgo } }, // AI Usage logs > 90 days
       oldImportErrors: { createdAt: { lt: thirtyDaysAgo } } // Bulk import detailed errors
     };
 
