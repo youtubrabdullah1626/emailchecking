@@ -78,7 +78,6 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
       value={{ 
         provider: localStorageProvider,
         fallback: fallbackHeaderStats ? { "/api/dashboard/header-stats": fallbackHeaderStats } : {},
-        revalidateOnFocus: false,
         keepPreviousData: true,
         dedupingInterval: 5000,
         fetcher: (url: string) => apiClient<any>(url).catch(() => null)

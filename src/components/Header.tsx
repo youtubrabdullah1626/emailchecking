@@ -37,7 +37,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const { data: accountStats } = useSWR("/api/dashboard/header-stats", (url: string) => apiClient<any>(url));
-  const { data: globalStats } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url));
+  const { data: globalStats } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url), { refreshInterval: 30000 });
   const { data: notifData } = useSWR("/api/notifications/important", (url: string) => apiClient<any>(url));
   
   const [lastClearedTime, setLastClearedTime] = useState<number>(0);
