@@ -201,15 +201,15 @@ export default function SettingsPage() {
                     </CardHeader>
                     <CardContent className="space-y-4 max-w-md">
                       <div className="space-y-2">
-                        <FormLabel>Display Name</FormLabel>
+                        <label className="text-sm font-medium leading-none">Display Name</label>
                         <Input 
                           placeholder="E.g. Abdullah Hanjra" 
                           value={displayName}
                           onChange={(e) => setDisplayName(e.target.value)}
                         />
-                        <FormDescription>
+                        <p className="text-[0.8rem] text-muted-foreground">
                           This name will be used to greet you on the dashboard.
-                        </FormDescription>
+                        </p>
                       </div>
                     </CardContent>
                     <CardFooter className="bg-muted/50 py-4 px-6 mt-4">
