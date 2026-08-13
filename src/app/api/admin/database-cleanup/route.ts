@@ -64,7 +64,14 @@ export async function POST(request: NextRequest) {
     if (body.action === "vacuum") {
       try {
         // Postgres VACUUM must run one table at a time and outside transactions
-        const tables = ["import_errors", "ai_usage_logs", "AuditLog", "SystemError"];
+        const tables = [
+          "import_errors", 
+          "ai_usage_logs", 
+          "audit_logs", 
+          "system_errors", 
+          "verification_tokens", 
+          "oauth_states"
+        ];
         for (const table of tables) {
           try {
             await prisma.$executeRawUnsafe(`VACUUM ANALYZE "${table}"`);
