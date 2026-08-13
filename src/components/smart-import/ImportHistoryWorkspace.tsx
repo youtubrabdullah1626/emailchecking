@@ -12,6 +12,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,7 +76,7 @@ export function ImportHistoryWorkspace() {
   
   // Track which session is currently queued for confirmation in the AlertDialog
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
-  const [prospectAction, setProspectAction] = useState<"CANCEL" | "DELETE">("CANCEL");
+  const [confirmText, setConfirmText] = useState("");
 
   // Removed unmount timer clearing so optimistic deletes actually execute even if user navigates away
   useEffect(() => {
@@ -117,15 +118,16 @@ export function ImportHistoryWorkspace() {
     loadSessions();
   };
 
-  const handleDeleteInitiated = async (id: string, action: "CANCEL" | "DELETE") => {
+  const handleDeleteInitiated = async (id: string) => {
     // 1. Close the AlertDialog
     setSessionToDelete(null);
+    setConfirmText("");
 
     // 2. Optimistic hide
     setHiddenSessions(prev => new Set(prev).add(id));
 
     // 3. Delete immediately without a fragile 6-second timeout
-    await executeDelete(id, action);
+    await executeDelete(id, "CANCEL");
 
     // 4. Show the sleek toast
     toast.success("Campaign deleted", {
@@ -336,38 +338,45 @@ export function ImportHistoryWorkspace() {
       <AlertDialog open={!!sessionToDelete} onOpenChange={(open) => {
         if (!open) {
           setSessionToDelete(null);
-          setProspectAction("CANCEL"); // Reset action on close
+          setConfirmText(""); // Reset text on close
         }
       }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Campaign?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this campaign? <strong>All emails scheduled in this campaign will also be deleted.</strong>
+              Are you sure you want to delete this campaign? All emails scheduled in this campaign will be immediately cancelled. This action cannot be undone.
             </AlertDialogDescription>
-            <div className="mt-4 bg-muted/30 p-4 rounded-md border border-border">
-              <h4 className="text-sm font-medium mb-3 text-foreground">What should happen to the prospects in your CRM?</h4>
-              <RadioGroup value={prospectAction} onValueChange={(val: any) => setProspectAction(val)} className="space-y-3">
-                <div className="flex items-start space-x-3">
-                  <RadioGroupItem value="CANCEL" id="cancel" className="mt-1" />
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="cancel" className="text-sm font-medium">Mark as &quot;User Cancelled&quot;</Label>
-                    <p className="text-xs text-muted-foreground">Prospects stay in CRM but show a &quot;User Cancelled&quot; status.</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <RadioGroupItem value="DELETE" id="delete" className="mt-1" />
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="delete" className="text-sm font-medium text-destructive">Completely wipe from CRM</Label>
-                    <p className="text-xs text-muted-foreground">Permanently delete these prospects from your database entirely.</p>
-                  </div>
-                </div>
-              </RadioGroup>
+            <div className="mt-4 bg-red-50/50 p-4 rounded-md border border-red-100">
+              <h4 className="text-sm font-medium mb-2 text-red-800 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                Danger Zone
+              </h4>
+              <p className="text-sm text-red-700/90 mb-4">
+                Your prospects will safely remain in your CRM, but all scheduled sequences and active automation for this campaign will be permanently stopped.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="confirm" className="text-sm font-medium text-slate-700">
+                  To confirm, type <strong>delete</strong> below:
+                </Label>
+                <Input 
+                  id="confirm" 
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder="delete"
+                  className="max-w-xs focus-visible:ring-red-500"
+                  autoComplete="off"
+                />
+              </div>
             </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => sessionToDelete && handleDeleteInitiated(sessionToDelete, prospectAction)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction 
+              onClick={() => sessionToDelete && handleDeleteInitiated(sessionToDelete)} 
+              disabled={confirmText.toLowerCase() !== 'delete'}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+            >
               Delete Campaign
             </AlertDialogAction>
           </AlertDialogFooter>
