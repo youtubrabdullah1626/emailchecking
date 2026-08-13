@@ -108,21 +108,33 @@ export async function scanForReplies(): Promise<ScanResult> {
 
   for (const [userId, userThreads] of threadsByUser) {
     // Look up the user's CONNECTED email account for OAuth credentials
-    const emailAccount = await prisma.emailAccount.findFirst({
+    let emailAccount = await prisma.emailAccount.findFirst({
       where: {
         user_id: userId,
         connection_status: "CONNECTED",
         refresh_token: { not: null },
       },
       select: { email: true },
-      orderBy: { created_at: "asc" }, // use earliest connected account if multiple
+      orderBy: { created_at: "asc" },
     });
 
+    // Fallback: If no account matched user_id specifically, use the system's primary connected account
     if (!emailAccount) {
-      // No connected account for this user — log and skip gracefully
+      emailAccount = await prisma.emailAccount.findFirst({
+        where: {
+          connection_status: "CONNECTED",
+          refresh_token: { not: null },
+        },
+        select: { email: true },
+        orderBy: { created_at: "asc" },
+      });
+    }
+
+    if (!emailAccount) {
+      // No connected account in entire database — log and skip gracefully
       replyLog("reply_scan_no_account", {
         userId,
-        detail: `User ${userId} has no CONNECTED email account. Skipping ${userThreads.length} thread(s).`,
+        detail: `No CONNECTED email account found in system. Skipping ${userThreads.length} thread(s).`,
       });
       for (const thread of userThreads) {
         results.push({
@@ -131,7 +143,7 @@ export async function scanForReplies(): Promise<ScanResult> {
           prospectName: thread.prospectName,
           gmailThreadId: thread.gmailThreadId,
           outcome: "ERROR",
-          detail: "No connected Gmail account for this user.",
+          detail: "No connected Gmail account available in system.",
         });
       }
       continue;

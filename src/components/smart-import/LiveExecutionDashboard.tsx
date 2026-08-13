@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Send, MailOpen, Reply, AlertCircle, Clock, Activity, Calendar as CalendarIcon, User, MoreHorizontal, Play, Loader2, ArrowLeft, Trash2 } from "lucide-react";
+import { Send, MailOpen, Reply, AlertCircle, Clock, Activity, Calendar as CalendarIcon, User, MoreHorizontal, Play, Loader2, ArrowLeft, Trash2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO, differenceInDays } from "date-fns";
 
@@ -47,6 +47,7 @@ export function LiveExecutionDashboard() {
   // Lead Journey Sheet State
   const [selectedLead, setSelectedLead] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Reschedule Dialog State
   const [rescheduleItem, setRescheduleItem] = useState<LiveItem | null>(null);
@@ -168,6 +169,38 @@ export function LiveExecutionDashboard() {
     const interval = setInterval(checkLiveTrackingStatus, 15000);
     return () => clearInterval(interval);
   }, [updateQueueItemState]);
+
+  const handleManualSyncReplies = async () => {
+    try {
+      setIsSyncing(true);
+      toast.loading("Scanning Gmail for prospect replies...", { id: "manual-sync-replies" });
+      
+      const res = await fetch("/api/replies/scan", { method: "POST" });
+      const scanData = await res.json();
+      
+      // Trigger live tracking check
+      await checkLiveTrackingStatus();
+
+      if (scanData.realReplies && scanData.realReplies > 0) {
+        toast.success("New Replies Found!", {
+          id: "manual-sync-replies",
+          description: `Detected ${scanData.realReplies} new reply! Status updated to REPLIED.`
+        });
+      } else {
+        toast.success("Sync Complete", {
+          id: "manual-sync-replies",
+          description: "Scanned Gmail threads. All campaign statuses are up to date."
+        });
+      }
+    } catch (err: any) {
+      toast.error("Sync Failed", {
+        id: "manual-sync-replies",
+        description: err.message || "Failed to scan Gmail."
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Dispatch Worker (Simulates Backend Queue Processor)
   useEffect(() => {
@@ -387,9 +420,21 @@ export function LiveExecutionDashboard() {
             </p>
           </div>
         </div>
-        <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 shadow-sm">
-          🟢 ACTIVE
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleManualSyncReplies}
+            disabled={isSyncing}
+            className="gap-2 border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium"
+          >
+            <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? "Scanning..." : "Sync & Check Replies"}
+          </Button>
+          <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 shadow-sm">
+            🟢 ACTIVE
+          </Badge>
+        </div>
       </div>
 
       {/* Progress & Stats */}
