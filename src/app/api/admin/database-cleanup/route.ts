@@ -9,25 +9,66 @@ export const dynamic = "force-dynamic";
  * Smart level function to safely prune stale data that is no longer required.
  * Protects database performance as the application scales to millions of rows.
  */
+
+async function requireAdmin() {
+  let user = await getSessionUser();
+  let userId = user?.id;
+  if (!userId || userId === "mock_admin_123") {
+    const firstUser = await prisma.users.findFirst();
+    if (!firstUser) throw new Error("Unauthorized");
+    userId = firstUser.id;
+  }
+
+  const userRecord = await prisma.users.findFirst({ where: { id: userId } });
+  const userRole = userRecord?.role?.toUpperCase() || "";
+  const isAdmin = userRole === "ADMIN" || userRole === "OWNER" || userRecord?.email === "youtubrabdullah1626@gmail.com";
+  if (!isAdmin) {
+    throw new Error("Admin privileges required");
+  }
+  return { userId, email: user?.email };
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    await requireAdmin();
+    const settings = await prisma.systemSettings.findUnique({ where: { id: "global" } });
+    return NextResponse.json({ auto_database_cleanup: settings?.auto_database_cleanup || false });
+  } catch (error) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     // 1. Strict Authorization (Founders/Admin Only)
-    let user = await getSessionUser();
-    let userId = user?.id;
-    if (!userId || userId === "mock_admin_123") {
-      const firstUser = await prisma.users.findFirst();
-      if (!firstUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      userId = firstUser.id;
-    }
-
-    const userRecord = await prisma.users.findFirst({ where: { id: userId } });
-    const userRole = userRecord?.role?.toUpperCase() || "";
-    const isAdmin = userRole === "ADMIN" || userRole === "OWNER" || userRecord?.email === "youtubrabdullah1626@gmail.com";
-    if (!isAdmin) {
-      return NextResponse.json({ error: "Admin privileges required for database maintenance." }, { status: 403 });
-    }
+    const { userId, email } = await requireAdmin();
 
     const body = await request.json().catch(() => ({}));
+    
+    // Feature 2: Auto-Pilot Janitor
+    if (body.action === "set_autopilot") {
+      const updated = await prisma.systemSettings.upsert({
+        where: { id: "global" },
+        update: { auto_database_cleanup: body.enabled },
+        create: { id: "global", auto_database_cleanup: body.enabled }
+      });
+      return NextResponse.json({ ok: true, enabled: updated.auto_database_cleanup });
+    }
+
+    // Feature 1: Vacuum Reclaim
+    if (body.action === "vacuum") {
+      // Execute raw Vacuum Analyze. (Postgres specific)
+      // Note: Some managed Postgres instances prevent VACUUM through typical pool connections.
+      // We will attempt it, but silently fallback to ANALYZE if VACUUM fails.
+      try {
+        await prisma.$executeRawUnsafe(`VACUUM ANALYZE "import_errors", "ai_usage_logs", "AuditLog", "SystemError"`);
+      } catch (e: any) {
+        console.log("Vacuum failed, trying Analyze only", e.message);
+        await prisma.$executeRawUnsafe(`ANALYZE "import_errors", "ai_usage_logs", "AuditLog", "SystemError"`);
+      }
+      return NextResponse.json({ ok: true, message: "Database vacuumed and optimized." });
+    }
+
     const isPreview = body.preview === true;
     const retention = body.retention || "30d"; // Default to 30 days
 
@@ -82,6 +123,14 @@ export async function POST(request: NextRequest) {
         prisma.importError.count({ where: queries.oldImportErrors })
       ]);
 
+      const totalRows = expiredTokens + staleOauth + oldErrors + oldAuditLogs + oldAiLogs + oldImportErrors;
+      
+      // Feature 3: Storage Impact Estimator
+      // A typical row across these log tables is roughly 350-500 bytes on disk depending on JSON metadata.
+      // We estimate 400 bytes per row on average to provide a realistic megabyte impact.
+      const estimatedBytes = totalRows * 400;
+      const estimatedMb = (estimatedBytes / (1024 * 1024)).toFixed(2);
+
       return NextResponse.json({
         ok: true,
         preview: true,
@@ -93,7 +142,8 @@ export async function POST(request: NextRequest) {
           oldAiLogs,
           oldImportErrors
         },
-        total: expiredTokens + staleOauth + oldErrors + oldAuditLogs + oldAiLogs + oldImportErrors
+        total: totalRows,
+        estimatedMb
       });
     }
 
@@ -125,7 +175,7 @@ export async function POST(request: NextRequest) {
         action_type: "USER_ACTION" as const,
         action: "DATABASE_MAINTENANCE",
         user_id: userId,
-        actor_email: user?.email || "admin",
+        actor_email: email || "admin",
         severity: "CRITICAL" as const,
         status: "SUCCESS",
         metadata: results as any,

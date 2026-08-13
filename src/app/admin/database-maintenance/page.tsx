@@ -6,8 +6,9 @@ import { AnimatedPage } from "@/components/ui/animated";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Database, Trash2, Search, ShieldAlert, CheckCircle2, Loader2, Info } from "lucide-react";
+import { Database, Trash2, Search, ShieldAlert, CheckCircle2, Loader2, Info, Zap, HardDrive, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,9 +35,65 @@ export default function DatabaseMaintenancePage() {
   const [isExecuting, setIsExecuting] = useState(false);
   const [counts, setCounts] = useState<CleanupCounts | null>(null);
   const [totalReady, setTotalReady] = useState(0);
+  const [estimatedMb, setEstimatedMb] = useState("0.00");
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [retention, setRetention] = useState<"30d" | "7d" | "24h" | "all">("30d");
+
+  const [isVacuuming, setIsVacuuming] = useState(false);
+  const [autoPilot, setAutoPilot] = useState(false);
+  const [autoPilotLoading, setAutoPilotLoading] = useState(true);
+
+  // Fetch initial auto-pilot setting
+  useEffect(() => {
+    fetch("/api/admin/database-cleanup")
+      .then(res => res.json())
+      .then(data => {
+        if (data.auto_database_cleanup !== undefined) {
+          setAutoPilot(data.auto_database_cleanup);
+        }
+        setAutoPilotLoading(false);
+      })
+      .catch(() => setAutoPilotLoading(false));
+  }, []);
+
+  const toggleAutoPilot = async (enabled: boolean) => {
+    setAutoPilotLoading(true);
+    try {
+      const res = await fetch("/api/admin/database-cleanup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "set_autopilot", enabled })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAutoPilot(data.enabled);
+        toast.success(enabled ? "Auto-Pilot Janitor activated! DB will be cleaned automatically." : "Auto-Pilot disabled.");
+      } else throw new Error(data.error);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update Auto-Pilot");
+    } finally {
+      setAutoPilotLoading(false);
+    }
+  };
+
+  const runVacuum = async () => {
+    setIsVacuuming(true);
+    try {
+      const res = await fetch("/api/admin/database-cleanup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "vacuum" })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Vacuum failed");
+      toast.success(data.message || "Database optimized!");
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsVacuuming(false);
+    }
+  };
 
   const runSimulation = async (selectedRetention = retention) => {
     setIsSimulating(true);
@@ -51,6 +108,7 @@ export default function DatabaseMaintenancePage() {
       
       setCounts(data.counts);
       setTotalReady(data.total);
+      if (data.estimatedMb) setEstimatedMb(data.estimatedMb);
       
       if (data.total === 0) {
         toast.info("Database is clean! No obsolete records found.");
@@ -161,15 +219,23 @@ export default function DatabaseMaintenancePage() {
                         <p className="text-4xl font-bold text-slate-900">{totalReady.toLocaleString()}</p>
                         <p className="text-sm text-slate-500 mt-2">obsolete records found safely removable.</p>
                       </div>
-                      <Button 
-                        size="lg" 
-                        onClick={() => setShowConfirm(true)}
-                        disabled={totalReady === 0 || isExecuting}
-                        className={cn("gap-2 shadow-md", totalReady > 0 ? "bg-red-600 hover:bg-red-700 text-white" : "bg-slate-200 text-slate-400")}
-                      >
-                        {isExecuting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                        {isExecuting ? "Purging..." : "Purge All Obsolete Data"}
-                      </Button>
+                      <div className="flex flex-col items-end gap-3">
+                        <Button 
+                          size="lg" 
+                          onClick={() => setShowConfirm(true)}
+                          disabled={totalReady === 0 || isExecuting}
+                          className={cn("gap-2 shadow-md w-full", totalReady > 0 ? "bg-red-600 hover:bg-red-700 text-white" : "bg-slate-200 text-slate-400")}
+                        >
+                          {isExecuting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          {isExecuting ? "Purging..." : "Purge All Obsolete Data"}
+                        </Button>
+                        {totalReady > 0 && (
+                          <div className="flex items-center gap-2 text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-md border border-indigo-100">
+                            <HardDrive className="h-4 w-4" />
+                            <span className="text-sm font-semibold">Saves ~{estimatedMb} MB</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Detailed Breakdown */}
@@ -202,6 +268,51 @@ export default function DatabaseMaintenancePage() {
 
           {/* Guidelines Sidebar */}
           <div className="md:col-span-4 space-y-6">
+            <Card className="shadow-sm border-slate-200 bg-slate-50/50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <Settings className="h-4 w-4 text-slate-700" />
+                  Auto-Pilot Janitor
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium text-slate-900">Weekly Auto-Clean</p>
+                    <p className="text-xs text-slate-500">Automatically purges 30-day stale data.</p>
+                  </div>
+                  <Switch 
+                    checked={autoPilot} 
+                    onCheckedChange={toggleAutoPilot}
+                    disabled={autoPilotLoading}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-indigo-100 bg-indigo-50/30">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-bold flex items-center gap-2 text-indigo-900">
+                  <Zap className="h-4 w-4 text-indigo-600" />
+                  PostgreSQL Engine
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm text-slate-600">
+                <p>
+                  Deleting rows leaves dead tuples. Vacuum reclaims physical disk space and accelerates query planners.
+                </p>
+                <Button 
+                  onClick={runVacuum} 
+                  disabled={isVacuuming}
+                  variant="outline" 
+                  className="w-full bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                >
+                  {isVacuuming ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Database className="h-4 w-4 mr-2" />}
+                  {isVacuuming ? "Optimizing..." : "Vacuum & Optimize DB"}
+                </Button>
+              </CardContent>
+            </Card>
+
             <Card className="shadow-sm border-slate-200 bg-slate-50/50">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-bold flex items-center gap-2">

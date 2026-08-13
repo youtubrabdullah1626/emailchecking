@@ -283,6 +283,7 @@ model SystemSettings {
   auto_closer_rebuttal_style String   @default("AGGRESSIVE")
   monthly_ai_credit_limit    Int      @default(50000)
   smart_deliverability       Boolean  @default(true)
+  auto_database_cleanup      Boolean  @default(false)
 
   @@map("system_settings")
 }
