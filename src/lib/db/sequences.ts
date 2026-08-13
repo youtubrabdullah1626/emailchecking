@@ -247,7 +247,8 @@ export async function createSequence(
     const sequence = await prisma.$transaction(async (tx) => {
       // 1. Lock the prospect row specifically to ensure atomicity for this prospect.
       const prospects = await tx.$queryRaw<{id: string, user_id: string}[]>`SELECT id, user_id FROM prospects WHERE id = ${prospectId} FOR UPDATE`;
-      const prospectUserId = prospects[0]?.user_id || "admin_demo_user";
+      const fallbackUser = await tx.users.findFirst({ select: { id: true } });
+      const prospectUserId = prospects[0]?.user_id || fallbackUser?.id || "";
 
       // 2. ACTIVE CAMPAIGN PROTECTION (Single source of truth)
       const activeSequence = await tx.sequence.findFirst({

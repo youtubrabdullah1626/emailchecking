@@ -11,12 +11,20 @@ export type ReputationGuardResult =
  * Checks limits, health, and warmup stage before allowing an email to be sent.
  */
 export async function canSendEmail(email: string): Promise<ReputationGuardResult> {
-  let account = await prisma.emailAccount.findUnique({ where: { email } });
+  const normalizedEmail = email.toLowerCase();
+  let account = await prisma.emailAccount.findUnique({ where: { email: normalizedEmail } });
 
-  // If not tracked yet, create default profile
+  // If not tracked yet, create default profile tied to an existing system user
   if (!account) {
+    const validUser = await prisma.users.findFirst({ select: { id: true } });
+    if (!validUser) {
+      return { allowed: false, reason: "NO_SYSTEM_USER", retryAt: new Date(Date.now() + 60000) };
+    }
     account = await prisma.emailAccount.create({
-      data: { email, user_id: "admin_demo_user" } // Fallback user ID for unlinked guards
+      data: { 
+        email: normalizedEmail, 
+        user_id: validUser.id 
+      }
     });
   }
 
