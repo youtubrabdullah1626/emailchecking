@@ -36,9 +36,8 @@ export function Header({ onMenuClick }: HeaderProps) {
   const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
-  const [localCleared, setLocalCleared] = useState(false);
-
-  const { data: summary } = useSWR("/api/dashboard/header-stats", (url: string) => apiClient<any>(url));
+  const { data: accountStats } = useSWR("/api/dashboard/header-stats", (url: string) => apiClient<any>(url));
+  const { data: globalStats } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url));
   const { data: notifData } = useSWR("/api/notifications/important", (url: string) => apiClient<any>(url));
   
   const [lastClearedTime, setLastClearedTime] = useState<number>(0);
@@ -125,7 +124,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               </span>
               <span className="text-[10px] text-muted-foreground font-medium leading-none mt-0.5 flex items-center gap-1">
                 <TrendingUp className="h-3 w-3 text-primary" />
-                {summary ? `${summary.emailsSentToday || 0} Sent Today • ${summary.repliesToday || 0} Replies Today` : 'Calculating metrics...'}
+                {globalStats ? `${globalStats.emailsSentToday || 0} Sent Today • ${globalStats.repliesToday || 0} Replies Today` : 'Calculating metrics...'}
               </span>
             </div>
           </div>
@@ -136,12 +135,12 @@ export function Header({ onMenuClick }: HeaderProps) {
         <div className="hidden md:flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Account:</span>
           <span className="font-medium">
-            {summary === undefined ? (
+            {accountStats === undefined ? (
               <span className="animate-pulse bg-slate-200 text-transparent rounded px-1">Loading account...</span>
-            ) : summary?.connectedGmail ? (
-              summary.connectionStatus === 'CONNECTED' 
-                ? summary.connectedGmail 
-                : <span className="text-destructive">{summary.connectedGmail} (Disconnected)</span>
+            ) : accountStats?.connectedGmail ? (
+              accountStats.connectionStatus === 'CONNECTED' 
+                ? accountStats.connectedGmail 
+                : <span className="text-destructive">{accountStats.connectedGmail} (Disconnected)</span>
             ) : (
               'Not connected'
             )}

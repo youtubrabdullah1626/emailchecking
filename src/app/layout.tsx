@@ -27,15 +27,10 @@ export default async function RootLayout({
       const startOfDay = new Date();
       startOfDay.setUTCHours(0, 0, 0, 0);
       
-      const [seq, adhoc, rep, emailAcc] = await Promise.all([
-        prisma.emailEvent.count({ where: { event_type: "SENT", occurred_at: { gte: startOfDay }, step: { sequence: { user_id: session.user.id } } } }),
-        prisma.adhocEmail.count({ where: { sent_at: { gte: startOfDay }, prospect: { user_id: session.user.id } } }),
-        prisma.replyClassification.count({ where: { reply_type: "REAL_REPLY", classified_at: { gte: startOfDay }, prospect: { user_id: session.user.id } } }),
-        prisma.emailAccount.findFirst({ where: { user_id: session.user.id, is_primary: true } })
-      ]);
+      const emailAcc = await prisma.emailAccount.findFirst({ 
+        where: { user_id: session.user.id, is_primary: true } 
+      });
       fallbackHeaderStats = {
-        emailsSentToday: seq + adhoc,
-        repliesToday: rep,
         connectedGmail: emailAcc?.email_address || null,
         connectionStatus: emailAcc?.status || "DISCONNECTED"
       };
