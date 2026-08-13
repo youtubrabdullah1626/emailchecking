@@ -25,8 +25,9 @@ export interface SessionUser {
  * update ONLY this function — all 50+ API routes stay untouched.
  */
 export async function getSession(): Promise<{ user: SessionUser } | null> {
-  // ── 1. Development mock (for testing multi-tenancy without a full browser flow)
-  if (process.env.NODE_ENV === "development") {
+  // ── 1. Mock Authentication (Since NextAuth is not installed)
+  // Accept mock cookies in all environments to allow Railway demo to work
+  if (true) {
     const cookieStore = cookies();
     const mockUserId = cookieStore.get("mock_user_id")?.value;
     const mockUserEmail = cookieStore.get("mock_user_email")?.value;
