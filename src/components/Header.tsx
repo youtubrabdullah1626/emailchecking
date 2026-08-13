@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
+import { signOut, useSession } from 'next-auth/react';
 import { RefreshCw, Bell, Menu, Zap, TrendingUp, Camera, X, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,10 @@ export function Header({ onMenuClick }: HeaderProps) {
   
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
+
+  // Real NextAuth session — name, email, avatar from Google
+  const { data: nextAuthSession } = useSession();
+  const sessionUser = nextAuthSession?.user;
 
   const [lastClearedTime, setLastClearedTime] = useState<number>(0);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -242,15 +247,18 @@ export function Header({ onMenuClick }: HeaderProps) {
             <DropdownMenuTrigger asChild>
               <button className="relative ml-4 group block rounded-full overflow-hidden border-2 border-transparent ring-2 ring-primary/30 transition-all duration-300 hover:ring-primary/60 shadow-sm hover:shadow-md focus:outline-none hover:-translate-y-0.5">
                 <Avatar className="h-10 w-10 border border-primary/20">
-                  {avatarUrl && <AvatarImage src={avatarUrl} alt="User Avatar" className="object-cover" />}
+                  {(avatarUrl || sessionUser?.image) && <AvatarImage src={avatarUrl || sessionUser?.image || ''} alt="User Avatar" className="object-cover" />}
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold tracking-wider">
-                    IQ
+                    {sessionUser?.name ? sessionUser.name.slice(0, 2).toUpperCase() : 'IQ'}
                   </AvatarFallback>
                 </Avatar>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 font-medium">
-              <div className="px-2 py-1.5 text-xs text-muted-foreground font-semibold uppercase tracking-wider">My Account</div>
+            <DropdownMenuContent align="end" className="w-64 font-medium">
+              <div className="px-3 py-2">
+                <p className="text-sm font-semibold text-foreground truncate">{sessionUser?.name || 'My Account'}</p>
+                <p className="text-xs text-muted-foreground truncate">{sessionUser?.email || ''}</p>
+              </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link prefetch={true} href="/settings" className="w-full cursor-pointer flex items-center py-2">
@@ -265,7 +273,10 @@ export function Header({ onMenuClick }: HeaderProps) {
                 </DropdownMenuItem>
               </DialogTrigger>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer flex items-center py-2 text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/50">
+              <DropdownMenuItem 
+                className="cursor-pointer flex items-center py-2 text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/50"
+                onClick={() => signOut({ callbackUrl: '/login' })}
+              >
                 <LogOut className="mr-2 h-4 w-4 text-red-600" />
                 <span>Log out</span>
               </DropdownMenuItem>
@@ -276,7 +287,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               <Avatar className="h-56 w-56 border-4 border-background bg-primary/5">
                 {avatarUrl && <AvatarImage src={avatarUrl} alt="User Avatar" className="object-cover" />}
                 <AvatarFallback className="bg-primary/10 text-primary text-7xl font-bold tracking-wider">
-                  IQ
+                  {sessionUser?.name ? sessionUser.name.slice(0, 2).toUpperCase() : 'IQ'}
                 </AvatarFallback>
               </Avatar>
             </div>

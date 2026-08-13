@@ -10,6 +10,8 @@ import { z } from "zod";
 const envSchema = z.object({
   APP_URL: z.string().url().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+  NEXTAUTH_URL: z.string().url().optional(),
+  NEXTAUTH_SECRET: z.string().min(10, "NEXTAUTH_SECRET is required and must be at least 10 characters"),
   GMAIL_CLIENT_ID: z.string().min(1, "GMAIL_CLIENT_ID is required"),
   GMAIL_CLIENT_SECRET: z.string().min(1, "GMAIL_CLIENT_SECRET is required"),
   DATABASE_URL: z.string().url("DATABASE_URL must be a valid URL"),

@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import useSWR, { SWRConfig } from 'swr';
+import { SessionProvider } from 'next-auth/react';
 import { apiClient } from '@/lib/api-client';
-
 import { usePathname } from 'next/navigation';
 
 function localStorageProvider() {
@@ -73,7 +73,11 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
     };
   }, []);
 
+  // Don't render app chrome on the login page
+  const isLoginPage = pathname === '/login';
+
   return (
+    <SessionProvider>
     <SWRConfig 
       value={{ 
         provider: localStorageProvider,
@@ -83,6 +87,9 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
         fetcher: (url: string) => apiClient<any>(url).catch(() => null)
       }}
     >
+      {isLoginPage ? (
+        <>{children}</>
+      ) : (
       <div className="flex h-screen w-full bg-background overflow-hidden transition-colors duration-500">
         {/* Desktop Sidebar (hidden on mobile) */}
         <div className="hidden md:block h-full">
@@ -126,6 +133,8 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
           </div>
         )}
       </div>
-    </SWRConfig>
+      )}
+      </SWRConfig>
+    </SessionProvider>
   );
 }

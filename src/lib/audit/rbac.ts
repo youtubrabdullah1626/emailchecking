@@ -1,9 +1,12 @@
 /**
- * Enterprise Role-Based Access Control (RBAC) Abstraction
- * 
- * Provides an extensible authorization model that can integrate with
- * future User Management modules without modifying the Audit module.
+ * Enterprise Role-Based Access Control (RBAC)
+ *
+ * Wire to real NextAuth session — no more mocks.
+ * Roles: SUPER_ADMIN > OWNER > ADMIN > USER
  */
+
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/nextauth";
 
 export type UserRole = "SUPER_ADMIN" | "OWNER" | "ADMIN" | "USER";
 
@@ -11,32 +14,38 @@ export interface SessionUser {
   id: string;
   email: string;
   role: UserRole;
+  isSuspended?: boolean;
 }
 
-/**
- * Validates if the user has the required permission level.
- * Throws an error if unauthorized to prevent logic leaking.
- */
 export function requireAdminRole(user: SessionUser | null | undefined): void {
-  if (!user) {
-    throw new Error("UNAUTHORIZED");
-  }
-  
+  if (!user) throw new Error("UNAUTHORIZED");
   if (user.role !== "SUPER_ADMIN" && user.role !== "OWNER" && user.role !== "ADMIN") {
     throw new Error("FORBIDDEN");
   }
 }
 
+export function requireOwnerRole(user: SessionUser | null | undefined): void {
+  if (!user) throw new Error("UNAUTHORIZED");
+  if (user.role !== "SUPER_ADMIN" && user.role !== "OWNER") {
+    throw new Error("FORBIDDEN");
+  }
+}
+
 /**
- * Resolves the current session user. 
- * Placeholder for actual NextAuth / Supabase session retrieval.
+ * Get the real session user from NextAuth.
+ * Replaces the old hardcoded mock_admin_123.
  */
 export async function getSessionUser(): Promise<SessionUser | null> {
-  // Integration Point: Replace with real Identity Provider session in future phase
-  // (e.g. `await getServerSession(authOptions)` or `supabase.auth.getSession()`)
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return null;
+
+  const user = session.user as any;
+  if (user.isSuspended) return null;
+
   return {
-    id: "mock_admin_123",
-    email: "admin@enterprise.local",
-    role: "SUPER_ADMIN"
+    id: user.id,
+    email: user.email || "",
+    role: (user.role as UserRole) || "USER",
+    isSuspended: user.isSuspended || false,
   };
 }
