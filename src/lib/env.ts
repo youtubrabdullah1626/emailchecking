@@ -38,7 +38,7 @@ export function getEnv() {
 
 export function getAppUrl(): string {
   const env = getEnv();
-  const url = env.APP_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const url = env.NEXTAUTH_URL || env.APP_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   // Ensure no trailing slash for deterministic OAuth redirect URIs
   return url.endsWith("/") ? url.slice(0, -1) : url;
 }
