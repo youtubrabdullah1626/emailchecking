@@ -19,6 +19,15 @@ export interface BannerState {
 export function useSmartExecutiveBannerLogic(stats: any, recentReplies: any[]): BannerState {
   const [name, setName] = useState("Team");
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedName = localStorage.getItem("outreachiq_display_name");
+      if (storedName) {
+        setName(storedName);
+      }
+    }
+  }, []);
+
   // Fallback default
   let state: BannerState = {
     priority: 6,

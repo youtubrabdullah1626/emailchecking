@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Mail, Clock, Cpu, Bell, Key, Zap } from "lucide-react";
+import { Mail, Clock, Cpu, Bell, Key, Zap, User } from "lucide-react";
 
 // Existing Types
 import type { ConnectedAccountProps } from "@/components/ConnectedAccountCard";
@@ -43,6 +43,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [displayName, setDisplayName] = useState("Team");
 
   const form = useForm<z.infer<typeof settingsSchema>>({
     resolver: zodResolver(settingsSchema) as any,
@@ -66,6 +67,13 @@ export default function SettingsPage() {
     setLoading(true);
     setError(null);
     try {
+      if (typeof window !== "undefined") {
+        const storedName = localStorage.getItem("outreachiq_display_name");
+        if (storedName) {
+          setDisplayName(storedName);
+        }
+      }
+
       const [accountData, settingsData] = await Promise.all([
         apiClient<any>("/api/gmail/account").catch(() => ({ accounts: [] })),
         fetch("/api/settings").then(r => r.json()).catch(() => null)
@@ -138,6 +146,7 @@ export default function SettingsPage() {
           <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-8">
             <Tabs defaultValue="gmail" className="flex flex-col md:flex-row gap-6">
               <TabsList className="flex flex-col h-auto bg-transparent p-0 space-y-1 md:w-48 lg:w-64">
+                <TabsTrigger value="profile" className="w-full justify-start gap-2 px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20"><User className="h-4 w-4" /> Profile Details</TabsTrigger>
                 <TabsTrigger value="gmail" className="w-full justify-start gap-2 px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20"><Mail className="h-4 w-4" /> Gmail Integration</TabsTrigger>
               </TabsList>
 
@@ -182,13 +191,40 @@ export default function SettingsPage() {
                   </div>
                 </TabsContent>
 
-
-
-
-
-
-
-
+                <TabsContent value="profile" className="mt-0">
+                  <Card className="border-border/50">
+                    <CardHeader>
+                      <CardTitle>Profile Details</CardTitle>
+                      <CardDescription>
+                        Update how your name appears on the dashboard banner.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4 max-w-md">
+                      <div className="space-y-2">
+                        <FormLabel>Display Name</FormLabel>
+                        <Input 
+                          placeholder="E.g. Abdullah Hanjra" 
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                        />
+                        <FormDescription>
+                          This name will be used to greet you on the dashboard.
+                        </FormDescription>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="bg-muted/50 py-4 px-6 mt-4">
+                      <Button 
+                        type="button" 
+                        onClick={() => {
+                          localStorage.setItem("outreachiq_display_name", displayName);
+                          toast.success("Profile name updated successfully");
+                        }}
+                      >
+                        Save Profile
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                </TabsContent>
               </div>
             </Tabs>
           </form>
