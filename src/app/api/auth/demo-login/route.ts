@@ -8,9 +8,11 @@ export async function GET() {
   // Create or get the first user in the database to act as the demo user
   const demoUser = await prisma.users.findFirst() || await prisma.users.create({
     data: {
+      id: crypto.randomUUID(),
       email: "demo@reachiq.app",
       name: "Demo User",
-      role: "ADMIN"
+      role: "ADMIN",
+      updatedAt: new Date()
     }
   });
 
