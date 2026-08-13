@@ -65,16 +65,6 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  // ── Events: auto-stamp updatedAt on new user creation (schema requires it)
-  events: {
-    async createUser({ user }) {
-      await prisma.users.update({
-        where: { id: user.id },
-        data: { updatedAt: new Date() },
-      });
-    },
-  },
-
   // ── Security
   secret: process.env.NEXTAUTH_SECRET,
 

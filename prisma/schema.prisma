@@ -490,7 +490,7 @@ model users {
   image          String?
   role           String         @default("USER")
   createdAt      DateTime       @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime       @updatedAt
   adminNotes     String?
   isSuspended    Boolean        @default(false)
   accounts       accounts[]
