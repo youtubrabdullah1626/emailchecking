@@ -39,6 +39,7 @@ export async function loadStepForSend(
         select: {
           id: true,
           status: true,
+          user_id: true,
           prospect: {
             select: {
               id: true,
@@ -81,6 +82,7 @@ export async function loadStepForSend(
     sequence: {
       id: row.sequence.id,
       status: row.sequence.status,
+      user_id: row.sequence.user_id,
       prospect: row.sequence.prospect,
     },
     previousStep: previousStep

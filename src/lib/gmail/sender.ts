@@ -93,7 +93,10 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
 
   // ── 2.5 Resolve Sending Email Account from PostgreSQL ────────────────────
   let connectedAccount = await prisma.emailAccount.findFirst({
-    where: { connection_status: "CONNECTED" },
+    where: { 
+      connection_status: "CONNECTED",
+      user_id: step.sequence.user_id 
+    },
     orderBy: { updated_at: "desc" }
   });
 

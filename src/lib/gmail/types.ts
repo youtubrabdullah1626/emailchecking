@@ -69,6 +69,7 @@ export interface StepForSend {
   sequence: {
     id: string;
     status: string;
+    user_id: string;
     prospect: {
       id: string;
       name: string;
