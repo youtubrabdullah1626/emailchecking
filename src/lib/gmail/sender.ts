@@ -32,7 +32,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { google } from "googleapis";
 import prisma from "@/lib/prisma";
-import { getOAuthConfig, createOAuth2Client } from "./oauth";
+import { getOAuthConfig, createOAuth2Client, createOAuth2ClientForAccount } from "./oauth";
 import { buildGmailMessage } from "./message";
 import { loadStepForSend } from "./query";
 import { gmailLog } from "./logger";
@@ -91,6 +91,33 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
     return { stepId, outcome: "ABORTED", detail: "Step not found." };
   }
 
+  // ── 2.5 Resolve Sending Email Account from PostgreSQL ────────────────────
+  let connectedAccount = await prisma.emailAccount.findFirst({
+    where: { 
+      connection_status: "CONNECTED",
+      ...(step.sequence?.user_id ? { user_id: step.sequence.user_id } : {})
+    },
+    orderBy: { updated_at: "desc" }
+  });
+
+  if (!connectedAccount) {
+    connectedAccount = await prisma.emailAccount.findFirst({
+      where: { connection_status: "CONNECTED" },
+      orderBy: { updated_at: "desc" }
+    });
+  }
+
+  const senderEmail = connectedAccount?.email || config.senderEmail || process.env.GMAIL_SENDER_EMAIL;
+
+  if (!senderEmail) {
+    gmailLog("gmail_send_failed", { stepId, detail: "No connected Gmail sending account found in DB." });
+    return {
+      stepId,
+      outcome: "CONFIG_ERROR",
+      detail: "No connected Gmail account found for sending. Please connect your Gmail in Settings.",
+    };
+  }
+
   // ── 3. Pre-send verification — must be PROCESSING ─────────────────────────
   if (step.status !== "PROCESSING") {
     gmailLog("gmail_send_aborted_stale_step", {
@@ -123,7 +150,7 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
   }
 
   // ── 4.5 Reputation Protection Guard ─────────────────────────────────────────
-  const reputationResult = await canSendEmail(config.senderEmail);
+  const reputationResult = await canSendEmail(senderEmail);
   if (!reputationResult.allowed) {
     gmailLog("gmail_send_aborted_limit", {
       stepId,
@@ -185,7 +212,7 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
   
   let previousRfcMessageId: string | undefined = undefined;
   
-  const auth = cachedAuth || createOAuth2Client();
+  const auth = cachedAuth || await createOAuth2ClientForAccount(senderEmail);
   const gmail = google.gmail({ version: "v1", auth: auth as any });
 
   // Fetch the true RFC Message-ID to use for In-Reply-To chaining
@@ -236,7 +263,7 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
   }
 
   const messagePayload = buildGmailMessage({
-    from: config.senderEmail,
+    from: senderEmail,
     to: step.sequence.prospect.email,
     toName: step.sequence.prospect.name,
     subject: step.subject,
