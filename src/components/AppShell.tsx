@@ -8,6 +8,25 @@ import { apiClient } from '@/lib/api-client';
 
 import { usePathname } from 'next/navigation';
 
+function localStorageProvider() {
+  if (typeof window === 'undefined') {
+    return new Map();
+  }
+  
+  try {
+    const map = new Map(JSON.parse(localStorage.getItem('outreachiq-swr-cache') || '[]'));
+    
+    window.addEventListener('beforeunload', () => {
+      const appCache = JSON.stringify(Array.from(map.entries()));
+      localStorage.setItem('outreachiq-swr-cache', appCache);
+    });
+    
+    return map;
+  } catch (e) {
+    return new Map();
+  }
+}
+
 export function AppShell({ children, fallbackHeaderStats }: { children: React.ReactNode, fallbackHeaderStats?: any }) {
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const pathname = usePathname();
@@ -57,6 +76,7 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
   return (
     <SWRConfig 
       value={{ 
+        provider: localStorageProvider,
         fallback: fallbackHeaderStats ? { "/api/dashboard/header-stats": fallbackHeaderStats } : {},
         revalidateOnFocus: false,
         keepPreviousData: true,
