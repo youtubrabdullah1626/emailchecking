@@ -207,7 +207,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             <div className={cn("max-h-[300px] overflow-y-auto transition-all duration-400 ease-in-out", isClearing ? "opacity-0 translate-x-8" : "opacity-100 translate-x-0")}>
               {notifications.length === 0 ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">
-                  You're all caught up!
+                  You&apos;re all caught up!
                 </div>
               ) : (
                 notifications.map((notif: any) => (
