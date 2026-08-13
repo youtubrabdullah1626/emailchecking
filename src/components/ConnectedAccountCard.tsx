@@ -84,10 +84,7 @@ function ConnectedAccountCardComponent({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem onClick={() => handleAction("TEST_CONNECTION")} disabled={actionLoading !== null}>
-              <Activity className="mr-2 h-4 w-4" />
-              <span>Test Connection</span>
-            </DropdownMenuItem>
+
             <DropdownMenuItem onClick={() => handleAction("SYNC_NOW")} disabled={actionLoading !== null}>
               <Zap className="mr-2 h-4 w-4" />
               <span>Sync Now</span>
@@ -137,7 +134,7 @@ function ConnectedAccountCardComponent({
                   {account.email}
                 </span>
                 <span className="text-sm text-muted-foreground">
-                  {account.connectionStatus === "CONNECTED" ? "OAuth 2.0 Connected" : "OAuth 2.0 Disconnected"} • History ID: <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{account.historyId || "None"}</code>
+                  {account.connectionStatus === "CONNECTED" ? "OAuth 2.0 Connected" : "OAuth 2.0 Disconnected"}
                 </span>
               </div>
             </div>
