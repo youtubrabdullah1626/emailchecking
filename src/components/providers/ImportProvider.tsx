@@ -102,12 +102,14 @@ export function ImportProvider({ children }: { children: ReactNode }) {
   // Enterprise Bulk Progress (chunked upload tracking)
   const [bulkProgress, setBulkProgress] = useState<BulkImportProgress | null>(null);
   const CHUNK_SIZE = 250; // 250 sequences per chunk — safe for all hosting tiers
-  const [appendTargetSessionId, setAppendTargetSessionIdState] = useState<string | null>(() => {
+  const [appendTargetSessionId, setAppendTargetSessionIdState] = useState<string | null>(null);
+
+  React.useEffect(() => {
     if (typeof sessionStorage !== "undefined") {
-      return sessionStorage.getItem("smart_import_append_target");
+      const target = sessionStorage.getItem("smart_import_append_target");
+      if (target) setAppendTargetSessionIdState(target);
     }
-    return null;
-  });
+  }, []);
 
   const setAppendTargetSessionId = (id: string | null) => {
     setAppendTargetSessionIdState(id);

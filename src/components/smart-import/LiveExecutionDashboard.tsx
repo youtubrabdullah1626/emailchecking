@@ -132,9 +132,27 @@ export function LiveExecutionDashboard() {
       if (data.statuses && data.statuses.length > 0) {
         const newTimeStr = new Date().toLocaleTimeString([], { hour12: false });
 
+        const STATUS_RANK: Record<string, number> = {
+          "SCHEDULED": 0,
+          "PROCESSING": 1,
+          "BOUNCED": 2,
+          "SENT": 3,
+          "OPENED": 4,
+          "CLICKED": 5,
+          "REPLIED": 6
+        };
+
         setLiveItems(prev => prev.map(item => {
           const tracking = data.statuses.find((s: any) => s.stepId === item.queueId);
           if (tracking && tracking.status && tracking.status !== item.liveStatus) {
+            
+            const newRank = STATUS_RANK[tracking.status] || 0;
+            const currentRank = STATUS_RANK[item.liveStatus] || 0;
+
+            // Prevent downgrading status (e.g., from SENT back to SCHEDULED) during race conditions
+            if (newRank < currentRank && !(item.liveStatus === "BOUNCED" && newRank >= 3)) {
+              return item;
+            }
 
             if (updateQueueItemState) {
               updateQueueItemState(item.queueId, tracking.status, newTimeStr);

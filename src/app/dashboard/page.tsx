@@ -39,9 +39,11 @@ interface RecentReply {
 }
 
 export default function DashboardPage() {
+  const [mounted, setMounted] = useState(false);
   const [clearedAt, setClearedAt] = useState<number>(0);
 
   useEffect(() => {
+    setMounted(true);
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("dashboard_recent_replies_cleared_at");
       if (stored) setClearedAt(new Date(stored).getTime());
@@ -152,6 +154,14 @@ export default function DashboardPage() {
     pColor = "text-orange-600"; pBg = "bg-orange-100/40"; pIndicator = "[&>div]:bg-orange-500"; pIconBg = "bg-orange-100/50 text-orange-600"; pHoverBorder = "hover:border-orange-200";
   } else if (theme === "PURPLE") {
     pColor = "text-purple-600"; pBg = "bg-purple-100/40"; pIndicator = "[&>div]:bg-purple-500"; pIconBg = "bg-purple-100/50 text-purple-600"; pHoverBorder = "hover:border-purple-200";
+  }
+
+  if (!mounted) {
+    return (
+      <div className="flex h-[80vh] items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (

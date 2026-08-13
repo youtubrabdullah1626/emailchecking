@@ -140,6 +140,25 @@ export function Header({ onMenuClick }: HeaderProps) {
       </div>
       
       <div className="flex items-center gap-2 md:gap-4">
+        <div className="hidden md:flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Sending Email:</span>
+          <span className="font-medium">
+            {!mounted || accountStats === undefined ? (
+              <span className="animate-pulse bg-slate-200 text-transparent rounded px-1">Loading...</span>
+            ) : accountStats?.connectedGmail ? (
+              accountStats.connectionStatus === 'CONNECTED' 
+                ? accountStats.connectedGmail 
+                : <span className="text-destructive">{accountStats.connectedGmail} (Disconnected)</span>
+            ) : (
+              <Link href="/settings" className="text-primary hover:underline font-semibold flex items-center gap-1">
+                Connect Account
+              </Link>
+            )}
+          </span>
+        </div>
+        
+        <div className="h-4 w-px bg-border hidden md:block mx-2" />
+        
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -174,7 +193,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground relative">
               <Bell className="h-4 w-4" />
-              {notifications.length > 0 ? (
+              {mounted && notifications.length > 0 ? (
                 <span className="absolute top-2 right-2.5 h-1.5 w-1.5 rounded-full bg-red-500" />
               ) : null}
             </Button>
