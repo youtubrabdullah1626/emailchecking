@@ -198,7 +198,20 @@ export async function GET(req: NextRequest) {
     }
     const formattedEvents = uniqueEvents.slice(0, 10);
 
-    // Auto-trigger autonomous execution if any pending steps are due
+    // Autonomous background execution engine
+    const nowMs = Date.now();
+    
+    // 1. Auto-scan Gmail for new prospect replies every 30s
+    const { scanForReplies } = await import("@/lib/reply/scanner");
+    (async () => {
+      try {
+        await scanForReplies();
+      } catch (err) {
+        console.error("Auto reply scanner background execution error:", err);
+      }
+    })();
+
+    // 2. Auto-trigger scheduler + sender if any pending steps are due
     if (schedulerHealth.pendingDueCount > 0) {
       (async () => {
         try {
