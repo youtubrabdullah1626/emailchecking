@@ -38,7 +38,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [isClearing, setIsClearing] = useState(false);
   const [localCleared, setLocalCleared] = useState(false);
 
-  const { data: summary } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url));
+  const { data: summary } = useSWR("/api/dashboard/header-stats", (url: string) => apiClient<any>(url));
   const { data: notifData } = useSWR("/api/notifications/important", (url: string) => apiClient<any>(url));
   
   const [lastClearedTime, setLastClearedTime] = useState<number>(0);
@@ -136,11 +136,15 @@ export function Header({ onMenuClick }: HeaderProps) {
         <div className="hidden md:flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Account:</span>
           <span className="font-medium">
-            {summary?.connectedGmail 
-              ? (summary.connectionStatus === 'CONNECTED' 
-                  ? summary.connectedGmail 
-                  : <span className="text-destructive">{summary.connectedGmail} (Disconnected)</span>)
-              : 'Not connected'}
+            {summary === undefined ? (
+              <span className="animate-pulse bg-slate-200 text-transparent rounded px-1">Loading account...</span>
+            ) : summary?.connectedGmail ? (
+              summary.connectionStatus === 'CONNECTED' 
+                ? summary.connectedGmail 
+                : <span className="text-destructive">{summary.connectedGmail} (Disconnected)</span>
+            ) : (
+              'Not connected'
+            )}
           </span>
         </div>
         
