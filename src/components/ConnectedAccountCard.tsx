@@ -158,14 +158,6 @@ function ConnectedAccountCardComponent({
               <span className="font-medium text-foreground">{account.sentToday}</span>
               <span>emails sent today</span>
             </div>
-            {daysRemaining !== null && (
-              <div className="flex items-center gap-1.5">
-                <span>Watch expires in</span>
-                <span className={`font-medium ${daysRemaining <= 1 ? 'text-destructive' : 'text-foreground'}`}>
-                  {daysRemaining} days
-                </span>
-              </div>
-            )}
           </div>
 
         </div>
