@@ -8,7 +8,7 @@ import { apiClient } from '@/lib/api-client';
 
 import { usePathname } from 'next/navigation';
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, fallbackHeaderStats }: { children: React.ReactNode, fallbackHeaderStats?: any }) {
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const pathname = usePathname();
 
@@ -57,6 +57,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SWRConfig 
       value={{ 
+        fallback: fallbackHeaderStats ? { "/api/dashboard/header-stats": fallbackHeaderStats } : {},
         revalidateOnFocus: false,
         keepPreviousData: true,
         dedupingInterval: 5000,
