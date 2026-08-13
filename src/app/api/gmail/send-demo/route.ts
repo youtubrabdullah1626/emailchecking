@@ -118,9 +118,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 3. Claim the step atomically (simulating what the scheduler or send-now does)
+    // 3. If step is already SENT, return success gracefully (prevents false Delivery Failed UI state)
+    if (step.status === "SENT") {
+      return NextResponse.json({ 
+        ok: true, 
+        alreadySent: true, 
+        messageId: step.gmail_message_id, 
+        threadId: step.gmail_thread_id 
+      });
+    }
+
+    // Claim the step atomically (PENDING or FAILED)
     const claimed = await prisma.sequenceStep.updateMany({
-      where: { id: step.id, status: "PENDING" },
+      where: { id: step.id, status: { in: ["PENDING", "FAILED"] } },
       data: { status: "PROCESSING" },
     });
 
@@ -134,6 +144,15 @@ export async function POST(request: NextRequest) {
         throw new Error(result.detail || "Failed to send email via backend engine");
       }
     } else {
+      const currentStep = await prisma.sequenceStep.findUnique({ where: { id: step.id } });
+      if (currentStep && (currentStep.status === "SENT" || currentStep.status === "PROCESSING")) {
+        return NextResponse.json({ 
+          ok: true, 
+          alreadySent: true, 
+          messageId: currentStep.gmail_message_id, 
+          threadId: currentStep.gmail_thread_id 
+        });
+      }
       throw new Error("Failed to claim step for sending");
     }
 
