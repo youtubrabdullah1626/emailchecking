@@ -198,7 +198,20 @@ export async function GET(req: NextRequest) {
     }
     const formattedEvents = uniqueEvents.slice(0, 10);
 
-    // Real-time scheduler status derived from health data
+    // Auto-trigger autonomous execution if any pending steps are due
+    if (schedulerHealth.pendingDueCount > 0) {
+      (async () => {
+        try {
+          const { runScheduler } = await import("@/lib/scheduler/run");
+          const { sendBatch } = await import("@/lib/gmail/sender");
+          await runScheduler({ dryRun: false });
+          await sendBatch();
+        } catch (err) {
+          console.error("Auto-scheduler background execution error:", err);
+        }
+      })();
+    }
+
     const schedulerStatus =
       schedulerHealth.staleProcessingCount && schedulerHealth.staleProcessingCount > 0
         ? "STALE_STEPS"

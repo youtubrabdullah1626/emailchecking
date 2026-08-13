@@ -517,7 +517,7 @@ export default function SequenceBuilder({
                       <span className="text-muted-foreground text-xs">
                         {isSent && dbStep.sent_at
                           ? `Sent ${new Date(dbStep.sent_at).toLocaleString()}`
-                          : `Scheduled: ${new Date(dbStep.scheduled_at_utc).toLocaleString()} UTC`}
+                          : `Scheduled: ${new Date(dbStep.scheduled_at_utc).toLocaleString()}`}
                       </span>
                     </div>
                   </div>
