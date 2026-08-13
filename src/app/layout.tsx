@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AppShell } from "@/components/AppShell";
 import { Toaster } from "@/components/ui/sonner";
-import NextTopLoader from 'nextjs-toploader';
 import { getSession } from "@/lib/auth/session";
 import prisma from "@/lib/prisma";
+import { getTenantPrisma } from "@/lib/db/tenant-prisma";
 
 export const metadata: Metadata = {
   title: {
@@ -27,12 +27,14 @@ export default async function RootLayout({
       const startOfDay = new Date();
       startOfDay.setUTCHours(0, 0, 0, 0);
       
-      const emailAcc = await prisma.emailAccount.findFirst({ 
-        where: { user_id: session.user.id, is_primary: true } 
+      const tenantPrisma = getTenantPrisma(session.user.id);
+      const emailAcc = await tenantPrisma.emailAccount.findFirst({ 
+        orderBy: { updated_at: "desc" },
+        select: { email: true, connection_status: true }
       });
       fallbackHeaderStats = {
-        connectedGmail: emailAcc?.email_address || null,
-        connectionStatus: emailAcc?.status || "DISCONNECTED"
+        connectedGmail: emailAcc?.email || null,
+        connectionStatus: emailAcc?.connection_status || "DISCONNECTED"
       };
     }
   } catch (e) {
