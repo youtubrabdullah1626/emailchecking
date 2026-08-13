@@ -92,10 +92,6 @@ function ConnectedAccountCardComponent({
               <Zap className="mr-2 h-4 w-4" />
               <span>Sync Now</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleAction("RENEW_WATCH")} disabled={actionLoading !== null}>
-              <ShieldAlert className="mr-2 h-4 w-4" />
-              <span>Renew Watch</span>
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
             {account.connectionStatus === "CONNECTED" ? (
               <DropdownMenuItem onClick={() => handleAction("DISCONNECT")} disabled={actionLoading !== null}>
@@ -147,9 +143,6 @@ function ConnectedAccountCardComponent({
             </div>
             <div className="flex items-center gap-4">
               {getStatusBadge()}
-              <div className="text-sm font-semibold px-3 py-1 rounded-md bg-muted text-muted-foreground hidden sm:block">
-                Health Score: {account.healthScore}%
-              </div>
             </div>
           </div>
 
