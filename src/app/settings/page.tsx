@@ -151,9 +151,11 @@ export default function SettingsPage() {
                         </h2>
                         <p className="text-sm text-muted-foreground mt-1">Connect your Google Workspace accounts for sending outreach.</p>
                       </div>
-                      <Button asChild>
-                        <a href="/api/auth/gmail">Add Account</a>
-                      </Button>
+                      {accounts.length === 0 && (
+                        <Button asChild>
+                          <a href="/api/auth/gmail">Add Account</a>
+                        </Button>
+                      )}
                     </div>
 
                     {accounts.length === 0 ? (
