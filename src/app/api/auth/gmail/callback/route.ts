@@ -92,7 +92,6 @@ export const GET = withObservability(async (request: NextRequest) => {
       dashboardUrl.searchParams.set("connected", "true");
       dashboardUrl.searchParams.set("email", email);
     } else {
-      logger.error("OAuth flow completed but no email or refresh token extracted", { email, hasRefreshToken: !!refreshToken });
       dashboardUrl.searchParams.set("error", "OAuth Error: Could not determine email address or missing refresh token.");
     }
   } catch (err) {
