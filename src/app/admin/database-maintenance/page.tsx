@@ -95,7 +95,7 @@ export default function DatabaseMaintenancePage() {
     }
   };
 
-  const runSimulation = async (selectedRetention = retention) => {
+  const runSimulation = async (selectedRetention: string = retention) => {
     setIsSimulating(true);
     try {
       const res = await fetch("/api/admin/database-cleanup", {
@@ -257,7 +257,7 @@ export default function DatabaseMaintenancePage() {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12">
                     <Database className="h-12 w-12 text-slate-200 mb-4" />
-                    <Button onClick={runSimulation} size="lg" className="bg-indigo-600 hover:bg-indigo-700 gap-2 shadow-md">
+                    <Button onClick={() => runSimulation()} size="lg" className="bg-indigo-600 hover:bg-indigo-700 gap-2 shadow-md">
                       <Search className="h-4 w-4" /> Run Deep Scan
                     </Button>
                   </div>
