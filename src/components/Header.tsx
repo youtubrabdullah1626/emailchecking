@@ -40,6 +40,9 @@ export function Header({ onMenuClick }: HeaderProps) {
   const { data: globalStats } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url), { refreshInterval: 30000 });
   const { data: notifData } = useSWR("/api/notifications/important", (url: string) => apiClient<any>(url));
   
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const [lastClearedTime, setLastClearedTime] = useState<number>(0);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [selectedFileUrl, setSelectedFileUrl] = useState<string | null>(null);
@@ -122,9 +125,9 @@ export function Header({ onMenuClick }: HeaderProps) {
               <span className="text-[11px] font-bold text-foreground leading-none tracking-wide uppercase flex items-center gap-1">
                 Outreach Flow
               </span>
-              <span suppressHydrationWarning className="text-[10px] text-muted-foreground font-medium leading-none mt-0.5 flex items-center gap-1">
+              <span className="text-[10px] text-muted-foreground font-medium leading-none mt-0.5 flex items-center gap-1">
                 <TrendingUp className="h-3 w-3 text-primary" />
-                {globalStats ? `${globalStats.emailsSentToday || 0} Sent Today • ${globalStats.repliesToday || 0} Replies Today` : 'Calculating metrics...'}
+                {mounted && globalStats ? `${globalStats.emailsSentToday || 0} Sent Today • ${globalStats.repliesToday || 0} Replies Today` : 'Calculating metrics...'}
               </span>
             </div>
           </div>
@@ -134,8 +137,8 @@ export function Header({ onMenuClick }: HeaderProps) {
       <div className="flex items-center gap-2 md:gap-4">
         <div className="hidden md:flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Account:</span>
-          <span suppressHydrationWarning className="font-medium">
-            {accountStats === undefined ? (
+          <span className="font-medium">
+            {!mounted || accountStats === undefined ? (
               <span className="animate-pulse bg-slate-200 text-transparent rounded px-1">Loading account...</span>
             ) : accountStats?.connectedGmail ? (
               accountStats.connectionStatus === 'CONNECTED' 

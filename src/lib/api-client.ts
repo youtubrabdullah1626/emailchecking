@@ -21,8 +21,24 @@ export async function apiClient<T>(url: string, options: FetchOptions = {}): Pro
   const id = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const defaultHeaders: Record<string, string> = {};
+    if (typeof Intl !== 'undefined') {
+      defaultHeaders['x-timezone'] = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    }
+    
+    // Pass the exact local midnight to the server so it knows when "today" started
+    if (typeof window !== 'undefined') {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      defaultHeaders['x-local-start-of-day'] = startOfDay.toISOString();
+    }
+
     const response = await fetch(url, {
       ...fetchOptions,
+      headers: {
+        ...defaultHeaders,
+        ...fetchOptions.headers,
+      },
       signal: controller.signal,
     });
 

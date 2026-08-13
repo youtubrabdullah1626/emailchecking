@@ -18,13 +18,13 @@ export const dynamic = "force-dynamic";
  * All values are computed from real PostgreSQL data. No fake data.
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getTenantPrisma } from "@/lib/db/tenant-prisma";
 import { getSession } from "@/lib/auth/session";
 import { getSchedulerHealth } from "@/lib/scheduler/health";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const session = await getSession();
     if (!session?.user) {
@@ -33,8 +33,14 @@ export async function GET() {
     const tenantPrisma = getTenantPrisma(session.user.id);
     const userId = session.user.id;
 
-    const startOfDay = new Date();
-    startOfDay.setUTCHours(0, 0, 0, 0);
+    // Use the client's exact local midnight if provided, otherwise fallback to UTC midnight
+    const localStartStr = req.headers.get('x-local-start-of-day');
+    let startOfDay = new Date();
+    if (localStartStr && !isNaN(Date.parse(localStartStr))) {
+      startOfDay = new Date(localStartStr);
+    } else {
+      startOfDay.setUTCHours(0, 0, 0, 0);
+    }
 
     const oneHourAgo = new Date();
     oneHourAgo.setHours(oneHourAgo.getHours() - 1);
