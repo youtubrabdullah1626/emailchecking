@@ -122,7 +122,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               <span className="text-[11px] font-bold text-foreground leading-none tracking-wide uppercase flex items-center gap-1">
                 Outreach Flow
               </span>
-              <span className="text-[10px] text-muted-foreground font-medium leading-none mt-0.5 flex items-center gap-1">
+              <span suppressHydrationWarning className="text-[10px] text-muted-foreground font-medium leading-none mt-0.5 flex items-center gap-1">
                 <TrendingUp className="h-3 w-3 text-primary" />
                 {globalStats ? `${globalStats.emailsSentToday || 0} Sent Today • ${globalStats.repliesToday || 0} Replies Today` : 'Calculating metrics...'}
               </span>
@@ -134,7 +134,7 @@ export function Header({ onMenuClick }: HeaderProps) {
       <div className="flex items-center gap-2 md:gap-4">
         <div className="hidden md:flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Account:</span>
-          <span className="font-medium">
+          <span suppressHydrationWarning className="font-medium">
             {accountStats === undefined ? (
               <span className="animate-pulse bg-slate-200 text-transparent rounded px-1">Loading account...</span>
             ) : accountStats?.connectedGmail ? (
