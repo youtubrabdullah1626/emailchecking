@@ -19,7 +19,7 @@ import { Sparkles, Check } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function WorkspaceShell() {
-  const { status, errorMessage, summary, proceedToPlanning, resetImport, closeSession, appendTargetSessionId, fastTrackAppend, lastDeletedItem, undoLastDelete, undo, canUndo } = useImport() as any; 
+  const { status, errorMessage, summary, proceedToPlanning, resetImport, closeSession, appendTargetSessionId, fastTrackAppend, lastDeletedItem, undoLastDelete, undo, canUndo, bulkProgress } = useImport() as any; 
 
   // Determine if we should show a back button
   const showBackButton = status !== "IDLE" && status !== "ERROR" && status !== "EXECUTING" && status !== "SCHEDULING" && status !== "BUILDING";
@@ -172,7 +172,7 @@ Return only the CSV content with the required headers. No markdown, explanations
       {(status === "EXECUTING" || status === "COMPLETED") && (
         <>
           <BulkImportProgress />
-          {!((useImport() as any).bulkProgress) && <LiveExecutionDashboard />}
+          {!bulkProgress && <LiveExecutionDashboard />}
         </>
       )}
 

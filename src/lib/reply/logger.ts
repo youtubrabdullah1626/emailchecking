@@ -28,7 +28,9 @@ export type Phase7LogEvent =
   | "intelligence_analysis_completed"
   | "intelligence_analysis_failed"
   | "review_created"
-  | "manual_review_completed";
+  | "manual_review_completed"
+  | "reply_scan_no_account"
+  | "reply_classified_review";
 
 export interface ReplyLogPayload {
   traceId?: string;

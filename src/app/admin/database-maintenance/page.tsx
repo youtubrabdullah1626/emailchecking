@@ -160,6 +160,7 @@ export default function DatabaseMaintenancePage() {
   // Run initial simulation on mount
   useEffect(() => {
     runSimulation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

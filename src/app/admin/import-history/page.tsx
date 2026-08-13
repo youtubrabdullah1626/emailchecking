@@ -161,8 +161,8 @@ export default function ImportHistoryAdminPage() {
               All Import Sessions
             </CardTitle>
             <CardDescription>
-              "Download Errors" fetches failed rows as a CSV stream — never loads all errors into memory.
-              "Revert" deletes all data created by that import inside a DB transaction.
+              &quot;Download Errors&quot; fetches failed rows as a CSV stream — never loads all errors into memory.
+              &quot;Revert&quot; deletes all data created by that import inside a DB transaction.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
