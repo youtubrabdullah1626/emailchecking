@@ -141,16 +141,18 @@ export function Header({ onMenuClick }: HeaderProps) {
       
       <div className="flex items-center gap-2 md:gap-4">
         <div className="hidden md:flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Account:</span>
+          <span className="text-muted-foreground">Sending Email:</span>
           <span className="font-medium">
             {!mounted || accountStats === undefined ? (
-              <span className="animate-pulse bg-slate-200 text-transparent rounded px-1">Loading account...</span>
+              <span className="animate-pulse bg-slate-200 text-transparent rounded px-1">Loading...</span>
             ) : accountStats?.connectedGmail ? (
               accountStats.connectionStatus === 'CONNECTED' 
                 ? accountStats.connectedGmail 
                 : <span className="text-destructive">{accountStats.connectedGmail} (Disconnected)</span>
             ) : (
-              'Not connected'
+              <Link href="/settings" className="text-primary hover:underline font-semibold flex items-center gap-1">
+                Connect Account
+              </Link>
             )}
           </span>
         </div>
