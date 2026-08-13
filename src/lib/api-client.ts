@@ -48,6 +48,10 @@ export async function apiClient<T>(url: string, options: FetchOptions = {}): Pro
     const data = isJson ? await response.json() : await response.text();
 
     if (!response.ok) {
+      if (response.status === 401 && typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+      
       throw new ApiError(
         response.status,
         data?.error || "An unexpected error occurred",
