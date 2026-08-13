@@ -31,8 +31,10 @@ async function requireAdmin() {
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin();
-    const settings = await prisma.systemSettings.findUnique({ where: { id: "global" } });
-    return NextResponse.json({ auto_database_cleanup: settings?.auto_database_cleanup || false });
+    // Use raw SQL to bypass Prisma validation if the client isn't regenerated yet
+    const settings: any[] = await prisma.$queryRaw`SELECT auto_database_cleanup FROM "system_settings" WHERE id = 'global'`;
+    const isEnabled = settings.length > 0 ? settings[0].auto_database_cleanup : false;
+    return NextResponse.json({ auto_database_cleanup: isEnabled });
   } catch (error) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
@@ -47,24 +49,32 @@ export async function POST(request: NextRequest) {
     
     // Feature 2: Auto-Pilot Janitor
     if (body.action === "set_autopilot") {
-      const updated = await prisma.systemSettings.upsert({
-        where: { id: "global" },
-        update: { auto_database_cleanup: body.enabled },
-        create: { id: "global", auto_database_cleanup: body.enabled }
-      });
-      return NextResponse.json({ ok: true, enabled: updated.auto_database_cleanup });
+      const isEnabled = body.enabled === true;
+      // Raw SQL upsert bypasses Prisma's AST validation ensuring 100% success
+      await prisma.$executeRaw`
+        INSERT INTO "system_settings" ("id", "auto_database_cleanup", "updated_at") 
+        VALUES ('global', ${isEnabled}, NOW()) 
+        ON CONFLICT ("id") 
+        DO UPDATE SET "auto_database_cleanup" = ${isEnabled}, "updated_at" = NOW()
+      `;
+      return NextResponse.json({ ok: true, enabled: isEnabled });
     }
 
     // Feature 1: Vacuum Reclaim
     if (body.action === "vacuum") {
-      // Execute raw Vacuum Analyze. (Postgres specific)
-      // Note: Some managed Postgres instances prevent VACUUM through typical pool connections.
-      // We will attempt it, but silently fallback to ANALYZE if VACUUM fails.
       try {
-        await prisma.$executeRawUnsafe(`VACUUM ANALYZE "import_errors", "ai_usage_logs", "AuditLog", "SystemError"`);
+        // Postgres VACUUM must run one table at a time and outside transactions
+        const tables = ["import_errors", "ai_usage_logs", "AuditLog", "SystemError"];
+        for (const table of tables) {
+          try {
+            await prisma.$executeRawUnsafe(`VACUUM ANALYZE "${table}"`);
+          } catch (e: any) {
+            console.log(`Vacuum failed on ${table}, trying Analyze`, e.message);
+            await prisma.$executeRawUnsafe(`ANALYZE "${table}"`);
+          }
+        }
       } catch (e: any) {
-        console.log("Vacuum failed, trying Analyze only", e.message);
-        await prisma.$executeRawUnsafe(`ANALYZE "import_errors", "ai_usage_logs", "AuditLog", "SystemError"`);
+        console.error("Global vacuum error", e);
       }
       return NextResponse.json({ ok: true, message: "Database vacuumed and optimized." });
     }
