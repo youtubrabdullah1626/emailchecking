@@ -350,7 +350,7 @@ model AiUsageLog {
 }
 
 model accounts {
-  id                String  @id
+  id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
@@ -434,8 +434,8 @@ model oauth_states {
 }
 
 model platform_configs {
-  id               String         @id @default(cuid())
-  key              String         @unique
+  id               String           @id @default(cuid())
+  key              String           @unique
   name             String
   description      String?
   category         ConfigCategory
@@ -443,13 +443,13 @@ model platform_configs {
   value            Json
   default_value    Json
   validation_rules Json?
-  is_safe_runtime  Boolean        @default(true)
-  requires_reason  Boolean        @default(false)
-  risk_level       RiskLevel      @default(SAFE)
-  environment      String         @default("production")
+  is_safe_runtime  Boolean          @default(true)
+  requires_reason  Boolean          @default(false)
+  risk_level       RiskLevel        @default(SAFE)
+  environment      String           @default("production")
   updated_by       String?
-  updated_at       DateTime       @updatedAt
-  created_at       DateTime       @default(now())
+  updated_at       DateTime         @updatedAt
+  created_at       DateTime         @default(now())
   history          config_history[]
 
   @@index([key])
@@ -458,24 +458,24 @@ model platform_configs {
 }
 
 model provider_configs {
-  id               String            @id @default(cuid())
-  key              String            @unique
-  name             String
-  description      String?
-  active_provider  String
-  allowed_values   String[]
-  environment      String            @default("production")
-  updated_by       String?
-  updated_at       DateTime          @updatedAt
-  created_at       DateTime          @default(now())
-  history          provider_history[]
+  id              String             @id @default(cuid())
+  key             String             @unique
+  name            String
+  description     String?
+  active_provider String
+  allowed_values  String[]
+  environment     String             @default("production")
+  updated_by      String?
+  updated_at      DateTime           @updatedAt
+  created_at      DateTime           @default(now())
+  history         provider_history[]
 
   @@index([key])
   @@index([environment])
 }
 
 model sessions {
-  id           String   @id
+  id           String   @id @default(cuid())
   sessionToken String   @unique
   userId       String
   expires      DateTime
@@ -483,7 +483,7 @@ model sessions {
 }
 
 model users {
-  id             String         @id
+  id             String         @id @default(cuid())
   name           String?
   email          String?        @unique
   emailVerified  DateTime?
@@ -517,7 +517,7 @@ model ImportJob {
   skippedCount Int           @default(0)
   campaignId   String?
   campaignName String?
-  importTag    String?       // Auto-tag applied to all contacts in this batch
+  importTag    String? // Auto-tag applied to all contacts in this batch
   chunksTotal  Int           @default(1)
   chunksLoaded Int           @default(0)
   createdAt    DateTime      @default(now())
@@ -730,7 +730,6 @@ enum AdhocEmailStatus {
   FAILED
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Phase 17 — Enterprise History Models & Supporting Enums
 // ─────────────────────────────────────────────────────────────────────────────
@@ -761,31 +760,30 @@ model flag_history {
 
 /// Immutable change history for Platform Configuration
 model config_history {
-  id         String          @id @default(cuid())
-  config     platform_configs @relation(fields: [config_id], references: [id], onDelete: Cascade)
-  config_id  String
-  old_value  Json
-  new_value  Json
-  reason     String?
-  is_rollback Boolean        @default(false)
-  changed_by String
-  changed_at DateTime        @default(now())
+  id          String           @id @default(cuid())
+  config      platform_configs @relation(fields: [config_id], references: [id], onDelete: Cascade)
+  config_id   String
+  old_value   Json
+  new_value   Json
+  reason      String?
+  is_rollback Boolean          @default(false)
+  changed_by  String
+  changed_at  DateTime         @default(now())
 
   @@index([config_id, changed_at])
 }
 
 /// Immutable change history for Provider Configuration
 model provider_history {
-  id          String          @id @default(cuid())
+  id          String           @id @default(cuid())
   provider    provider_configs @relation(fields: [provider_id], references: [id], onDelete: Cascade)
   provider_id String
   old_value   Json
   new_value   Json
   reason      String?
-  is_rollback Boolean         @default(false)
+  is_rollback Boolean          @default(false)
   changed_by  String
-  changed_at  DateTime        @default(now())
+  changed_at  DateTime         @default(now())
 
   @@index([provider_id, changed_at])
 }
-
