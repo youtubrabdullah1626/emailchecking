@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AppShell } from "@/components/AppShell";
 import { Toaster } from "@/components/ui/sonner";
+import NextTopLoader from 'nextjs-toploader';
 import { getSession } from "@/lib/auth/session";
 import prisma from "@/lib/prisma";
 import { getTenantPrisma } from "@/lib/db/tenant-prisma";
