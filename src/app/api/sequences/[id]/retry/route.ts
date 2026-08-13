@@ -38,6 +38,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/observability/logger";
 import { withObservability } from "@/lib/observability/middleware";
+import { getSession } from "@/lib/auth/session";
 
 const MAX_RETRIES = 3;
 
@@ -54,7 +55,26 @@ export const POST = withObservability(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) => {
+  // ── Auth Guard — the SCHEDULER_SECRET check promised in the comment was never
+  // implemented. Replacing with session auth as the single source of truth.
+  const session = await getSession();
+  if (!session?.user) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id: sequenceId } = await params;
+
+  // ── Sequence ownership verification ──────────────────────────────────
+  const sequence = await prisma.sequence.findUnique({
+    where: { id: sequenceId, user_id: session.user.id },
+    select: { id: true },
+  });
+  if (!sequence) {
+    return NextResponse.json(
+      { ok: false, error: "NOT_FOUND", detail: `Sequence ${sequenceId} not found.` },
+      { status: 404 }
+    );
+  }
 
   // ── Parse optional step ID list ───────────────────────────────────────────
   let targetStepIds: string[] | null = null;

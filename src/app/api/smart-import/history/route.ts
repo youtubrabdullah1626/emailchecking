@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSessionUser } from "@/lib/audit/rbac";
+import { getSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -10,15 +10,13 @@ export const dynamic = "force-dynamic";
  * Admins can see ALL users' import jobs. Regular users see only their own.
  */
 export async function GET(request: NextRequest) {
-  try {
-    let user = await getSessionUser();
-    let userId = user?.id;
-    if (!userId || userId === "mock_admin_123") {
-      const firstUser = await prisma.users.findFirst();
-      if (!firstUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      userId = firstUser.id;
-    }
+  const session = await getSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const userId = session.user.id;
 
+  try {
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
     const limit = Math.min(50, parseInt(searchParams.get("limit") || "20"));

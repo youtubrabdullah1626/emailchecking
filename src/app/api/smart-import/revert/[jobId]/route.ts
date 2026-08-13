@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSessionUser } from "@/lib/audit/rbac";
+import { getSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -24,15 +24,14 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { jobId: string } }
 ) {
-  try {
-    let user = await getSessionUser();
-    let userId = user?.id;
-    if (!userId || userId === "mock_admin_123") {
-      const firstUser = await prisma.users.findFirst();
-      if (!firstUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      userId = firstUser.id;
-    }
+  // ── Auth Guard: removed mock_admin_123 / findFirst() bypass ───────────────
+  const session = await getSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const userId = session.user.id;
 
+  try {
     // ── Verify ownership and state ────────────────────────────────────────────
     const job = await prisma.importJob.findFirst({
       where: { id: params.jobId, userId },

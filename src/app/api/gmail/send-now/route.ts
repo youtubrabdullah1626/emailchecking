@@ -29,8 +29,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendStep } from "@/lib/gmail/sender";
 import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/auth/session";
 
 export async function POST(request: NextRequest) {
+  // ── Auth Guard ───────────────────────────────────────────────
+  const session = await getSession();
+  if (!session?.user) {
+    return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+  }
+
   // ── 1. Parse and validate request body ──────────────────────────────────
   let body: { stepId: string };
   try {
@@ -60,6 +67,7 @@ export async function POST(request: NextRequest) {
   } | null;
 
   try {
+    // Ownership check: include sequence.user_id in select, verify below
     step = await prisma.sequenceStep.findUnique({
       where: { id: stepId },
       select: {
@@ -69,6 +77,7 @@ export async function POST(request: NextRequest) {
         sequence: {
           select: {
             status: true,
+            user_id: true,
             prospect: {
               select: { email: true, status: true },
             },
@@ -85,6 +94,14 @@ export async function POST(request: NextRequest) {
   }
 
   if (!step) {
+    return NextResponse.json(
+      { ok: false, error: "NOT_FOUND", detail: `Step ${stepId} not found.` },
+      { status: 404 }
+    );
+  }
+
+  // ── Ownership verification: reject cross-tenant step access ──────────────
+  if ((step.sequence as any).user_id !== session.user.id) {
     return NextResponse.json(
       { ok: false, error: "NOT_FOUND", detail: `Step ${stepId} not found.` },
       { status: 404 }

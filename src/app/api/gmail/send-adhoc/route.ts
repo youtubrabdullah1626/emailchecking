@@ -3,6 +3,7 @@ import { google } from "googleapis";
 import prisma from "@/lib/prisma";
 import { getOAuthConfig, createOAuth2Client } from "@/lib/gmail/oauth";
 import { buildGmailMessage } from "@/lib/gmail/message";
+import { getSession } from "@/lib/auth/session";
 
 function replaceVariables(text: string, prospect: any) {
   if (!text) return text;
@@ -26,6 +27,12 @@ function replaceVariables(text: string, prospect: any) {
 }
 
 export async function POST(request: NextRequest) {
+  // ── Auth Guard ───────────────────────────────────────────────────────────
+  const session = await getSession();
+  if (!session?.user) {
+    return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+  }
+
   try {
     const raw = await request.json();
     const { prospectId, subject, body, pauseSequence, scheduledAt, replyToLastThread } = raw;
@@ -37,9 +44,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Find prospect
+    // 1. Find prospect — user_id scope prevents cross-tenant send
     const prospect = await prisma.prospect.findUnique({
-      where: { id: prospectId },
+      where: { id: prospectId, user_id: session.user.id },
       include: {
         users: { select: { email: true } },
         sequences: {

@@ -29,22 +29,38 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
     const isPreview = body.preview === true;
+    const retention = body.retention || "30d"; // Default to 30 days
 
     const now = new Date();
     
-    // Define the specific cutoff thresholds (Strict Data Governance)
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    // Dynamic cutoffs based on selected retention
+    let errorCutoff = new Date();
+    let logCutoff = new Date();
+    let oauthCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000); // OAuth always 24h
+
+    if (retention === "30d") {
+      errorCutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      logCutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000); // Logs kept longer by default
+    } else if (retention === "7d") {
+      errorCutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      logCutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); 
+    } else if (retention === "24h") {
+      errorCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      logCutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (retention === "all") {
+      errorCutoff = now;
+      logCutoff = now;
+      oauthCutoff = now;
+    }
 
     // Queries to define stale records
     const queries = {
-      expiredTokens: { expires: { lt: now } },
-      staleOauth: { created_at: { lt: oneDayAgo } }, // OAuth states only last 10 mins normally
-      oldErrors: { lastSeen: { lt: thirtyDaysAgo } }, // System Error logs
-      oldAuditLogs: { created_at: { lt: ninetyDaysAgo } }, // Audit logs > 90 days
-      oldAiLogs: { occurred_at: { lt: ninetyDaysAgo } }, // AI Usage logs > 90 days
-      oldImportErrors: { createdAt: { lt: thirtyDaysAgo } } // Bulk import detailed errors
+      expiredTokens: { expires: { lt: now } }, // Tokens are only deleted if naturally expired, regardless of retention
+      staleOauth: { created_at: { lt: oauthCutoff } }, 
+      oldErrors: { lastSeen: { lt: errorCutoff } }, 
+      oldAuditLogs: { created_at: { lt: logCutoff } }, 
+      oldAiLogs: { occurred_at: { lt: logCutoff } }, 
+      oldImportErrors: { createdAt: { lt: errorCutoff } } 
     };
 
     if (isPreview) {
@@ -106,11 +122,11 @@ export async function POST(request: NextRequest) {
     // Audit the cleanup action itself (Strict Founders Rule)
     await prisma.auditLog.create({
       data: {
-        action_type: "DELETE",
+        action_type: "USER_ACTION" as const,
         action: "DATABASE_MAINTENANCE",
         user_id: userId,
         actor_email: user?.email || "admin",
-        severity: "HIGH",
+        severity: "CRITICAL" as const,
         status: "SUCCESS",
         metadata: results as any,
         description: `Admin manually cleaned up ${totalDeleted} stale database records.`

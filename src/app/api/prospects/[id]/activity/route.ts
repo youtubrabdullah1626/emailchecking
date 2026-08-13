@@ -1,15 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const session = await getSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const prospect = await (prisma as any).prospect.findUnique({
-      where: { id: params.id },
+      where: { id: params.id, user_id: session.user.id },
       include: {
         sequences: {
           include: {

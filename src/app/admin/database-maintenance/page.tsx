@@ -36,14 +36,15 @@ export default function DatabaseMaintenancePage() {
   const [totalReady, setTotalReady] = useState(0);
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [retention, setRetention] = useState<"30d" | "7d" | "24h" | "all">("30d");
 
-  const runSimulation = async () => {
+  const runSimulation = async (selectedRetention = retention) => {
     setIsSimulating(true);
     try {
       const res = await fetch("/api/admin/database-cleanup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ preview: true })
+        body: JSON.stringify({ preview: true, retention: selectedRetention })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Simulation failed");
@@ -77,7 +78,7 @@ export default function DatabaseMaintenancePage() {
       const res = await fetch("/api/admin/database-cleanup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ preview: false })
+        body: JSON.stringify({ preview: false, retention })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Cleanup failed");
@@ -140,7 +141,23 @@ export default function DatabaseMaintenancePage() {
                     {/* Status Overview */}
                     <div className="flex items-center justify-between p-6 bg-slate-50 rounded-xl border border-slate-100">
                       <div>
-                        <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">Eligible for deletion</p>
+                        <div className="flex items-center gap-3 mb-1">
+                          <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Eligible for deletion</p>
+                          <select 
+                            className="text-xs bg-slate-200 border border-slate-300 rounded-md px-2 py-1 text-slate-700 font-medium focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                            value={retention}
+                            onChange={(e) => {
+                              const val = e.target.value as any;
+                              setRetention(val);
+                              runSimulation(val);
+                            }}
+                          >
+                            <option value="30d">Older than 30 Days</option>
+                            <option value="7d">Older than 7 Days</option>
+                            <option value="24h">Older than 24 Hours</option>
+                            <option value="all">Force Clean (All Logs)</option>
+                          </select>
+                        </div>
                         <p className="text-4xl font-bold text-slate-900">{totalReady.toLocaleString()}</p>
                         <p className="text-sm text-slate-500 mt-2">obsolete records found safely removable.</p>
                       </div>
@@ -162,12 +179,12 @@ export default function DatabaseMaintenancePage() {
                         <span className="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">6 Categories</span>
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <StatBox label="Import Errors (>30 days)" count={counts.oldImportErrors} desc="Old bulk import failure logs" icon="FileUp" />
-                        <StatBox label="System Errors (>30 days)" count={counts.oldErrors} desc="System trace logs" icon="ShieldAlert" />
-                        <StatBox label="Audit Logs (>90 days)" count={counts.oldAuditLogs} desc="Historic user activity logs" icon="History" />
-                        <StatBox label="AI Usage Logs (>90 days)" count={counts.oldAiLogs} desc="Historic AI generation logs" icon="Bot" />
+                        <StatBox label={`Import Errors ${retention === 'all' ? '(ALL)' : retention === '30d' ? '(>30 DAYS)' : retention === '7d' ? '(>7 DAYS)' : '(>24 HOURS)'}`} count={counts.oldImportErrors} desc="Bulk import failure logs" icon="FileUp" />
+                        <StatBox label={`System Errors ${retention === 'all' ? '(ALL)' : retention === '30d' ? '(>30 DAYS)' : retention === '7d' ? '(>7 DAYS)' : '(>24 HOURS)'}`} count={counts.oldErrors} desc="System trace logs" icon="ShieldAlert" />
+                        <StatBox label={`Audit Logs ${retention === 'all' ? '(ALL)' : retention === '30d' ? '(>90 DAYS)' : retention === '7d' ? '(>30 DAYS)' : '(>7 DAYS)'}`} count={counts.oldAuditLogs} desc="Historic user activity logs" icon="History" />
+                        <StatBox label={`AI Usage Logs ${retention === 'all' ? '(ALL)' : retention === '30d' ? '(>90 DAYS)' : retention === '7d' ? '(>30 DAYS)' : '(>7 DAYS)'}`} count={counts.oldAiLogs} desc="Historic AI generation logs" icon="Bot" />
                         <StatBox label="Expired Tokens" count={counts.expiredTokens} desc="Old login/verification tokens" icon="Key" />
-                        <StatBox label="Stale OAuth States" count={counts.staleOauth} desc="Abandoned connection attempts" icon="Link" />
+                        <StatBox label={`Stale OAuth ${retention === 'all' ? '(ALL)' : '(>24 HOURS)'}`} count={counts.staleOauth} desc="Abandoned connection attempts" icon="Link" />
                       </div>
                     </div>
                   </div>

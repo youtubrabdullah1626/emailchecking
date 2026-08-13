@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const session = await getSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const campaigns = await prisma.campaign.findMany({
+      where: { user_id: session.user.id },
       orderBy: { created_at: "desc" },
       include: {
         _count: {

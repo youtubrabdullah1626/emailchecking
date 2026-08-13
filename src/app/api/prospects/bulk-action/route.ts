@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { errorTracker } from "@/lib/observability/errors";
 import { auditService } from "@/lib/audit/audit.service";
-import { getSessionUser } from "@/lib/audit/rbac";
+import { getSession } from "@/lib/auth/session";
 
 export async function POST(request: NextRequest) {
+  // ── Auth Guard — must be first, before any business logic ─────────────────
+  const session = await getSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { emails, action } = body; // action is "DELETE" or "CANCEL"
@@ -16,18 +22,17 @@ export async function POST(request: NextRequest) {
     const lowercaseEmails = emails.map(e => String(e).toLowerCase());
 
     if (action === "DELETE") {
+      // FIXED: user_id: session.user.id ensures only the caller's own prospects are deleted
       const result = await prisma.prospect.deleteMany({
         where: {
-          email: {
-            in: lowercaseEmails
-          }
+          email: { in: lowercaseEmails },
+          user_id: session.user.id,
         }
       });
       
-      const user = await getSessionUser();
       auditService.logAction(
-        user?.id || 'system',
-        user?.email || 'system',
+        session.user.id,
+        session.user.email,
         'PROSPECTS_DELETED',
         'DELETE',
         `${result.count} Prospects`,
@@ -38,22 +43,18 @@ export async function POST(request: NextRequest) {
       
       return NextResponse.json({ ok: true, count: result.count, action: "DELETE" });
     } else if (action === "CANCEL") {
-      // Set prospect status to STOPPED instead of deleting
+      // FIXED: user_id: session.user.id ensures only the caller's own prospects are updated
       const result = await prisma.prospect.updateMany({
         where: {
-          email: {
-            in: lowercaseEmails
-          }
+          email: { in: lowercaseEmails },
+          user_id: session.user.id,
         },
-        data: {
-          status: "STOPPED"
-        }
+        data: { status: "STOPPED" }
       });
       
-      const user = await getSessionUser();
       auditService.logAction(
-        user?.id || 'system',
-        user?.email || 'system',
+        session.user.id,
+        session.user.email,
         'PROSPECTS_STOPPED',
         'UPDATE',
         `${result.count} Prospects`,

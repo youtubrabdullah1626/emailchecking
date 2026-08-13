@@ -1,23 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSessionUser } from "@/lib/audit/rbac";
+import { getSession } from "@/lib/auth/session";
 import { auditService } from "@/lib/audit/audit.service";
 import { getNetworkContext } from "@/lib/audit/network";
 
 export async function POST(request: NextRequest) {
+  // ── Auth Guard: removed mock_admin_123 / findFirst() bypass ───────────────
+  const session = await getSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const activeUserId = session.user.id;
+
   try {
-    let user = await getSessionUser();
-    let activeUserId = user?.id;
-
-    if (!activeUserId || activeUserId === "mock_admin_123") {
-      // Fallback for development if no session or using mock user
-      const firstUser = await prisma.users.findFirst();
-      if (!firstUser) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      activeUserId = firstUser.id;
-    }
-
     const body = await request.json();
     const { campaignName, validatedRecords, sequences, executionQueue } = body;
 
@@ -137,7 +132,7 @@ export async function POST(request: NextRequest) {
     
     auditService.logAction(
       activeUserId,
-      user?.email || "system",
+      session.user.email,
       "Smart Import Completed",
       "SYSTEM",
       campaign.name,

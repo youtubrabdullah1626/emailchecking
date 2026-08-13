@@ -2,15 +2,23 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/replies
  *
- * Operator Reply Intelligence Endpoint — Lists all reply classifications from DB.
+ * Operator Reply Intelligence Endpoint — Lists reply classifications for the authenticated user.
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/auth/session";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const session = await getSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
+    // Filter through prospect.user_id — ReplyClassification has no direct user_id
     const records = await prisma.replyClassification.findMany({
+      where: { prospect: { user_id: session.user.id } },
       orderBy: { classified_at: "desc" },
       take: 100,
       include: {
