@@ -111,64 +111,64 @@ export function LiveExecutionDashboard() {
   }, [liveItems]);
 
   // Check for Replies Worker (Every 15s)
-  useEffect(() => {
-    const checkLiveTrackingStatus = async () => {
-      const currentItems = liveItemsRef.current;
-      // Check items that are SENT, OPENED, or CLICKED (since they could transition to OPENED, CLICKED, REPLIED)
-      const activeItems = currentItems.filter(
-        item => item.liveStatus === "SENT" || item.liveStatus === "OPENED"
-      );
+  const checkLiveTrackingStatus = React.useCallback(async () => {
+    const currentItems = liveItemsRef.current;
+    // Check items that are SENT, OPENED, or CLICKED
+    const activeItems = currentItems.filter(
+      item => item.liveStatus === "SENT" || item.liveStatus === "OPENED" || item.liveStatus === "SCHEDULED"
+    );
 
-      if (activeItems.length === 0) return;
-      const stepIds = activeItems.map(item => item.queueId);
+    if (activeItems.length === 0) return;
+    const stepIds = activeItems.map(item => item.queueId);
 
-      try {
-        const res = await fetch("/api/track/status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stepIds })
-        });
-        const data = await res.json();
+    try {
+      const res = await fetch("/api/track/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stepIds })
+      });
+      const data = await res.json();
 
-        if (data.statuses && data.statuses.length > 0) {
-          const newTimeStr = new Date().toLocaleTimeString([], { hour12: false });
+      if (data.statuses && data.statuses.length > 0) {
+        const newTimeStr = new Date().toLocaleTimeString([], { hour12: false });
 
-          setLiveItems(prev => prev.map(item => {
-            const tracking = data.statuses.find((s: any) => s.stepId === item.queueId);
-            if (tracking && tracking.status && tracking.status !== item.liveStatus) {
+        setLiveItems(prev => prev.map(item => {
+          const tracking = data.statuses.find((s: any) => s.stepId === item.queueId);
+          if (tracking && tracking.status && tracking.status !== item.liveStatus) {
 
-              if (updateQueueItemState) {
-                updateQueueItemState(item.queueId, tracking.status, newTimeStr);
-              }
-
-              if (tracking.status === "REPLIED") {
-                toast.success("New Reply Detected!", {
-                  description: `${item.recipientEmail} has replied.`,
-                  icon: <Reply className="h-4 w-4 text-emerald-500" />
-                });
-              } else if (tracking.status === "OPENED" && item.liveStatus === "SENT") {
-                toast.success("Email Opened!", {
-                  description: `${item.recipientEmail} just opened your email.`,
-                  icon: <MailOpen className="h-4 w-4 text-blue-500" />
-                });
-              }
-
-              return { ...item, liveStatus: tracking.status, lastEventTime: newTimeStr };
+            if (updateQueueItemState) {
+              updateQueueItemState(item.queueId, tracking.status, newTimeStr);
             }
-            return item;
-          }));
-        }
-      } catch (err) {
-        console.error("Failed to check tracking status", err);
-      }
-    };
 
+            if (tracking.status === "REPLIED") {
+              toast.success("New Reply Detected!", {
+                description: `${item.recipientEmail} has replied.`,
+                icon: <Reply className="h-4 w-4 text-emerald-500" />
+              });
+            } else if (tracking.status === "OPENED" && item.liveStatus === "SENT") {
+              toast.success("Email Opened!", {
+                description: `${item.recipientEmail} just opened your email.`,
+                icon: <MailOpen className="h-4 w-4 text-blue-500" />
+              });
+            }
+
+            return { ...item, liveStatus: tracking.status, lastEventTime: newTimeStr };
+          }
+          return item;
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to check tracking status", err);
+    }
+  }, [updateQueueItemState]);
+
+  useEffect(() => {
     // Initial check
     checkLiveTrackingStatus();
     // Poll every 15 seconds
     const interval = setInterval(checkLiveTrackingStatus, 15000);
     return () => clearInterval(interval);
-  }, [updateQueueItemState]);
+  }, [checkLiveTrackingStatus]);
 
   const handleManualSyncReplies = async () => {
     try {

@@ -28,15 +28,17 @@ export async function POST(req: NextRequest) {
 
     const statusMap = new Map<string, any>();
     for (const email of trackedEmails) {
-      statusMap.set(email.source_id, {
-        stepId: email.source_id,
-        status: email.status,
-        openCount: email.open_count,
-        clickCount: email.click_count,
-        lastOpenedAt: email.last_opened_at?.toISOString() || null,
-        bouncedAt: email.bounced_at?.toISOString() || null,
-        repliedAt: email.replied_at?.toISOString() || null
-      });
+      if (email.source_id) {
+        statusMap.set(email.source_id, {
+          stepId: email.source_id,
+          status: email.status,
+          openCount: email.open_count,
+          clickCount: email.click_count,
+          lastOpenedAt: email.last_opened_at?.toISOString() || null,
+          bouncedAt: email.bounced_at?.toISOString() || null,
+          repliedAt: email.replied_at?.toISOString() || null
+        });
+      }
     }
 
     // 2. Cross-reference with database sequenceStep & prospect records for 100% accurate state
