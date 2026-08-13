@@ -204,8 +204,10 @@ export async function GET(req: NextRequest) {
         try {
           const { runScheduler } = await import("@/lib/scheduler/run");
           const { sendBatch } = await import("@/lib/gmail/sender");
-          await runScheduler({ dryRun: false });
-          await sendBatch();
+          const result = await runScheduler({ dryRun: false });
+          if (result.claimedStepIds && result.claimedStepIds.length > 0) {
+            await sendBatch(result.claimedStepIds);
+          }
         } catch (err) {
           console.error("Auto-scheduler background execution error:", err);
         }
