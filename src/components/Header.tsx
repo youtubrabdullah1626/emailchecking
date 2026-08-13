@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { RefreshCw, Bell, Menu, Zap, TrendingUp, Camera, X, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
