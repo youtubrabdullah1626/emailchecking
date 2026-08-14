@@ -98,7 +98,7 @@ export function DuplicateWarningModal({
                       </label>
                       <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                         <Mail className="h-3 w-3" />
-                        <span className="truncate max-w-[300px]">"{dup.subject}"</span>
+                        <span className="truncate max-w-[300px]">&quot;{dup.subject}&quot;</span>
                       </div>
                       <div className="text-[10px] text-muted-foreground mt-0.5">
                         Sent {dateStr}
