@@ -1,8 +1,9 @@
 import React from "react";
+import useSWR from "swr";
 import { AuditLogEvent } from "./types";
 import { StatusBadge, ActionBadge } from "./badges";
 import { InfoCard, MetadataGrid } from "./InfoCard";
-import { X, CalendarDays, Activity, ShieldAlert, MonitorSmartphone, KeyRound, Server, Network } from "lucide-react";
+import { X, CalendarDays, Activity, ShieldAlert, MonitorSmartphone, KeyRound, Server, Network, Loader2 } from "lucide-react";
 
 interface AuditEventDrawerProps {
   event: AuditLogEvent | null;
@@ -10,7 +11,18 @@ interface AuditEventDrawerProps {
   onClose: () => void;
 }
 
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to load details");
+  return res.json();
+};
+
 export function AuditEventDrawer({ event, isOpen, onClose }: AuditEventDrawerProps) {
+  const { data, isLoading } = useSWR(
+    isOpen && event ? `/api/admin/audit/${event.id}` : null,
+    fetcher
+  );
+
   if (!isOpen || !event) return null;
 
   const date = new Date(event.time);
@@ -82,22 +94,20 @@ export function AuditEventDrawer({ event, isOpen, onClose }: AuditEventDrawerPro
           </section>
 
           {/* Device & Network Section */}
-          {(event.ipAddress || event.country || (event.device && event.device !== "Unknown Device") || event.browser || event.os || event.environment) ? (
-            <section className="flex flex-col gap-4">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <MonitorSmartphone className="w-4 h-4" />
-                Device & Network
-              </h3>
-              <MetadataGrid>
-                {event.ipAddress && <InfoCard label="IP Address" value={event.ipAddress} monospace />}
-                {event.country && <InfoCard label="Country" value={event.country} />}
-                {event.device && event.device !== "Unknown Device" && <InfoCard label="Device" value={event.device} />}
-                {event.browser && <InfoCard label="Browser" value={event.browser} />}
-                {event.os && <InfoCard label="Operating System" value={event.os} />}
-                {event.environment && <InfoCard label="Environment" value={event.environment} />}
-              </MetadataGrid>
-            </section>
-          ) : null}
+          <section className="flex flex-col gap-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <MonitorSmartphone className="w-4 h-4" />
+              Device & Network
+            </h3>
+            <MetadataGrid>
+              <InfoCard label="IP Address" value={event.ipAddress || "Not Recorded (System Action)"} monospace={!!event.ipAddress} />
+              {event.country && <InfoCard label="Country" value={event.country} />}
+              {event.device && event.device !== "Unknown Device" && <InfoCard label="Device" value={event.device} />}
+              {event.browser && <InfoCard label="Browser" value={event.browser} />}
+              {event.os && <InfoCard label="Operating System" value={event.os} />}
+              {event.environment && <InfoCard label="Environment" value={event.environment} />}
+            </MetadataGrid>
+          </section>
 
           {/* System Context */}
           {(event.sessionId || event.requestId || event.apiSource) ? (
@@ -197,13 +207,51 @@ export function AuditEventDrawer({ event, isOpen, onClose }: AuditEventDrawerPro
           <section className="flex flex-col gap-4 pt-4 border-t border-border">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
               <Network className="w-4 h-4" />
-              Related Activity
+              Related Activity Timeline
             </h3>
-            <div className="p-6 border border-dashed border-border rounded-md text-center bg-muted/10">
-              <p className="text-sm text-muted-foreground">
-                Timeline and related events feature will be available after backend integration.
-              </p>
-            </div>
+            
+            {isLoading ? (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : data?.relatedEvents && data.relatedEvents.length > 0 ? (
+              <div className="relative border-l-2 border-muted ml-3 space-y-6 pb-4 pt-2">
+                {data.relatedEvents.map((relatedEvent: any) => {
+                  const rDate = new Date(relatedEvent.created_at || relatedEvent.time);
+                  const isCurrent = relatedEvent.id === event.id;
+                  
+                  return (
+                    <div key={relatedEvent.id} className="relative pl-6 group">
+                      <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-4 border-card transition-colors ${
+                        isCurrent ? 'bg-primary scale-110' : 
+                        relatedEvent.status === 'FAILURE' ? 'bg-destructive' : 
+                        relatedEvent.severity === 'WARNING' ? 'bg-orange-500' : 'bg-muted-foreground'
+                      }`} />
+                      
+                      <div className={`flex flex-col p-3 rounded-md border ${isCurrent ? 'border-primary/30 bg-primary/5' : 'border-border bg-card shadow-sm hover:border-primary/20 transition-colors'}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-sm font-semibold ${isCurrent ? 'text-primary' : 'text-foreground'}`}>
+                            {relatedEvent.action}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {rDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground line-clamp-1">
+                          {relatedEvent.actor_email || relatedEvent.actorEmail}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-6 border border-dashed border-border rounded-md text-center bg-muted/10">
+                <p className="text-sm text-muted-foreground">
+                  No related activity found for this event.
+                </p>
+              </div>
+            )}
           </section>
 
         </div>
