@@ -73,10 +73,6 @@ export function ImportHistoryWorkspace() {
   // Track hidden sessions (optimistic delete) and timers
   const [hiddenSessions, setHiddenSessions] = useState<Set<string>>(new Set());
   const deleteTimers = React.useRef<Record<string, NodeJS.Timeout>>({});
-  
-  // Track which session is currently queued for confirmation in the AlertDialog
-  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
-  const [confirmText, setConfirmText] = useState("");
 
   // Removed unmount timer clearing so optimistic deletes actually execute even if user navigates away
   useEffect(() => {
@@ -118,21 +114,36 @@ export function ImportHistoryWorkspace() {
     loadSessions();
   };
 
-  const handleDeleteInitiated = async (id: string) => {
-    // 1. Close the AlertDialog
+  const handleDeleteInitiated = async (id: string, campaignName?: string) => {
+    // 1. Instantly hide from UI (0ms delay!)
+    setHiddenSessions(prev => new Set(prev).add(id));
     setSessionToDelete(null);
     setConfirmText("");
 
-    // 2. Optimistic hide
-    setHiddenSessions(prev => new Set(prev).add(id));
-
-    // 3. Delete immediately without a fragile 6-second timeout
-    await executeDelete(id, "CANCEL");
-
-    // 4. Show the sleek toast
-    toast.success("Campaign deleted", {
-      description: "Scheduled emails have been permanently deleted.",
+    // 2. Show instant toast with Undo
+    let isUndone = false;
+    toast.success(`Campaign "${campaignName || 'Import'}" deleted`, {
+      description: "Scheduled emails have been cancelled.",
+      action: {
+        label: "Undo",
+        onClick: () => {
+          isUndone = true;
+          setHiddenSessions(prev => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+          toast.info("Campaign deletion undone");
+        }
+      },
+      duration: 4000
     });
+
+    // 3. Delete in background asynchronously
+    setTimeout(async () => {
+      if (isUndone) return;
+      await executeDelete(id, "CANCEL");
+    }, 400);
   };
 
   const handleRename = (id: string, currentName: string) => {
@@ -323,9 +334,12 @@ export function ImportHistoryWorkspace() {
                       <Edit2 className="h-4 w-4 mr-2" />
                       Rename
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSessionToDelete(session.sessionId)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                    <DropdownMenuItem 
+                      onClick={() => handleDeleteInitiated(session.sessionId, session.campaignName || "Campaign")} 
+                      className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                    >
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
+                      Delete Campaign
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -334,54 +348,6 @@ export function ImportHistoryWorkspace() {
           ))}
         </div>
       </CardContent>
-
-      <AlertDialog open={!!sessionToDelete} onOpenChange={(open) => {
-        if (!open) {
-          setSessionToDelete(null);
-          setConfirmText(""); // Reset text on close
-        }
-      }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Campaign?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this campaign? All emails scheduled in this campaign will be immediately cancelled. This action cannot be undone.
-            </AlertDialogDescription>
-            <div className="mt-4 bg-red-50/50 p-4 rounded-md border border-red-100">
-              <h4 className="text-sm font-medium mb-2 text-red-800 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                Danger Zone
-              </h4>
-              <p className="text-sm text-red-700/90 mb-4">
-                Your prospects will safely remain in your CRM, but all scheduled sequences and active automation for this campaign will be permanently stopped.
-              </p>
-              <div className="space-y-2">
-                <Label htmlFor="confirm" className="text-sm font-medium text-slate-700">
-                  To confirm, type <strong>delete</strong> below:
-                </Label>
-                <Input 
-                  id="confirm" 
-                  value={confirmText}
-                  onChange={(e) => setConfirmText(e.target.value)}
-                  placeholder="delete"
-                  className="max-w-xs focus-visible:ring-red-500"
-                  autoComplete="off"
-                />
-              </div>
-            </div>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => sessionToDelete && handleDeleteInitiated(sessionToDelete)} 
-              disabled={confirmText.toLowerCase() !== 'delete'}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
-            >
-              Delete Campaign
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
   );
 }

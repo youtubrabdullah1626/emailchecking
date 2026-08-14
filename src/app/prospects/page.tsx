@@ -125,10 +125,6 @@ function ProspectsPageContent() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [prospectToDelete, setProspectToDelete] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
 
   const { data: campaignsData } = useSWR("/api/campaigns", fetcher);
   const campaigns = campaignsData?.data || [];
@@ -138,26 +134,47 @@ function ProspectsPageContent() {
   });
 
   const handleDeleteProspect = (id: string, name: string) => {
-    setProspectToDelete({ id, name });
-  };
+    // 1. Instantly remove from SWR cache with 0ms delay!
+    mutate(
+      "/api/prospects",
+      (current: any) => {
+        if (!current?.data) return current;
+        return {
+          ...current,
+          data: current.data.filter((p: any) => p.id !== id),
+        };
+      },
+      false
+    );
 
-  const confirmDeleteProspect = async () => {
-    if (!prospectToDelete) return;
-    const { id, name } = prospectToDelete;
-    setProspectToDelete(null);
+    // 2. Show instant toast with 1-click Undo
+    let isUndone = false;
+    toast.success(`Prospect "${name}" deleted`, {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          isUndone = true;
+          mutate("/api/prospects");
+          toast.info("Prospect deletion undone");
+        },
+      },
+      duration: 4000,
+    });
 
-    try {
-      const res = await fetch(`/api/prospects/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete prospect");
-
-      toast.success("Prospect deleted successfully");
-      // Refresh the SWR cache for both the prospects list and dashboard stats to reflect the deletion
-      mutate("/api/prospects");
-      mutate("/api/dashboard/stats");
-      mutate("/api/replies");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete prospect");
-    }
+    // 3. Execute in background asynchronously
+    setTimeout(async () => {
+      if (isUndone) return;
+      try {
+        const res = await fetch(`/api/prospects/${id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Failed to delete prospect on server");
+        mutate("/api/prospects");
+        mutate("/api/dashboard/stats");
+        mutate("/api/replies");
+      } catch (err: any) {
+        mutate("/api/prospects");
+        toast.error(err.message || "Failed to delete prospect");
+      }
+    }, 400);
   };
 
   const prospects: ProspectDetail[] = useMemo(
@@ -523,32 +540,6 @@ function ProspectsPageContent() {
           )}
         </CardContent>
       </Card>
-
-      <AlertDialog
-        open={!!prospectToDelete}
-        onOpenChange={(open) => !open && setProspectToDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Prospect?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete{" "}
-              <strong>{prospectToDelete?.name}</strong>? This action will
-              completely remove them from your database, along with all their
-              sequence history and replies.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDeleteProspect}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete Prospect
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

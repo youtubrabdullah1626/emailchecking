@@ -292,20 +292,37 @@ export default function AnnouncementsAdminPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to permanently delete this announcement?")) return;
-    
+  const handleDelete = async (id: string, title?: string) => {
+    // 1. Immediately remove from state (0ms delay!)
     const previousAnnouncements = [...announcements];
     setAnnouncements(prev => prev.filter(ann => ann.id !== id));
     
-    try {
-      const res = await fetch(`/api/admin/announcements/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-      toast.success("Announcement deleted.");
-    } catch (e) {
-      setAnnouncements(previousAnnouncements);
-      toast.error("Failed to delete announcement");
-    }
+    // 2. Show instant toast with Undo
+    let isUndone = false;
+    toast.success(`Announcement deleted`, {
+      description: title ? `"${title}"` : undefined,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          isUndone = true;
+          setAnnouncements(previousAnnouncements);
+          toast.info("Announcement restored");
+        }
+      },
+      duration: 4000
+    });
+
+    // 3. Delete in background asynchronously
+    setTimeout(async () => {
+      if (isUndone) return;
+      try {
+        const res = await fetch(`/api/admin/announcements/${id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error();
+      } catch (e) {
+        setAnnouncements(previousAnnouncements);
+        toast.error("Failed to delete announcement on server");
+      }
+    }, 400);
   };
 
   const getTypeIcon = (t: string) => {
@@ -927,8 +944,8 @@ export default function AnnouncementsAdminPage() {
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              onClick={() => handleDelete(ann.id)}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2 text-xs"
+                              onClick={() => handleDelete(ann.id, ann.title)}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2 text-xs cursor-pointer"
                             >
                               <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
                             </Button>

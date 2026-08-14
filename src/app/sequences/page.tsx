@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { FastLink } from "@/components/ui/fast-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { AnimatedPage, AnimatedList, AnimatedItem } from "@/components/ui/animated";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatDistanceToNow, format } from "date-fns";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,20 +53,37 @@ export default function SequencesPage() {
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this sequence?")) return;
-    setDeletingId(id);
-    try {
-      const res = await fetch(`/api/sequences/${id}`, { method: "DELETE" });
-      if (!res.ok) {
-        throw new Error("Failed to delete sequence");
+  const handleDelete = async (id: string, name?: string) => {
+    // 1. Immediately remove from state (0ms delay!)
+    const previousSequences = [...sequences];
+    setSequences(prev => prev.filter(s => s.id !== id));
+
+    // 2. Show instant toast with Undo
+    let isUndone = false;
+    toast.success(`Sequence deleted`, {
+      description: name ? `For ${name}` : undefined,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          isUndone = true;
+          setSequences(previousSequences);
+          toast.info("Sequence deletion cancelled");
+        }
+      },
+      duration: 4000
+    });
+
+    // 3. Delete in background asynchronously
+    setTimeout(async () => {
+      if (isUndone) return;
+      try {
+        const res = await fetch(`/api/sequences/${id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Failed to delete sequence on server");
+      } catch (err: any) {
+        setSequences(previousSequences);
+        toast.error(err.message || "Failed to delete sequence");
       }
-      setSequences(prev => prev.filter(s => s.id !== id));
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete sequence");
-    } finally {
-      setDeletingId(null);
-    }
+    }, 400);
   };
 
   useEffect(() => {
@@ -253,14 +271,14 @@ export default function SequencesPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem asChild>
-                                <Link prefetch={true} href={`/prospects/${seq.prospect.id}/sequence`} className="cursor-pointer">
+                                <FastLink href={`/prospects/${seq.prospect.id}/sequence`} className="cursor-pointer">
                                   <ExternalLink className="mr-2 h-4 w-4" />
                                   View Sequence
-                                </Link>
+                                </FastLink>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
-                                onClick={() => handleDelete(seq.id)}
+                                onClick={() => handleDelete(seq.id, seq.prospect?.name)}
                                 className="text-destructive focus:bg-destructive focus:text-destructive-foreground cursor-pointer"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
