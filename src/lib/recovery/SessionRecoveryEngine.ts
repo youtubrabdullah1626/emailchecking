@@ -130,6 +130,7 @@ export class SessionRecoveryEngine {
       case "SEQUENCE_GENERATED": status = "PREVIEW"; break;
       case "SCHEDULING_COMPLETED": status = "APPROVED"; break;
       case "EXECUTION_STARTED": status = "EXECUTING"; break;
+      case "COMPLETED": status = "EXECUTING"; break;
     }
 
     return {
