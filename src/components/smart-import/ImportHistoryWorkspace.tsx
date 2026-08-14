@@ -392,17 +392,24 @@ export function ImportHistoryWorkspace() {
         onOpenChange={(open) => !open && setSessionToDelete(null)}
       >
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Campaign?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete <strong>{sessionToDelete?.name}</strong>? All scheduled emails in this campaign will be cancelled. Your prospects will remain in your CRM.
-            </AlertDialogDescription>
+          <AlertDialogHeader className="sm:flex-row sm:items-start gap-4 space-y-0 text-left">
+            <div className="mx-auto sm:mx-0 h-12 w-12 rounded-2xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 ring-8 ring-red-500/5">
+              <AlertTriangle className="h-6 w-6 stroke-[2.2]" />
+            </div>
+            <div className="space-y-1.5 flex-1 text-center sm:text-left">
+              <AlertDialogTitle className="text-lg font-bold text-foreground">
+                Delete Campaign
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed">
+                Are you sure you want to delete <span className="font-semibold text-foreground">{sessionToDelete?.name}</span>? All scheduled emails in this campaign will be cancelled. Your prospects will remain in your CRM.
+              </AlertDialogDescription>
+            </div>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="mt-2 sm:mt-0 gap-2.5">
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteSession}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-500/20"
             >
               Delete Campaign
             </AlertDialogAction>

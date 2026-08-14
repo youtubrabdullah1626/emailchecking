@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, MoreHorizontal, PlayCircle, PauseCircle, CheckCircle2, Trash2, Info, ExternalLink } from "lucide-react";
+import { Plus, MoreHorizontal, PlayCircle, PauseCircle, CheckCircle2, Trash2, Info, ExternalLink, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -366,17 +366,24 @@ export default function SequencesPage() {
         onOpenChange={(open) => !open && setSequenceToDelete(null)}
       >
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Sequence?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete <strong>{sequenceToDelete?.name}</strong>? All pending steps and automations for this sequence will be permanently removed.
-            </AlertDialogDescription>
+          <AlertDialogHeader className="sm:flex-row sm:items-start gap-4 space-y-0 text-left">
+            <div className="mx-auto sm:mx-0 h-12 w-12 rounded-2xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 ring-8 ring-red-500/5">
+              <AlertTriangle className="h-6 w-6 stroke-[2.2]" />
+            </div>
+            <div className="space-y-1.5 flex-1 text-center sm:text-left">
+              <AlertDialogTitle className="text-lg font-bold text-foreground">
+                Delete Sequence
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed">
+                Are you sure you want to delete <span className="font-semibold text-foreground">{sequenceToDelete?.name}</span>? All pending steps and automations for this sequence will be permanently removed.
+              </AlertDialogDescription>
+            </div>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="mt-2 sm:mt-0 gap-2.5">
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteSequence}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-500/20"
             >
               Delete Sequence
             </AlertDialogAction>
