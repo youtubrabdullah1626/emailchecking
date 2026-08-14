@@ -46,11 +46,16 @@ export class AdminUsersService {
           ? new Date(account.last_login_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
           : "Never Logged In");
 
+      let userRole = (account as any).users?.role;
+      if (!userRole) {
+        userRole = account.email === 'youtubrabdullah1626@gmail.com' ? "Admin" : "User";
+      }
+
       return {
         id: account.user_id || account.email,
         name: (account.email.split("@")[0] || "User").replace(".", " "),
         email: account.email,
-        role: account.email === 'youtubrabdullah1626@gmail.com' ? "Admin" : "User",
+        role: userRole,
         plan: "Enterprise", // Stubbed until Billing module exists
         status,
         health,

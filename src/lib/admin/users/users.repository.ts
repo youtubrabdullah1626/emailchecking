@@ -57,6 +57,11 @@ export class AdminUsersRepository {
           sent_today: true,
           sent_this_hour: true,
           daily_limit: true,
+          users: {
+            select: {
+              role: true
+            }
+          }
         },
       }),
       prisma.emailAccount.count({ where }),
