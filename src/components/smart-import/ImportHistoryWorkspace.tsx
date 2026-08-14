@@ -117,8 +117,6 @@ export function ImportHistoryWorkspace() {
   const handleDeleteInitiated = async (id: string, campaignName?: string) => {
     // 1. Instantly hide from UI (0ms delay!)
     setHiddenSessions(prev => new Set(prev).add(id));
-    setSessionToDelete(null);
-    setConfirmText("");
 
     // 2. Show instant toast with Undo
     let isUndone = false;

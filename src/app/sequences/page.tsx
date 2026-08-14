@@ -154,10 +154,10 @@ export default function SequencesPage() {
         description="Active outreach campaigns running for your prospects."
       >
         <Button className="gap-2" asChild>
-          <Link prefetch={true} href="/prospects">
+          <FastLink href="/prospects">
             <Plus className="h-4 w-4" />
             Create Sequence
-          </Link>
+          </FastLink>
         </Button>
       </PageHeader>
 
@@ -175,7 +175,7 @@ export default function SequencesPage() {
             Create your first sequence to start automating your outreach. You can add multiple steps with delays between them.
           </p>
           <Button asChild>
-            <Link prefetch={true} href="/prospects">Create Sequence</Link>
+            <FastLink href="/prospects">Create Sequence</FastLink>
           </Button>
         </div>
       ) : (
@@ -197,8 +197,8 @@ export default function SequencesPage() {
                     const sentSteps = seq.steps.filter((s) => s.status === "SENT").length;
                     
                     const activeStep =
-                      seq.steps.find((s) => s.status === "PROCESSING") ??
-                      seq.steps.find((s) => s.status === "PENDING");
+                       seq.steps.find((s) => s.status === "PROCESSING") ??
+                       seq.steps.find((s) => s.status === "PENDING");
                     
                     const currentStepNum = activeStep ? activeStep.step_number : (seq.status === "COMPLETED" ? totalSteps : 1);
                     const completionPercent = totalSteps > 0 ? Math.round((sentSteps / totalSteps) * 100) : 0;
@@ -223,11 +223,11 @@ export default function SequencesPage() {
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                              <Link prefetch={true} href={`/prospects/${seq.prospect.id}/sequence`} className="font-semibold text-sm hover:text-primary transition-colors line-clamp-1">
+                              <FastLink href={`/prospects/${seq.prospect.id}/sequence`} className="font-semibold text-sm hover:text-primary transition-colors line-clamp-1">
                                 {firstSubject || `Sequence for ${seq.prospect.name}`}
-                              </Link>
+                              </FastLink>
                               <span className="text-xs text-muted-foreground mt-0.5">
-                                to <Link prefetch={true} href={`/prospects/${seq.prospect.id}`} className="font-medium text-foreground hover:underline">{seq.prospect.name}</Link>
+                                to <FastLink href={`/prospects/${seq.prospect.id}`} className="font-medium text-foreground hover:underline">{seq.prospect.name}</FastLink>
                                 {seq.prospect.company && ` at ${seq.prospect.company}`}
                               </span>
                             </div>
