@@ -20,8 +20,13 @@ export class AuditService {
     limit: number = 50, 
     cursor?: string
   ) {
-    // 1. Enforce RBAC
-    requireAdminRole(user);
+    // 1. Enforce RBAC / Tenant Isolation
+    if (!user) throw new Error("UNAUTHORIZED");
+    
+    if (user.role !== "SUPER_ADMIN" && user.role !== "OWNER" && user.role !== "ADMIN") {
+      // Smart SaaS Feature: Regular users can see their OWN activity log
+      filters.actorId = user.id;
+    }
 
     // 2. Fetch from DB
     // Limit to max 100 to prevent large payloads
@@ -46,10 +51,16 @@ export class AuditService {
    * Fetches detailed information for a single event, including related correlation events.
    */
   async fetchLogDetails(user: SessionUser | null, id: string) {
-    requireAdminRole(user);
+    if (!user) throw new Error("UNAUTHORIZED");
 
     const event = await this.repository.getAuditLogById(id);
     if (!event) return null;
+
+    if (user.role !== "SUPER_ADMIN" && user.role !== "OWNER" && user.role !== "ADMIN") {
+      if (event.actor_id !== user.id) {
+        throw new Error("FORBIDDEN");
+      }
+    }
 
     let relatedEvents: AuditLog[] = [];
     if (event.correlation_id) {

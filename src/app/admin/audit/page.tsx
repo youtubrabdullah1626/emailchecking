@@ -26,6 +26,9 @@ export default function AuditPage() {
   const [filterState, setFilterState] = useState({ category: "", severity: "", status: "", time: "" });
   const [selectedEvent, setSelectedEvent] = useState<AuditLogEvent | null>(null);
   const [isLiveMode, setIsLiveMode] = useState(false);
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => setMounted(true), []);
 
   // SWR Hook for Infinite Scrolling / Cursor Pagination
   const { 
@@ -78,6 +81,10 @@ export default function AuditPage() {
       setDeleteMode(null);
     }
   };
+
+  if (!mounted) {
+    return <div className="flex flex-col min-h-screen bg-background" />;
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground pb-20">
