@@ -305,12 +305,17 @@ export default function DashboardPage() {
               <CardDescription>Real-time outreach & velocity limits</CardDescription>
             </div>
             {stats?.userTimezone && (
-              <span className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-muted/70 text-muted-foreground border border-border/60 flex items-center gap-1" title={`Daily reset at midnight (${stats.userTimezone}) • Hourly reset at :00`}>
+              <Link 
+                href="/settings"
+                className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-muted/70 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60 transition-colors flex items-center gap-1.5 group" 
+                title={`Daily reset at midnight (${stats.userTimezone}) • Click to manage in Settings`}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 group-hover:scale-125 transition-transform" />
                 {stats.userTimezone.split('/').pop()?.replace('_', ' ') || stats.userTimezone}
-              </span>
+              </Link>
             )}
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col justify-center">
+          <CardContent className="flex-1 flex flex-col justify-between">
             {loading || !stats ? (
                <div className="space-y-6 py-4">
                  {[1, 2, 3].map(i => (
@@ -336,7 +341,7 @@ export default function DashboardPage() {
                 const indicatorClass = isCritical ? '[&>div]:bg-red-500' : isWarning ? '[&>div]:bg-amber-500' : pIndicator;
 
                 return (
-                  <div className={`${isLarge ? 'pb-4 mb-4 border-b border-border/50' : 'mb-4'}`}>
+                  <div className={`${isLarge ? 'pb-3 mb-3 border-b border-border/40' : 'mb-3'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
                         <div className={`p-1.5 rounded-md ${bgClass} ${colorClass}`}>
@@ -360,11 +365,23 @@ export default function DashboardPage() {
                 );
               };
 
+              const minutesUntilHour = 60 - new Date().getMinutes();
+
               return (
-                <div className="mt-2 flex flex-col justify-center h-full">
-                  {renderLimit(<Target className="h-4 w-4" />, "Daily Emails Sent", stats.emailsSentToday, stats.dailyLimit, true)}
-                  {renderLimit(<Clock className="h-4 w-4" />, "Hourly Velocity", stats.emailsSentThisHour, stats.hourlyLimit)}
-                  {renderLimit(<Layers className="h-4 w-4" />, "Active Sequences", stats.activeSequences, stats.sequenceLimit)}
+                <div className="flex flex-col justify-between h-full pt-1">
+                  <div>
+                    {renderLimit(<Target className="h-4 w-4" />, "Daily Emails Sent", stats.emailsSentToday, stats.dailyLimit, true)}
+                    {renderLimit(<Clock className="h-4 w-4" />, "Hourly Velocity", stats.emailsSentThisHour, stats.hourlyLimit)}
+                    {renderLimit(<Layers className="h-4 w-4" />, "Active Sequences", stats.activeSequences, stats.sequenceLimit)}
+                  </div>
+                  <div className="pt-3 mt-1 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="h-3 w-3 text-primary" /> Velocity reset: <strong>~{minutesUntilHour}m</strong>
+                    </span>
+                    <span>
+                      Daily reset: <strong>00:00</strong>
+                    </span>
+                  </div>
                 </div>
               );
             })()}

@@ -48,11 +48,17 @@ export default function SettingsPage() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [displayName, setDisplayName] = useState("Team");
   const [timezone, setTimezone] = useState("UTC");
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [cooldown, setCooldown] = useState<{
     canChange: boolean;
     remainingDays: number;
     nextAllowedDate: string | null;
   }>({ canChange: true, remainingDays: 0, nextAllowedDate: null });
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const form = useForm<z.infer<typeof settingsSchema>>({
     resolver: zodResolver(settingsSchema) as any,
@@ -261,6 +267,28 @@ export default function SettingsPage() {
                             ))}
                           </SelectContent>
                         </Select>
+
+                        {/* Live Local Time Preview */}
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/50 text-xs">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <Clock className="h-3.5 w-3.5 text-primary" /> Live Time in {timezone.split('/').pop()?.replace('_', ' ') || timezone}:
+                          </span>
+                          <span className="font-mono font-bold text-foreground bg-background px-2 py-0.5 rounded border border-border/40 shadow-xs">
+                            {(() => {
+                              try {
+                                return new Intl.DateTimeFormat("en-US", {
+                                  timeZone: timezone,
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                  second: "2-digit",
+                                  hour12: true,
+                                }).format(currentTime);
+                              } catch {
+                                return "Invalid Timezone";
+                              }
+                            })()}
+                          </span>
+                        </div>
 
                         {/* Cooldown / Integrity Explanation Box */}
                         {!cooldown.canChange ? (
