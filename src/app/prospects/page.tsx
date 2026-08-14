@@ -132,12 +132,20 @@ function ProspectsPageContent() {
     name: string;
   } | null>(null);
 
+  const deleteTimers = React.useRef<Record<string, NodeJS.Timeout>>({});
+  const deletedProspectsRef = React.useRef<Record<string, ProspectDetail>>({});
+
   const { data: campaignsData } = useSWR("/api/campaigns", fetcher);
   const campaigns = campaignsData?.data || [];
 
   const { data, error, isLoading, mutate: mutateProspects } = useSWR("/api/prospects", fetcher, {
     keepPreviousData: true,
   });
+
+  const prospects: ProspectDetail[] = useMemo(
+    () => data?.data || [],
+    [data?.data],
+  );
 
   const handleDeleteProspect = (id: string, name: string) => {
     setProspectToDelete({ id, name });
@@ -150,10 +158,21 @@ function ProspectsPageContent() {
     // 1. Close dialog immediately (0ms)
     setProspectToDelete(null);
 
-    // 2. Instantly mark as deleted in local state for 0ms reactive animation
+    // 2. Cache full prospect object for instant 0ms restoration on Undo
+    const targetProspect = prospects.find((p) => p.id === id);
+    if (targetProspect) {
+      deletedProspectsRef.current[id] = targetProspect;
+    }
+
+    // 3. Clear any existing timer
+    if (deleteTimers.current[id]) {
+      clearTimeout(deleteTimers.current[id]);
+    }
+
+    // 4. Instantly mark as deleted in local state for 0ms reactive animation
     setDeletedIds((prev) => new Set(prev).add(id));
 
-    // 3. Instantly update SWR cache without page reload
+    // 5. Instantly update SWR cache without page reload
     mutateProspects(
       (current: any) => {
         if (!current?.data) return current;
@@ -165,29 +184,10 @@ function ProspectsPageContent() {
       false
     );
 
-    // 4. Show instant toast with 1-click Undo
-    let isUndone = false;
-    toast.success(`Prospect "${name}" deleted`, {
-      action: {
-        label: "Undo",
-        onClick: () => {
-          isUndone = true;
-          // Instantly bring row back with smooth spring entry
-          setDeletedIds((prev) => {
-            const next = new Set(prev);
-            next.delete(id);
-            return next;
-          });
-          mutateProspects();
-          toast.info("Prospect restored");
-        },
-      },
-      duration: 5000,
-    });
-
-    // 5. Execute in background asynchronously after undo window
-    setTimeout(async () => {
-      if (isUndone) return;
+    // 6. Schedule server deletion after 6-second grace window
+    const timer = setTimeout(async () => {
+      delete deleteTimers.current[id];
+      delete deletedProspectsRef.current[id];
       try {
         const res = await fetch(`/api/prospects/${id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete prospect on server");
@@ -195,21 +195,57 @@ function ProspectsPageContent() {
         mutate("/api/dashboard/stats");
         mutate("/api/replies");
       } catch (err: any) {
-        setDeletedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-        mutateProspects();
-        toast.error(err.message || "Failed to delete prospect");
+        toast.error(err.message || "Failed to delete prospect on server");
       }
-    }, 4500);
-  };
+    }, 6000);
 
-  const prospects: ProspectDetail[] = useMemo(
-    () => data?.data || [],
-    [data?.data],
-  );
+    deleteTimers.current[id] = timer;
+
+    // 7. Show instant toast with 1-click Undo
+    toast.success(`Prospect "${name}" deleted`, {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          // Cancel server deletion immediately!
+          if (deleteTimers.current[id]) {
+            clearTimeout(deleteTimers.current[id]);
+            delete deleteTimers.current[id];
+          }
+
+          const restored = deletedProspectsRef.current[id];
+          delete deletedProspectsRef.current[id];
+
+          // Instantly bring row back into UI (0ms)
+          setDeletedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+
+          // Inject directly back into SWR cache in 0ms without server fetch delay
+          if (restored) {
+            mutateProspects(
+              (current: any) => {
+                if (!current?.data) return current;
+                const exists = current.data.some((p: any) => p.id === id);
+                if (exists) return current;
+                return {
+                  ...current,
+                  data: [restored, ...current.data],
+                };
+              },
+              false
+            );
+          } else {
+            mutateProspects();
+          }
+
+          toast.info(`Prospect "${name}" restored`);
+        },
+      },
+      duration: 5500,
+    });
+  };
 
   const filteredProspects = useMemo(() => {
     return prospects.filter((p) => {

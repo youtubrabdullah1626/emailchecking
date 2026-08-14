@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader } from "@/components/ui/page-header";
 import { AnimatedPage } from "@/components/ui/animated";
@@ -64,6 +64,9 @@ export default function AnnouncementsAdminPage() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [announcementToDelete, setAnnouncementToDelete] = useState<{ id: string; title: string } | null>(null);
+
+  const deleteTimers = useRef<Record<string, NodeJS.Timeout>>({});
+  const deletedAnnouncementsRef = useRef<Record<string, any>>({});
 
   // Form State
   const [title, setTitle] = useState("");
@@ -311,36 +314,60 @@ export default function AnnouncementsAdminPage() {
     // 1. Close dialog immediately (0ms)
     setAnnouncementToDelete(null);
 
-    // 2. Immediately remove from state (0ms delay!)
-    const previousAnnouncements = [...announcements];
+    // 2. Cache the announcement object for instant restoration
+    const targetAnn = announcements.find(a => a.id === id);
+    if (targetAnn) {
+      deletedAnnouncementsRef.current[id] = targetAnn;
+    }
+
+    // 3. Clear any existing timer
+    if (deleteTimers.current[id]) {
+      clearTimeout(deleteTimers.current[id]);
+    }
+
+    // 4. Immediately remove from state (0ms delay!)
     setAnnouncements(prev => prev.filter(ann => ann.id !== id));
-    
-    // 3. Show instant toast with Undo
-    let isUndone = false;
+
+    // 5. Set 6-second grace timer before permanent server deletion
+    const timer = setTimeout(async () => {
+      delete deleteTimers.current[id];
+      delete deletedAnnouncementsRef.current[id];
+      try {
+        const res = await fetch(`/api/admin/announcements/${id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error();
+      } catch (e) {
+        toast.error("Failed to delete announcement on server");
+      }
+    }, 6000);
+
+    deleteTimers.current[id] = timer;
+
+    // 6. Show instant toast with Undo
     toast.success(`Announcement deleted`, {
       description: title ? `"${title}"` : undefined,
       action: {
         label: "Undo",
         onClick: () => {
-          isUndone = true;
-          setAnnouncements(previousAnnouncements);
+          // Cancel server deletion immediately!
+          if (deleteTimers.current[id]) {
+            clearTimeout(deleteTimers.current[id]);
+            delete deleteTimers.current[id];
+          }
+
+          const restored = deletedAnnouncementsRef.current[id];
+          delete deletedAnnouncementsRef.current[id];
+
+          if (restored) {
+            setAnnouncements(prev => {
+              if (prev.some(a => a.id === id)) return prev;
+              return [restored, ...prev];
+            });
+          }
           toast.info("Announcement restored");
         }
       },
-      duration: 4000
+      duration: 5500
     });
-
-    // 4. Delete in background asynchronously
-    setTimeout(async () => {
-      if (isUndone) return;
-      try {
-        const res = await fetch(`/api/admin/announcements/${id}`, { method: "DELETE" });
-        if (!res.ok) throw new Error();
-      } catch (e) {
-        setAnnouncements(previousAnnouncements);
-        toast.error("Failed to delete announcement on server");
-      }
-    }, 400);
   };
 
   const getTypeIcon = (t: string) => {

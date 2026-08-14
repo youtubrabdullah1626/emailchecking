@@ -123,33 +123,45 @@ export function ImportHistoryWorkspace() {
     // 1. Close dialog immediately (0ms)
     setSessionToDelete(null);
 
-    // 2. Instantly hide from UI (0ms delay!)
+    // 2. Clear any existing timer for this id
+    if (deleteTimers.current[id]) {
+      clearTimeout(deleteTimers.current[id]);
+    }
+
+    // 3. Instantly hide from UI (0ms delay!)
     setHiddenSessions(prev => new Set(prev).add(id));
 
-    // 3. Show instant toast with Undo
-    let isUndone = false;
+    // 4. Set a 6-second grace window for Undo before permanent deletion
+    const timer = setTimeout(async () => {
+      delete deleteTimers.current[id];
+      await executeDelete(id, "CANCEL");
+    }, 6000);
+
+    deleteTimers.current[id] = timer;
+
+    // 5. Show instant toast with reliable 1-click Undo
     toast.success(`Campaign "${name}" deleted`, {
-      description: "Scheduled emails have been cancelled.",
+      description: "Scheduled emails will be cancelled.",
       action: {
         label: "Undo",
         onClick: () => {
-          isUndone = true;
+          // Cancel the deletion timer immediately!
+          if (deleteTimers.current[id]) {
+            clearTimeout(deleteTimers.current[id]);
+            delete deleteTimers.current[id];
+          }
+          // Restore the campaign to the screen in 0ms!
           setHiddenSessions(prev => {
             const next = new Set(prev);
             next.delete(id);
             return next;
           });
-          toast.info("Campaign deletion undone");
+          loadSessions();
+          toast.info(`Campaign "${name}" restored`);
         }
       },
-      duration: 4000
+      duration: 5500
     });
-
-    // 4. Delete in background asynchronously
-    setTimeout(async () => {
-      if (isUndone) return;
-      await executeDelete(id, "CANCEL");
-    }, 400);
   };
 
   const handleRename = (id: string, currentName: string) => {

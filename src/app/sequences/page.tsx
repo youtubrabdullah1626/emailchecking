@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { FastLink } from "@/components/ui/fast-link";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader } from "@/components/ui/page-header";
@@ -64,6 +64,9 @@ export default function SequencesPage() {
   const [error, setError] = useState<string | null>(null);
   const [sequenceToDelete, setSequenceToDelete] = useState<{ id: string; name: string } | null>(null);
 
+  const deleteTimers = React.useRef<Record<string, NodeJS.Timeout>>({});
+  const deletedSequencesRef = React.useRef<Record<string, SequenceDetail>>({});
+
   const confirmDeleteSequence = () => {
     if (!sequenceToDelete) return;
     const { id, name } = sequenceToDelete;
@@ -71,36 +74,60 @@ export default function SequencesPage() {
     // 1. Close dialog immediately (0ms)
     setSequenceToDelete(null);
 
-    // 2. Immediately remove from state (0ms delay!)
-    const previousSequences = [...sequences];
+    // 2. Cache the full sequence object
+    const targetSeq = sequences.find(s => s.id === id);
+    if (targetSeq) {
+      deletedSequencesRef.current[id] = targetSeq;
+    }
+
+    // 3. Clear any existing timer
+    if (deleteTimers.current[id]) {
+      clearTimeout(deleteTimers.current[id]);
+    }
+
+    // 4. Immediately remove from state (0ms delay!)
     setSequences(prev => prev.filter(s => s.id !== id));
 
-    // 3. Show instant toast with Undo
-    let isUndone = false;
+    // 5. Set 6-second grace timer before permanent server deletion
+    const timer = setTimeout(async () => {
+      delete deleteTimers.current[id];
+      delete deletedSequencesRef.current[id];
+      try {
+        const res = await fetch(`/api/sequences/${id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Failed to delete sequence on server");
+      } catch (err: any) {
+        toast.error(err.message || "Failed to delete sequence on server");
+      }
+    }, 6000);
+
+    deleteTimers.current[id] = timer;
+
+    // 6. Show instant toast with Undo
     toast.success(`Sequence deleted`, {
       description: name ? `For ${name}` : undefined,
       action: {
         label: "Undo",
         onClick: () => {
-          isUndone = true;
-          setSequences(previousSequences);
-          toast.info("Sequence deletion cancelled");
+          // Cancel server deletion immediately!
+          if (deleteTimers.current[id]) {
+            clearTimeout(deleteTimers.current[id]);
+            delete deleteTimers.current[id];
+          }
+
+          const restored = deletedSequencesRef.current[id];
+          delete deletedSequencesRef.current[id];
+
+          if (restored) {
+            setSequences(prev => {
+              if (prev.some(s => s.id === id)) return prev;
+              return [restored, ...prev];
+            });
+          }
+          toast.info("Sequence restored");
         }
       },
-      duration: 4000
+      duration: 5500
     });
-
-    // 4. Delete in background asynchronously
-    setTimeout(async () => {
-      if (isUndone) return;
-      try {
-        const res = await fetch(`/api/sequences/${id}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to delete sequence on server");
-      } catch (err: any) {
-        setSequences(previousSequences);
-        toast.error(err.message || "Failed to delete sequence");
-      }
-    }, 400);
   };
 
   useEffect(() => {
