@@ -20,7 +20,7 @@ export async function PATCH(
 
     const updateData: {
       status?: string;
-      founder_notes?: string;
+      founder_notes?: string | null;
     } = {};
 
     if (status && typeof status === "string") {
