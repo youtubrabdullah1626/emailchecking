@@ -36,7 +36,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
   const { data: session } = useSession();
   
   const user = session?.user as any;
-  const isAdmin = user?.role === "ADMIN" || user?.role === "OWNER" || user?.email === "youtubrabdullah1626@gmail.com";
+  const canViewAdmin = (user?.role && ["ADMIN_VIEWER", "ADMIN", "OWNER"].includes(user.role)) || user?.email === "youtubrabdullah1626@gmail.com";
   
   // Use SWR to deduplicate this fetch globally with Header and Dashboard
   const { data: summary } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url));
@@ -104,7 +104,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
           })}
         </div>
 
-        {isAdmin && (
+        {canViewAdmin && (
           <div suppressHydrationWarning className="px-3 py-2 mt-2">
             <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">Administration</h3>
             {adminNavigation.map((item) => {

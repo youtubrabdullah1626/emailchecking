@@ -7,17 +7,19 @@
 
 import { DefaultSession } from "next-auth";
 
+export type UserRole = "USER" | "HELPER" | "ADMIN_VIEWER" | "ADMIN" | "OWNER";
+
 declare module "next-auth" {
   interface Session {
     user: {
       id: string;
-      role: string;
+      role: UserRole;
       isSuspended: boolean;
     } & DefaultSession["user"];
   }
 
   interface User {
-    role?: string;
+    role?: UserRole;
     isSuspended?: boolean;
   }
 }

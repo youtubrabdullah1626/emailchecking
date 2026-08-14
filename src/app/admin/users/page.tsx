@@ -5,10 +5,12 @@ import { LegacyPageHeader as PageHeader } from "@/components/ui/legacy-adapters"
 import { UserSearchFilters } from "./components/UserSearchFilters";
 import { UserDataGrid } from "./components/UserDataGrid";
 import { UserProfileDrawer } from "./components/UserProfileDrawer";
+import { AssignRoleDialog } from "./components/AssignRoleDialog";
 import { MockUser } from "./types";
 
 import useSWR from "swr";
-import { Loader2, AlertTriangle, Download } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Loader2, AlertTriangle, Download, ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
@@ -22,13 +24,18 @@ const fetcher = async (url: string) => {
 };
 
 export default function UserManagementPage() {
+  const { data: session } = useSession();
+  const user = session?.user as any;
+  const canAssignRoles = user?.role === "ADMIN" || user?.role === "OWNER";
+
+  const [isAssignRoleOpen, setIsAssignRoleOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<MockUser | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [needsAttentionOnly, setNeedsAttentionOnly] = useState(false);
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [healthFilter, setHealthFilter] = useState("all");
-  const { data, error, isLoading } = useSWR("/api/admin/users", fetcher, {
+  const { data, error, isLoading, mutate } = useSWR("/api/admin/users", fetcher, {
     refreshInterval: 30000, // Refresh every 30s for live ops visibility
     revalidateOnFocus: true,
   });
@@ -109,6 +116,12 @@ export default function UserManagementPage() {
                 <Download className="h-4 w-4" />
                 Export CSV
               </Button>
+              {canAssignRoles && (
+                <Button onClick={() => setIsAssignRoleOpen(true)} size="sm" className="gap-2 shadow-md">
+                  <ShieldAlert className="h-4 w-4" />
+                  Assign Role
+                </Button>
+              )}
             </div>
           }
         />
@@ -154,6 +167,12 @@ export default function UserManagementPage() {
         user={selectedUser} 
         isOpen={selectedUser !== null} 
         onClose={() => setSelectedUser(null)} 
+      />
+
+      <AssignRoleDialog
+        isOpen={isAssignRoleOpen}
+        onClose={() => setIsAssignRoleOpen(false)}
+        onSuccess={() => mutate()} // Refresh user list after updating role
       />
     </div>
   );
