@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import Link from "next/link";
+import { FastLink } from "@/components/ui/fast-link";
+import { motion, AnimatePresence } from "framer-motion";
 import { format, formatDistanceToNow } from "date-fns";
 import { LegacyPageHeader as PageHeader } from "@/components/ui/legacy-adapters";
 import {
@@ -125,6 +126,7 @@ function ProspectsPageContent() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const [prospectToDelete, setProspectToDelete] = useState<{
     id: string;
     name: string;
@@ -133,7 +135,7 @@ function ProspectsPageContent() {
   const { data: campaignsData } = useSWR("/api/campaigns", fetcher);
   const campaigns = campaignsData?.data || [];
 
-  const { data, error, isLoading } = useSWR("/api/prospects", fetcher, {
+  const { data, error, isLoading, mutate: mutateProspects } = useSWR("/api/prospects", fetcher, {
     keepPreviousData: true,
   });
 
@@ -148,9 +150,11 @@ function ProspectsPageContent() {
     // 1. Close dialog immediately (0ms)
     setProspectToDelete(null);
 
-    // 2. Instantly remove from SWR cache with 0ms delay!
-    mutate(
-      "/api/prospects",
+    // 2. Instantly mark as deleted in local state for 0ms reactive animation
+    setDeletedIds((prev) => new Set(prev).add(id));
+
+    // 3. Instantly update SWR cache without page reload
+    mutateProspects(
       (current: any) => {
         if (!current?.data) return current;
         return {
@@ -161,34 +165,45 @@ function ProspectsPageContent() {
       false
     );
 
-    // 3. Show instant toast with 1-click Undo
+    // 4. Show instant toast with 1-click Undo
     let isUndone = false;
     toast.success(`Prospect "${name}" deleted`, {
       action: {
         label: "Undo",
         onClick: () => {
           isUndone = true;
-          mutate("/api/prospects");
-          toast.info("Prospect deletion undone");
+          // Instantly bring row back with smooth spring entry
+          setDeletedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+          mutateProspects();
+          toast.info("Prospect restored");
         },
       },
-      duration: 4000,
+      duration: 5000,
     });
 
-    // 4. Execute in background asynchronously without UI freeze
+    // 5. Execute in background asynchronously after undo window
     setTimeout(async () => {
       if (isUndone) return;
       try {
         const res = await fetch(`/api/prospects/${id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete prospect on server");
-        mutate("/api/prospects");
+        mutateProspects();
         mutate("/api/dashboard/stats");
         mutate("/api/replies");
       } catch (err: any) {
-        mutate("/api/prospects");
+        setDeletedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        mutateProspects();
         toast.error(err.message || "Failed to delete prospect");
       }
-    }, 400);
+    }, 4500);
   };
 
   const prospects: ProspectDetail[] = useMemo(
@@ -198,7 +213,10 @@ function ProspectsPageContent() {
 
   const filteredProspects = useMemo(() => {
     return prospects.filter((p) => {
-      // 0. Campaign Filter
+      // 0. Filter out optimistically deleted
+      if (deletedIds.has(p.id)) return false;
+
+      // 0.1 Campaign Filter
       if (campaignIdFilter && p.campaign?.id !== campaignIdFilter) {
         return false;
       }
@@ -400,152 +418,168 @@ function ProspectsPageContent() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredProspects.map((prospect) => {
-                        let sequenceBadgeStatus = "none";
-                        let sequenceLabel = "None";
+                      <AnimatePresence initial={false}>
+                        {filteredProspects.map((prospect) => {
+                          let sequenceBadgeStatus = "none";
+                          let sequenceLabel = "None";
 
-                        if (prospect.sequence) {
-                          if (prospect.sequence.status === "ACTIVE") {
-                            sequenceBadgeStatus = "active";
-                            sequenceLabel = "Active";
-                          } else if (prospect.sequence.status === "STOPPED") {
-                            sequenceBadgeStatus = "error";
-                            sequenceLabel = "Stopped";
-                          } else if (prospect.sequence.status === "COMPLETED") {
-                            sequenceBadgeStatus = "completed";
-                            sequenceLabel = "Completed";
-                          } else {
-                            sequenceBadgeStatus = "scheduled";
-                            sequenceLabel = "Scheduled";
+                          if (prospect.sequence) {
+                            if (prospect.sequence.status === "ACTIVE") {
+                              sequenceBadgeStatus = "active";
+                              sequenceLabel = "Active";
+                            } else if (prospect.sequence.status === "STOPPED") {
+                              sequenceBadgeStatus = "error";
+                              sequenceLabel = "Stopped";
+                            } else if (prospect.sequence.status === "COMPLETED") {
+                              sequenceBadgeStatus = "completed";
+                              sequenceLabel = "Completed";
+                            } else {
+                              sequenceBadgeStatus = "scheduled";
+                              sequenceLabel = "Scheduled";
+                            }
                           }
-                        }
 
-                        const lastActivity =
-                          prospect.lastActivityAt || prospect.created_at;
+                          const lastActivity =
+                            prospect.lastActivityAt || prospect.created_at;
 
-                        let prospectBadgeStatus = "none";
-                        let displayStatus = "Active";
+                          let prospectBadgeStatus = "none";
+                          let displayStatus = "Active";
 
-                        if (prospect.status === "REPLIED") {
-                          prospectBadgeStatus = "completed";
-                          displayStatus = "Replied";
-                        } else if (prospect.status === "STOPPED") {
-                          prospectBadgeStatus = "stopped";
-                          displayStatus = "Stopped";
-                        } else if (prospect.status === "COMPLETED") {
-                          prospectBadgeStatus = "completed";
-                          displayStatus = "Completed";
-                        } else {
-                          // ACTIVE
-                          if (!prospect.sequence) {
-                            prospectBadgeStatus = "pending";
-                            displayStatus = "Not Started";
+                          if (prospect.status === "REPLIED") {
+                            prospectBadgeStatus = "completed";
+                            displayStatus = "Replied";
+                          } else if (prospect.status === "STOPPED") {
+                            prospectBadgeStatus = "stopped";
+                            displayStatus = "Stopped";
+                          } else if (prospect.status === "COMPLETED") {
+                            prospectBadgeStatus = "completed";
+                            displayStatus = "Completed";
                           } else {
-                            prospectBadgeStatus = "active";
-                            displayStatus = "Active";
+                            // ACTIVE
+                            if (!prospect.sequence) {
+                              prospectBadgeStatus = "pending";
+                              displayStatus = "Not Started";
+                            } else {
+                              prospectBadgeStatus = "active";
+                              displayStatus = "Active";
+                            }
                           }
-                        }
 
-                        return (
-                          <TableRow
-                            key={prospect.id}
-                            className="group cursor-default hover:bg-muted/30"
-                          >
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-9 w-9 border border-border shadow-sm group-hover:scale-105 transition-transform">
-                                  <AvatarFallback className="bg-primary/5 text-primary text-xs">
-                                    {prospect.name
-                                      .split(" ")
-                                      .map((n) => n[0])
-                                      .join("")
-                                      .substring(0, 2)
-                                      .toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex flex-col">
-                                  <span className="font-medium text-foreground">
-                                    {highlightMatch(prospect.name, search)}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {highlightMatch(prospect.email, search)}
-                                  </span>
+                          return (
+                            <motion.tr
+                              key={prospect.id}
+                              layout
+                              initial={{ opacity: 0, scale: 0.98, y: -6 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ 
+                                opacity: 0, 
+                                scale: 0.96, 
+                                x: -24, 
+                                transition: { duration: 0.22, ease: "easeOut" } 
+                              }}
+                              transition={{ 
+                                type: "spring", 
+                                stiffness: 450, 
+                                damping: 32, 
+                                mass: 0.8 
+                              }}
+                              className="group cursor-default hover:bg-muted/30 border-b transition-colors"
+                            >
+                              <TableCell>
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-9 w-9 border border-border shadow-sm group-hover:scale-105 transition-transform">
+                                    <AvatarFallback className="bg-primary/5 text-primary text-xs font-medium">
+                                      {prospect.name
+                                        .split(" ")
+                                        .map((n) => n[0])
+                                        .join("")
+                                        .substring(0, 2)
+                                        .toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex flex-col">
+                                    <span className="font-medium text-foreground">
+                                      {highlightMatch(prospect.name, search)}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {highlightMatch(prospect.email, search)}
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {highlightMatch(prospect.company || "—", search)}
-                            </TableCell>
-                            <TableCell>
-                              {(prospect.campaign || prospect.source === "SMART_IMPORT") ? (
-                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50/80 border border-indigo-100/50 text-indigo-600 text-[11px] font-medium tracking-tight whitespace-nowrap">
-                                  <Sparkles className="h-3 w-3 text-indigo-500" />
-                                  Smart Import
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground text-xs font-medium">Manual</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <StatusBadge
-                                status={prospectBadgeStatus as any}
-                                label={displayStatus}
-                                dot
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <StatusBadge
-                                status={sequenceBadgeStatus as any}
-                                label={sequenceLabel}
-                              />
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {lastActivity
-                                ? format(new Date(lastActivity), "MMM d, yyyy")
-                                : "Never"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  >
-                                    <span className="sr-only">Open menu</span>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem asChild>
-                                    <Link
-                                      prefetch={true}
-                                      href={`/prospects/${prospect.id}`}
-                                      className="cursor-pointer"
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {highlightMatch(prospect.company || "—", search)}
+                              </TableCell>
+                              <TableCell>
+                                {(prospect.campaign || prospect.source === "SMART_IMPORT") ? (
+                                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50/80 border border-indigo-100/50 text-indigo-600 text-[11px] font-medium tracking-tight whitespace-nowrap">
+                                    <Sparkles className="h-3 w-3 text-indigo-500" />
+                                    Smart Import
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs font-medium">Manual</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <StatusBadge
+                                  status={prospectBadgeStatus as any}
+                                  label={displayStatus}
+                                  dot
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <StatusBadge
+                                  status={sequenceBadgeStatus as any}
+                                  label={sequenceLabel}
+                                />
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {lastActivity
+                                  ? format(new Date(lastActivity), "MMM d, yyyy")
+                                  : "Never"}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                     >
-                                      <ExternalLink className="mr-2 h-4 w-4" />
-                                      View Profile
-                                    </Link>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      handleDeleteProspect(
-                                        prospect.id,
-                                        prospect.name,
-                                      )
-                                    }
-                                    className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
-                                  >
-                                    <Trash className="mr-2 h-4 w-4" />
-                                    Delete Prospect
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
+                                      <span className="sr-only">Open menu</span>
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem asChild>
+                                      <FastLink
+                                        href={`/prospects/${prospect.id}`}
+                                        className="cursor-pointer"
+                                      >
+                                        <ExternalLink className="mr-2 h-4 w-4" />
+                                        View Profile
+                                      </FastLink>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleDeleteProspect(
+                                          prospect.id,
+                                          prospect.name,
+                                        )
+                                      }
+                                      className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
+                                    >
+                                      <Trash className="mr-2 h-4 w-4" />
+                                      Delete Prospect
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </motion.tr>
+                          );
+                        })}
+                      </AnimatePresence>
                     </TableBody>
                   </Table>
                 </div>

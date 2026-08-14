@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader } from "@/components/ui/page-header";
 import { AnimatedPage } from "@/components/ui/animated";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -831,145 +832,162 @@ export default function AnnouncementsAdminPage() {
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
-                    {filteredAnnouncements.map((ann) => {
-                      const status = getAnnouncementStatus(ann);
-                      const start = new Date(ann.scheduledAt || ann.createdAt);
-                      const end = ann.expiresAt ? new Date(ann.expiresAt) : null;
-                      const isActing = actionLoadingId === ann.id;
+                    <AnimatePresence initial={false}>
+                      {filteredAnnouncements.map((ann) => {
+                        const status = getAnnouncementStatus(ann);
+                        const start = new Date(ann.scheduledAt || ann.createdAt);
+                        const end = ann.expiresAt ? new Date(ann.expiresAt) : null;
+                        const isActing = actionLoadingId === ann.id;
 
-                      return (
-                        <div 
-                          key={ann.id} 
-                          className={cn(
-                            "p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4 transition-colors hover:bg-muted/10",
-                            !ann.isActive && "opacity-60 grayscale-[40%]"
-                          )}
-                        >
-                          {/* Announcement Info */}
-                          <div className="flex gap-4 flex-1">
-                            <div className="mt-1 bg-background border border-border shadow-sm h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0">
-                              {getTypeIcon(ann.type)}
-                            </div>
-                            <div className="space-y-1.5 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <h4 className="font-semibold text-foreground text-base leading-snug">
-                                  {ann.title}
-                                </h4>
-                                <Badge variant="outline" className={cn("text-[10px] font-semibold px-2 py-0.5 border", status.color)}>
-                                  {status.label}
-                                </Badge>
+                        return (
+                          <motion.div 
+                            key={ann.id} 
+                            layout
+                            initial={{ opacity: 0, scale: 0.98, y: -6 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ 
+                              opacity: 0, 
+                              scale: 0.96, 
+                              x: -24, 
+                              transition: { duration: 0.22, ease: "easeOut" } 
+                            }}
+                            transition={{ 
+                              type: "spring", 
+                              stiffness: 450, 
+                              damping: 32, 
+                              mass: 0.8 
+                            }}
+                            className={cn(
+                              "p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4 transition-colors hover:bg-muted/10",
+                              !ann.isActive && "opacity-60 grayscale-[40%]"
+                            )}
+                          >
+                            {/* Announcement Info */}
+                            <div className="flex gap-4 flex-1">
+                              <div className="mt-1 bg-background border border-border shadow-sm h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0">
+                                {getTypeIcon(ann.type)}
                               </div>
-
-                              <p className="text-sm text-muted-foreground leading-relaxed">
-                                {ann.message}
-                              </p>
-                              
-                              {/* CTA Link preview if present */}
-                              {ann.link && (
-                                <div className="pt-1">
-                                  <a 
-                                    href={ann.link} 
-                                    target="_blank" 
-                                    rel="noreferrer" 
-                                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
-                                  >
-                                    <ExternalLink className="h-3 w-3" />
-                                    {ann.buttonText || "Call to Action Link"} ({ann.link})
-                                  </a>
-                                </div>
-                              )}
-
-                              {/* Schedule Window Badge Info */}
-                              <div className="pt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium text-muted-foreground">
-                                <div className="flex items-center gap-1.5">
-                                  <CalendarRange className="h-3.5 w-3.5 text-primary" />
-                                  <span>
-                                    From: <strong>{format(start, "MMM d, yyyy")}</strong> ({format(start, "h:mm a")})
-                                  </span>
+                              <div className="space-y-1.5 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <h4 className="font-semibold text-foreground text-base leading-snug">
+                                    {ann.title}
+                                  </h4>
+                                  <Badge variant="outline" className={cn("text-[10px] font-semibold px-2 py-0.5 border", status.color)}>
+                                    {status.label}
+                                  </Badge>
                                 </div>
 
-                                <span className="text-muted-foreground/40 hidden sm:inline">→</span>
+                                <p className="text-sm text-muted-foreground leading-relaxed">
+                                  {ann.message}
+                                </p>
+                                
+                                {/* CTA Link preview if present */}
+                                {ann.link && (
+                                  <div className="pt-1">
+                                    <a 
+                                      href={ann.link} 
+                                      target="_blank" 
+                                      rel="noreferrer" 
+                                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                      {ann.buttonText || "Call to Action Link"} ({ann.link})
+                                    </a>
+                                  </div>
+                                )}
 
-                                <div className="flex items-center gap-1.5">
-                                  <Clock className="h-3.5 w-3.5 text-primary" />
-                                  <span>
-                                    To: <strong>{end ? `${format(end, "MMM d, yyyy")} (${format(end, "h:mm a")})` : "Indefinite"}</strong>
-                                  </span>
+                                {/* Schedule Window Badge Info */}
+                                <div className="pt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium text-muted-foreground">
+                                  <div className="flex items-center gap-1.5">
+                                    <CalendarRange className="h-3.5 w-3.5 text-primary" />
+                                    <span>
+                                      From: <strong>{format(start, "MMM d, yyyy")}</strong> ({format(start, "h:mm a")})
+                                    </span>
+                                  </div>
+
+                                  <span className="text-muted-foreground/40 hidden sm:inline">→</span>
+
+                                  <div className="flex items-center gap-1.5">
+                                    <Clock className="h-3.5 w-3.5 text-primary" />
+                                    <span>
+                                      To: <strong>{end ? `${format(end, "MMM d, yyyy")} (${format(end, "h:mm a")})` : "Indefinite"}</strong>
+                                    </span>
+                                  </div>
+
+                                  {status.key === "SCHEDULED" && (
+                                    <span className="text-purple-600 dark:text-purple-400 font-semibold bg-purple-500/10 px-2 py-0.5 rounded">
+                                      Starts in {formatDistanceToNow(start)}
+                                    </span>
+                                  )}
+
+                                  {status.key === "LIVE" && end && (
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded">
+                                      Ends in {formatDistanceToNow(end)}
+                                    </span>
+                                  )}
+
+                                  {status.key === "EXPIRED" && end && (
+                                    <span className="text-amber-600 dark:text-amber-400 font-medium">
+                                      Ended {formatDistanceToNow(end, { addSuffix: true })}
+                                    </span>
+                                  )}
                                 </div>
+                              </div>
+                            </div>
 
+                            {/* Quick Actions Bar */}
+                            <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2.5 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border">
+                              <div className="flex items-center gap-2">
+                                {/* 1-Click Smart Action: Go Live Now if scheduled */}
                                 {status.key === "SCHEDULED" && (
-                                  <span className="text-purple-600 dark:text-purple-400 font-semibold bg-purple-500/10 px-2 py-0.5 rounded">
-                                    Starts in {formatDistanceToNow(start)}
-                                  </span>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={isActing}
+                                    onClick={() => handleGoLiveNow(ann.id)}
+                                    className="h-8 text-xs font-semibold bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/30 gap-1.5"
+                                  >
+                                    <Zap className="h-3.5 w-3.5 text-purple-500" />
+                                    Go Live Now
+                                  </Button>
                                 )}
 
-                                {status.key === "LIVE" && end && (
-                                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded">
-                                    Ends in {formatDistanceToNow(end)}
-                                  </span>
+                                {/* 1-Click Smart Action: Extend +7 days if expired */}
+                                {status.key === "EXPIRED" && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={isActing}
+                                    onClick={() => handleExtend7Days(ann.id, ann.expiresAt)}
+                                    className="h-8 text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30 gap-1.5"
+                                  >
+                                    <RefreshCw className="h-3.5 w-3.5 text-amber-500" />
+                                    +7 Days
+                                  </Button>
                                 )}
 
-                                {status.key === "EXPIRED" && end && (
-                                  <span className="text-amber-600 dark:text-amber-400 font-medium">
-                                    Ended {formatDistanceToNow(end, { addSuffix: true })}
-                                  </span>
-                                )}
+                                <div className="flex items-center gap-1.5 text-sm text-muted-foreground ml-1">
+                                  {ann.isActive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                  <Switch 
+                                    checked={ann.isActive} 
+                                    onCheckedChange={() => handleToggleStatus(ann.id, ann.isActive)} 
+                                  />
+                                </div>
                               </div>
+
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => setAnnouncementToDelete({ id: ann.id, title: ann.title })}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2 text-xs cursor-pointer"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                              </Button>
                             </div>
-                          </div>
-
-                          {/* Quick Actions Bar */}
-                          <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2.5 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border">
-                            <div className="flex items-center gap-2">
-                              {/* 1-Click Smart Action: Go Live Now if scheduled */}
-                              {status.key === "SCHEDULED" && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={isActing}
-                                  onClick={() => handleGoLiveNow(ann.id)}
-                                  className="h-8 text-xs font-semibold bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/30 gap-1.5"
-                                >
-                                  <Zap className="h-3.5 w-3.5 text-purple-500" />
-                                  Go Live Now
-                                </Button>
-                              )}
-
-                              {/* 1-Click Smart Action: Extend +7 days if expired */}
-                              {status.key === "EXPIRED" && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={isActing}
-                                  onClick={() => handleExtend7Days(ann.id, ann.expiresAt)}
-                                  className="h-8 text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30 gap-1.5"
-                                >
-                                  <RefreshCw className="h-3.5 w-3.5 text-amber-500" />
-                                  +7 Days
-                                </Button>
-                              )}
-
-                              <div className="flex items-center gap-1.5 text-sm text-muted-foreground ml-1">
-                                {ann.isActive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                                <Switch 
-                                  checked={ann.isActive} 
-                                  onCheckedChange={() => handleToggleStatus(ann.id, ann.isActive)} 
-                                />
-                              </div>
-                            </div>
-
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => setAnnouncementToDelete({ id: ann.id, title: ann.title })}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2 text-xs cursor-pointer"
-                            >
-                              <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
                   </div>
                 )}
               </CardContent>

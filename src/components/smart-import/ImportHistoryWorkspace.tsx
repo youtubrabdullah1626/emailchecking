@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useImport } from "@/components/providers/ImportProvider";
 import { StorageEngine, ImportSessionMetadata } from "@/lib/storage/StorageEngine";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -245,112 +246,132 @@ export function ImportHistoryWorkspace() {
       </CardHeader>
       <CardContent className="p-0">
         <div className="divide-y divide-border">
-          {sessions.filter(s => !hiddenSessions.has(s.sessionId)).map(session => (
-            <div key={session.sessionId} className="p-4 flex flex-col sm:flex-row sm:items-center gap-4 justify-between hover:bg-muted/10 transition-colors">
-              <div className="space-y-2 flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="font-semibold truncate max-w-full">{session.campaignName || "Untitled Campaign"}</span>
-                  <Badge variant={
-                    session.status === "COMPLETED" ? "default" :
-                    session.status === "FAILED" ? "destructive" :
-                    session.lastCheckpoint === "EXECUTION_STARTED" ? "default" :
-                    "secondary"
-                  } className={
-                    session.status === "COMPLETED" ? "bg-blue-500 hover:bg-blue-600 text-[10px] flex items-center gap-1 shrink-0" :
-                    session.lastCheckpoint === "EXECUTION_STARTED" ? "bg-emerald-500 hover:bg-emerald-600 text-[10px] flex items-center gap-1 shrink-0" : 
-                    "text-[10px] shrink-0"
-                  }>
-                    {session.status === "COMPLETED" && <CheckCircle2 className="h-3 w-3" />}
-                    {session.lastCheckpoint === "EXECUTION_STARTED" && <Play className="h-3 w-3 fill-current" />}
-                    {session.status === "COMPLETED" ? "COMPLETED" : session.lastCheckpoint === "EXECUTION_STARTED" ? "LIVE CAMPAIGN" : session.status}
-                  </Badge>
-                  {session.status === "DRAFT" && session.lastCheckpoint !== "EXECUTION_STARTED" && (
-                    <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200 bg-amber-50 shrink-0">
-                      Checkpoint: {session.lastCheckpoint}
+          <AnimatePresence initial={false}>
+            {sessions.filter(s => !hiddenSessions.has(s.sessionId)).map(session => (
+              <motion.div 
+                key={session.sessionId} 
+                layout
+                initial={{ opacity: 0, scale: 0.98, y: -6 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ 
+                  opacity: 0, 
+                  scale: 0.96, 
+                  x: -24, 
+                  transition: { duration: 0.22, ease: "easeOut" } 
+                }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 450, 
+                  damping: 32, 
+                  mass: 0.8 
+                }}
+                className="p-4 flex flex-col sm:flex-row sm:items-center gap-4 justify-between hover:bg-muted/10 transition-colors"
+              >
+                <div className="space-y-2 flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="font-semibold truncate max-w-full">{session.campaignName || "Untitled Campaign"}</span>
+                    <Badge variant={
+                      session.status === "COMPLETED" ? "default" :
+                      session.status === "FAILED" ? "destructive" :
+                      session.lastCheckpoint === "EXECUTION_STARTED" ? "default" :
+                      "secondary"
+                    } className={
+                      session.status === "COMPLETED" ? "bg-blue-500 hover:bg-blue-600 text-[10px] flex items-center gap-1 shrink-0" :
+                      session.lastCheckpoint === "EXECUTION_STARTED" ? "bg-emerald-500 hover:bg-emerald-600 text-[10px] flex items-center gap-1 shrink-0" : 
+                      "text-[10px] shrink-0"
+                    }>
+                      {session.status === "COMPLETED" && <CheckCircle2 className="h-3 w-3" />}
+                      {session.lastCheckpoint === "EXECUTION_STARTED" && <Play className="h-3 w-3 fill-current" />}
+                      {session.status === "COMPLETED" ? "COMPLETED" : session.lastCheckpoint === "EXECUTION_STARTED" ? "LIVE CAMPAIGN" : session.status}
                     </Badge>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground mt-1">
-                  <span className="flex items-center gap-1.5 whitespace-nowrap">
-                    <Users className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                    <span className="font-medium text-foreground/80">{session.totalRecords.toLocaleString()}</span> {session.totalRecords === 1 ? 'Lead' : 'Leads'}
-                  </span>
-                  
-                  {session.estimatedCompletion && session.status !== "COMPLETED" && (
-                    <span className="flex items-center gap-1.5 text-primary whitespace-nowrap bg-primary/5 px-2 py-0.5 rounded-full">
-                      <Clock className="h-3.5 w-3.5 shrink-0" />
-                      Ends {session.estimatedCompletion}
+                    {session.status === "DRAFT" && session.lastCheckpoint !== "EXECUTION_STARTED" && (
+                      <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200 bg-amber-50 shrink-0">
+                        Checkpoint: {session.lastCheckpoint}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground mt-1">
+                    <span className="flex items-center gap-1.5 whitespace-nowrap">
+                      <Users className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                      <span className="font-medium text-foreground/80">{session.totalRecords.toLocaleString()}</span> {session.totalRecords === 1 ? 'Lead' : 'Leads'}
                     </span>
-                  )}
-                  
-                  <span className="flex items-center gap-1.5 whitespace-nowrap">
-                    <Calendar className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                    {formatDistanceToNow(new Date(session.importDate), { addSuffix: true })}
-                  </span>
-                  
-                  <span className="flex items-center gap-1.5 max-w-[180px] sm:max-w-[220px] md:max-w-[300px]" title={session.fileName}>
-                    <FileText className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                    <span className="truncate">{session.fileName}</span>
-                  </span>
+                    
+                    {session.estimatedCompletion && session.status !== "COMPLETED" && (
+                      <span className="flex items-center gap-1.5 text-primary whitespace-nowrap bg-primary/5 px-2 py-0.5 rounded-full">
+                        <Clock className="h-3.5 w-3.5 shrink-0" />
+                        Ends {session.estimatedCompletion}
+                      </span>
+                    )}
+                    
+                    <span className="flex items-center gap-1.5 whitespace-nowrap">
+                      <Calendar className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                      {formatDistanceToNow(new Date(session.importDate), { addSuffix: true })}
+                    </span>
+                    
+                    <span className="flex items-center gap-1.5 max-w-[180px] sm:max-w-[220px] md:max-w-[300px]" title={session.fileName}>
+                      <FileText className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                      <span className="truncate">{session.fileName}</span>
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                {session.lastCheckpoint === "EXECUTION_STARTED" && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleAppendClick(session.sessionId)} 
-                    className="gap-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200 shadow-sm transition-all hover:pr-4"
-                  >
-                    <Plus className="h-4 w-4" /> 
-                    <span className="hidden sm:inline-block">Add Leads</span>
-                  </Button>
-                )}
-                <Button 
-                  variant={session.sessionId === sessionId ? "default" : "secondary"} 
-                  size="sm" 
-                  onClick={() => handleActionClick(session)} 
-                  className={session.sessionId === sessionId 
-                    ? "gap-2 shadow-sm"
-                    : "gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100 shadow-sm"
-                  }
-                >
-                  <Eye className="h-4 w-4" /> {session.status === "COMPLETED" || session.lastCheckpoint === "EXECUTION_STARTED" ? "View Prospects" : (session.sessionId === sessionId ? "Currently Viewing" : "View Details")}
-                </Button>
-                {(session.status === "COMPLETED" || session.lastCheckpoint === "EXECUTION_STARTED") && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleResume(session.sessionId)} 
-                    className="gap-2 shadow-sm border-indigo-200 text-indigo-700 hover:bg-indigo-50"
-                  >
-                    <FileText className="h-4 w-4" /> View Details
-                  </Button>
-                )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem onClick={() => handleRename(session.sessionId, session.campaignName || "Draft Campaign")}>
-                      <Edit2 className="h-4 w-4 mr-2" />
-                      Rename
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => setSessionToDelete({ id: session.sessionId, name: session.campaignName || "Campaign" })} 
-                      className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                <div className="flex items-center gap-2 shrink-0">
+                  {session.lastCheckpoint === "EXECUTION_STARTED" && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleAppendClick(session.sessionId)} 
+                      className="gap-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200 shadow-sm transition-all hover:pr-4"
                     >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Campaign
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          ))}
+                      <Plus className="h-4 w-4" /> 
+                      <span className="hidden sm:inline-block">Add Leads</span>
+                    </Button>
+                  )}
+                  <Button 
+                    variant={session.sessionId === sessionId ? "default" : "secondary"} 
+                    size="sm" 
+                    onClick={() => handleActionClick(session)} 
+                    className={session.sessionId === sessionId 
+                      ? "gap-2 shadow-sm"
+                      : "gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100 shadow-sm"
+                    }
+                  >
+                    <Eye className="h-4 w-4" /> {session.status === "COMPLETED" || session.lastCheckpoint === "EXECUTION_STARTED" ? "View Prospects" : (session.sessionId === sessionId ? "Currently Viewing" : "View Details")}
+                  </Button>
+                  {(session.status === "COMPLETED" || session.lastCheckpoint === "EXECUTION_STARTED") && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleResume(session.sessionId)} 
+                      className="gap-2 shadow-sm border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                    >
+                      <FileText className="h-4 w-4" /> View Details
+                    </Button>
+                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem onClick={() => handleRename(session.sessionId, session.campaignName || "Draft Campaign")}>
+                        <Edit2 className="h-4 w-4 mr-2" />
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setSessionToDelete({ id: session.sessionId, name: session.campaignName || "Campaign" })} 
+                        className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Campaign
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       </CardContent>
 

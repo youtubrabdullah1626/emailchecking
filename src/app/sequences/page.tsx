@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { FastLink } from "@/components/ui/fast-link";
+import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader } from "@/components/ui/page-header";
 import { AnimatedPage, AnimatedList, AnimatedItem } from "@/components/ui/animated";
 import { Button } from "@/components/ui/button";
@@ -208,104 +209,124 @@ export default function SequencesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sequences.map(seq => {
-                    const totalSteps = seq.steps.length;
-                    const sentSteps = seq.steps.filter((s) => s.status === "SENT").length;
-                    
-                    const activeStep =
-                       seq.steps.find((s) => s.status === "PROCESSING") ??
-                       seq.steps.find((s) => s.status === "PENDING");
-                    
-                    const currentStepNum = activeStep ? activeStep.step_number : (seq.status === "COMPLETED" ? totalSteps : 1);
-                    const completionPercent = totalSteps > 0 ? Math.round((sentSteps / totalSteps) * 100) : 0;
-                    
-                    const pendingSteps = seq.steps
-                      .filter((s) => s.status === "PENDING")
-                      .sort((a, b) => new Date(a.scheduled_at_utc).getTime() - new Date(b.scheduled_at_utc).getTime());
-                    
-                    const nextSendAt = pendingSteps[0]?.scheduled_at_utc;
-                    const firstSubject = seq.steps[0]?.subject;
-                    
-                    let badgeStatus = seq.status.toLowerCase();
-                    if (badgeStatus === 'draft') badgeStatus = 'none';
+                  <AnimatePresence initial={false}>
+                    {sequences.map(seq => {
+                      const totalSteps = seq.steps.length;
+                      const sentSteps = seq.steps.filter((s) => s.status === "SENT").length;
+                      
+                      const activeStep =
+                         seq.steps.find((s) => s.status === "PROCESSING") ??
+                         seq.steps.find((s) => s.status === "PENDING");
+                      
+                      const currentStepNum = activeStep ? activeStep.step_number : (seq.status === "COMPLETED" ? totalSteps : 1);
+                      const completionPercent = totalSteps > 0 ? Math.round((sentSteps / totalSteps) * 100) : 0;
+                      
+                      const pendingSteps = seq.steps
+                        .filter((s) => s.status === "PENDING")
+                        .sort((a, b) => new Date(a.scheduled_at_utc).getTime() - new Date(b.scheduled_at_utc).getTime());
+                      
+                      const nextSendAt = pendingSteps[0]?.scheduled_at_utc;
+                      const firstSubject = seq.steps[0]?.subject;
+                      
+                      let badgeStatus = seq.status.toLowerCase();
+                      if (badgeStatus === 'draft') badgeStatus = 'none';
 
-                    return (
-                      <TableRow key={seq.id} className="group cursor-default hover:bg-muted/30">
-                        <TableCell>
-                          <div className="flex items-start gap-3">
-                            <Avatar className="h-9 w-9 mt-0.5 border border-border shadow-sm group-hover:scale-105 transition-transform">
-                              <AvatarFallback className="bg-primary/5 text-primary text-xs font-medium">
-                                {seq.prospect.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex flex-col">
-                              <FastLink href={`/prospects/${seq.prospect.id}/sequence`} className="font-semibold text-sm hover:text-primary transition-colors line-clamp-1">
-                                {firstSubject || `Sequence for ${seq.prospect.name}`}
-                              </FastLink>
-                              <span className="text-xs text-muted-foreground mt-0.5">
-                                to <FastLink href={`/prospects/${seq.prospect.id}`} className="font-medium text-foreground hover:underline">{seq.prospect.name}</FastLink>
-                                {seq.prospect.company && ` at ${seq.prospect.company}`}
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col items-start gap-1.5">
-                            <StatusBadge status={badgeStatus as any} dot />
-                            <div className="text-[11px] text-muted-foreground mt-0.5">
-                              {seq.status === 'COMPLETED' ? (
-                                <span className="flex items-center gap-1 text-emerald-600 font-medium">
-                                  <CheckCircle2 className="h-3 w-3" /> Finished
-                                </span>
-                              ) : nextSendAt && seq.status === 'ACTIVE' ? (
-                                <span className="text-foreground font-medium">Next: {formatDistanceToNow(new Date(nextSendAt), { addSuffix: true })}</span>
-                              ) : seq.status === 'STOPPED' ? (
-                                <span className="flex items-center gap-1 text-amber-600 font-medium">
-                                  <PauseCircle className="h-3 w-3" /> Paused
-                                </span>
-                              ) : (
-                                "No pending steps"
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1.5 w-full pr-8">
-                            <div className="flex justify-between text-[10px] font-medium text-muted-foreground">
-                              <span>Step {currentStepNum} of {totalSteps}</span>
-                              <span>{completionPercent}%</span>
-                            </div>
-                            <Progress value={completionPercent} className="h-1.5" />
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild>
-                                <FastLink href={`/prospects/${seq.prospect.id}/sequence`} className="cursor-pointer">
-                                  <ExternalLink className="mr-2 h-4 w-4" />
-                                  View Sequence
+                      return (
+                        <motion.tr 
+                          key={seq.id} 
+                          layout
+                          initial={{ opacity: 0, scale: 0.98, y: -6 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ 
+                            opacity: 0, 
+                            scale: 0.96, 
+                            x: -24, 
+                            transition: { duration: 0.22, ease: "easeOut" } 
+                          }}
+                          transition={{ 
+                            type: "spring", 
+                            stiffness: 450, 
+                            damping: 32, 
+                            mass: 0.8 
+                          }}
+                          className="group cursor-default hover:bg-muted/30 border-b transition-colors"
+                        >
+                          <TableCell>
+                            <div className="flex items-start gap-3">
+                              <Avatar className="h-9 w-9 mt-0.5 border border-border shadow-sm group-hover:scale-105 transition-transform">
+                                <AvatarFallback className="bg-primary/5 text-primary text-xs font-medium">
+                                  {seq.prospect.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex flex-col">
+                                <FastLink href={`/prospects/${seq.prospect.id}/sequence`} className="font-semibold text-sm hover:text-primary transition-colors line-clamp-1">
+                                  {firstSubject || `Sequence for ${seq.prospect.name}`}
                                 </FastLink>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => setSequenceToDelete({ id: seq.id, name: seq.prospect?.name ? `Sequence for ${seq.prospect.name}` : "Sequence" })}
-                                className="text-destructive focus:bg-destructive focus:text-destructive-foreground cursor-pointer"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Sequence
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                                <span className="text-xs text-muted-foreground mt-0.5">
+                                  to <FastLink href={`/prospects/${seq.prospect.id}`} className="font-medium text-foreground hover:underline">{seq.prospect.name}</FastLink>
+                                  {seq.prospect.company && ` at ${seq.prospect.company}`}
+                                </span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col items-start gap-1.5">
+                              <StatusBadge status={badgeStatus as any} dot />
+                              <div className="text-[11px] text-muted-foreground mt-0.5">
+                                {seq.status === 'COMPLETED' ? (
+                                  <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                                    <CheckCircle2 className="h-3 w-3" /> Finished
+                                  </span>
+                                ) : nextSendAt && seq.status === 'ACTIVE' ? (
+                                  <span className="text-foreground font-medium">Next: {formatDistanceToNow(new Date(nextSendAt), { addSuffix: true })}</span>
+                                ) : seq.status === 'STOPPED' ? (
+                                  <span className="flex items-center gap-1 text-amber-600 font-medium">
+                                    <PauseCircle className="h-3 w-3" /> Paused
+                                  </span>
+                                ) : (
+                                  "No pending steps"
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1.5 w-full pr-8">
+                              <div className="flex justify-between text-[10px] font-medium text-muted-foreground">
+                                <span>Step {currentStepNum} of {totalSteps}</span>
+                                <span>{completionPercent}%</span>
+                              </div>
+                              <Progress value={completionPercent} className="h-1.5" />
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild>
+                                  <FastLink href={`/prospects/${seq.prospect.id}/sequence`} className="cursor-pointer">
+                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                    View Sequence
+                                  </FastLink>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => setSequenceToDelete({ id: seq.id, name: seq.prospect?.name ? `Sequence for ${seq.prospect.name}` : "Sequence" })}
+                                  className="text-destructive focus:bg-destructive focus:text-destructive-foreground cursor-pointer"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete Sequence
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </motion.tr>
+                      );
+                    })}
+                  </AnimatePresence>
                 </TableBody>
               </Table>
             </div>
