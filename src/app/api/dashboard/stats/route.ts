@@ -107,23 +107,29 @@ export async function GET(req: NextRequest) {
       }),
       prisma.trackedEmail.count({
         where: {
-          OR: [
-            { open_count: { gt: 0 } },
-            { status: { in: ['OPENED', 'REPLIED'] } }
-          ],
-          OR: [
-            { user_id: userId },
-            { sender_email: { in: senderEmails.length > 0 ? senderEmails : [userRecord?.email || ""] } }
+          AND: [
+            {
+              OR: [
+                { open_count: { gt: 0 } },
+                { status: { in: ['OPENED', 'REPLIED'] } }
+              ]
+            },
+            {
+              OR: [
+                { user_id: userId },
+                { sender_email: { in: senderEmails.length > 0 ? senderEmails : [userRecord?.email || ""] } }
+              ]
+            }
           ]
         }
       }),
       prisma.trackedEmail.count({
         where: {
+          status: { in: ["SENT", "DELIVERED", "OPENED", "REPLIED"] },
           OR: [
             { user_id: userId },
             { sender_email: { in: senderEmails.length > 0 ? senderEmails : [userRecord?.email || ""] } }
-          ],
-          status: { in: ["SENT", "DELIVERED", "OPENED", "REPLIED"] }
+          ]
         }
       }),
       prisma.replyClassification.count({
