@@ -36,7 +36,8 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
   const { data: session } = useSession();
   
   const user = session?.user as any;
-  const canViewAdmin = (user?.role && ["ADMIN_VIEWER", "ADMIN", "OWNER"].includes(user.role)) || user?.email === "youtubrabdullah1626@gmail.com";
+  const normalizedRole = user?.role?.toUpperCase() || "USER";
+  const canViewAdmin = ["ADMIN_VIEWER", "ADMIN", "OWNER"].includes(normalizedRole) || user?.email === "youtubrabdullah1626@gmail.com";
   
   // Use SWR to deduplicate this fetch globally with Header and Dashboard
   const { data: summary } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url));

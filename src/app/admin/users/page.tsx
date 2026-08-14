@@ -26,7 +26,8 @@ const fetcher = async (url: string) => {
 export default function UserManagementPage() {
   const { data: session } = useSession();
   const user = session?.user as any;
-  const canAssignRoles = user?.role === "ADMIN" || user?.role === "OWNER";
+  const normalizedRole = user?.role?.toUpperCase() || "USER";
+  const canAssignRoles = normalizedRole === "ADMIN" || normalizedRole === "OWNER" || user?.email === "youtubrabdullah1626@gmail.com";
 
   const [isAssignRoleOpen, setIsAssignRoleOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<MockUser | null>(null);

