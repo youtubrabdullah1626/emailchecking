@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Star, Sparkles, CheckCircle2, MessageSquareHeart, Rocket, Layout, Clock, Lightbulb, Bug, Heart, Loader2 } from "lucide-react";
+import { Star, CheckCircle2, MessageSquareHeart, Rocket, Layout, Clock, Lightbulb, Bug, Heart, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -21,16 +21,8 @@ const CATEGORIES = [
   { id: "SCHEDULER", label: "Smart Resets", icon: Clock },
   { id: "FEATURE_REQUEST", label: "Feature Request", icon: Lightbulb },
   { id: "BUG", label: "Found a Bug", icon: Bug },
-  { id: "GENERAL", label: "General Love", icon: Heart },
+  { id: "GENERAL", label: "General Feedback", icon: Heart },
 ];
-
-const SENTIMENT_LABELS: Record<number, string> = {
-  1: "Needs Improvement 🔧",
-  2: "Fair 😐",
-  3: "Good Experience 👍",
-  4: "Very Good & Fast 🚀",
-  5: "Loved it! Super Clean & Smart 🔥",
-};
 
 export function FeedbackDialog({
   open,
@@ -79,7 +71,7 @@ export function FeedbackDialog({
         setIsSuccess(false);
         setComment("");
         onOpenChange(false);
-      }, 1600);
+      }, 1500);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to submit feedback";
       toast.error(msg);
@@ -90,74 +82,66 @@ export function FeedbackDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[440px] max-h-[85vh] w-[95vw] p-0 flex flex-col overflow-hidden border border-border shadow-2xl rounded-2xl bg-card">
+      <DialogContent className="sm:max-w-[540px] w-[95vw] p-0 flex flex-col overflow-hidden border border-border shadow-2xl rounded-2xl bg-card">
         {isSuccess ? (
-          <div className="p-8 flex flex-col items-center justify-center text-center space-y-3 animate-in fade-in zoom-in duration-200">
-            <div className="h-14 w-14 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center justify-center shadow-md shadow-emerald-500/10">
+          <div className="p-10 flex flex-col items-center justify-center text-center space-y-3">
+            <div className="h-14 w-14 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center justify-center">
               <CheckCircle2 className="h-7 w-7" />
             </div>
             <div className="space-y-1">
               <h3 className="text-lg font-bold text-foreground">You&apos;re Awesome!</h3>
               <p className="text-xs text-muted-foreground max-w-xs">
-                Your feedback goes directly to our founding team to help shape OutreachIQ.
+                Your feedback goes directly to our founding team to help improve OutreachIQ.
               </p>
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col max-h-[85vh] overflow-hidden">
-            {/* Pinned Header */}
-            <DialogHeader className="p-5 pb-3 bg-muted/20 border-b border-border/40 shrink-0 text-left">
-              <div className="flex items-center gap-1.5 text-primary font-semibold text-[11px] tracking-wider uppercase">
-                <Sparkles className="h-3 w-3" /> Founder Feedback
-              </div>
-              <DialogTitle className="text-lg font-bold text-foreground mt-0.5">
+          <form onSubmit={handleSubmit} className="flex flex-col">
+            {/* Clean, Simple SaaS Header */}
+            <DialogHeader className="p-6 pb-4 bg-muted/20 border-b border-border/40 text-left">
+              <DialogTitle className="text-xl font-bold text-foreground tracking-tight">
                 How is your experience?
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Rate our speed, deliverability, and UI. We review every note personally.
+              <DialogDescription className="text-xs text-muted-foreground mt-1">
+                Rate your experience and share any thoughts with our team.
               </DialogDescription>
             </DialogHeader>
 
-            {/* Scrollable Body */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Compact Star Rating Selector */}
-              <div className="flex flex-col items-center justify-center space-y-1.5 py-3 bg-muted/30 rounded-xl border border-border/40">
-                <div className="flex items-center gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => {
-                    const isFilled = star <= activeRating;
-                    return (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setRating(star)}
-                        onMouseEnter={() => setHoverRating(star)}
-                        onMouseLeave={() => setHoverRating(null)}
-                        className="p-1 rounded-md transition-transform hover:scale-115 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                        aria-label={`${star} Star`}
-                      >
-                        <Star
-                          className={cn(
-                            "h-7 w-7 transition-colors drop-shadow-2xs",
-                            isFilled
-                              ? "fill-amber-400 text-amber-400 dark:fill-amber-400 dark:text-amber-400"
-                              : "text-muted-foreground/30 fill-transparent hover:text-amber-300"
-                          )}
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-xs font-semibold text-foreground/90 transition-all">
-                  {SENTIMENT_LABELS[activeRating] || "Select your rating"}
-                </p>
+            {/* Spacious Body */}
+            <div className="p-6 space-y-5">
+              {/* Clean 5-Star Selector (No words below, clean & minimal) */}
+              <div className="flex items-center justify-center gap-3 py-2">
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const isFilled = star <= activeRating;
+                  return (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(null)}
+                      className="p-1 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+                      aria-label={`${star} Star`}
+                    >
+                      <Star
+                        className={cn(
+                          "h-8 w-8 transition-colors",
+                          isFilled
+                            ? "fill-amber-400 text-amber-400 dark:fill-amber-400 dark:text-amber-400"
+                            : "text-muted-foreground/30 fill-transparent hover:text-amber-300"
+                        )}
+                      />
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Quick Feedback Category Chips */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              {/* Feedback Topic Chips */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Feedback Topic
                 </label>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {CATEGORIES.map((cat) => {
                     const Icon = cat.icon;
                     const isSelected = category === cat.id;
@@ -167,13 +151,13 @@ export function FeedbackDialog({
                         type="button"
                         onClick={() => setCategory(cat.id)}
                         className={cn(
-                          "px-2.5 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-all cursor-pointer",
+                          "px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-colors cursor-pointer",
                           isSelected
-                            ? "bg-primary text-primary-foreground border-primary shadow-2xs font-semibold"
+                            ? "bg-primary text-primary-foreground border-primary font-semibold shadow-xs"
                             : "bg-background text-muted-foreground hover:text-foreground border-border hover:bg-muted/60"
                         )}
                       >
-                        <Icon className="h-3 w-3" />
+                        <Icon className="h-3.5 w-3.5" />
                         {cat.label}
                       </button>
                     );
@@ -181,30 +165,30 @@ export function FeedbackDialog({
                 </div>
               </div>
 
-              {/* Optional Comment Box */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              {/* Spacious Comment Box */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Your Thoughts (Optional)
                 </label>
                 <Textarea
                   placeholder="What do you love most or what can we improve for you?"
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  className="min-h-[75px] max-h-[130px] resize-none text-xs bg-background border-border"
+                  className="min-h-[105px] resize-none text-sm bg-background border-border"
                   maxLength={1500}
                 />
               </div>
             </div>
 
-            {/* Pinned Footer (Always visible & never cut off) */}
-            <div className="p-3.5 px-5 bg-muted/20 border-t border-border/40 flex items-center justify-between shrink-0">
+            {/* Clean Footer */}
+            <div className="p-4 px-6 bg-muted/20 border-t border-border/40 flex items-center justify-between">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
-                className="text-xs text-muted-foreground hover:text-foreground h-8 px-3"
+                className="text-xs text-muted-foreground hover:text-foreground h-9 px-4"
               >
                 Cancel
               </Button>
@@ -212,7 +196,7 @@ export function FeedbackDialog({
                 type="submit"
                 size="sm"
                 disabled={isSubmitting}
-                className="gap-1.5 text-xs font-semibold shadow-xs h-8 px-4"
+                className="gap-2 text-xs font-semibold shadow-xs h-9 px-5"
               >
                 {isSubmitting ? (
                   <>
@@ -220,7 +204,7 @@ export function FeedbackDialog({
                   </>
                 ) : (
                   <>
-                    <MessageSquareHeart className="h-3.5 w-3.5" /> Send Feedback
+                    <MessageSquareHeart className="h-4 w-4" /> Send Feedback
                   </>
                 )}
               </Button>
