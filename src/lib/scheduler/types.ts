@@ -90,7 +90,9 @@ export type SchedulerLogEvent =
   | "scheduler_run_failed"
   | "stale_processing_steps_detected"
   | "scheduler_skipped_due_to_limits"
-  | "scheduler_limit_check_failed";
+  | "scheduler_limit_check_failed"
+  | "scheduler_config_fetch_warning"
+  | "step_skipped_user_capacity_exhausted";
 
 // ── Smart Scheduler Pure Engine Types ─────────────────────────────────────────
 
