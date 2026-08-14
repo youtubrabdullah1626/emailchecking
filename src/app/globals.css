@@ -191,6 +191,47 @@
   );
 }
 
+/* THEME OVERRIDES */
+body[data-theme="ORANGE"], .dark body[data-theme="ORANGE"] {
+  --primary: 24.6 95% 53.1%;
+  --sidebar-primary: 24.6 95% 53.1%;
+  --sidebar-ring: 24.6 95% 53.1%;
+  --ring: 24.6 95% 53.1%;
+  --chart-1: 24.6 95% 53.1%;
+  --accent-foreground: 24.6 95% 53.1%;
+  --sidebar-accent-foreground: 24.6 95% 53.1%;
+}
+
+body[data-theme="RED"], .dark body[data-theme="RED"] {
+  --primary: 346.8 87.2% 43.7%;
+  --sidebar-primary: 346.8 87.2% 43.7%;
+  --sidebar-ring: 346.8 87.2% 43.7%;
+  --ring: 346.8 87.2% 43.7%;
+  --chart-1: 346.8 87.2% 43.7%;
+  --accent-foreground: 346.8 87.2% 43.7%;
+  --sidebar-accent-foreground: 346.8 87.2% 43.7%;
+}
+
+body[data-theme="BLUE"], .dark body[data-theme="BLUE"] {
+  --primary: 217.2 91.2% 59.8%;
+  --sidebar-primary: 217.2 91.2% 59.8%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
+  --ring: 217.2 91.2% 59.8%;
+  --chart-1: 217.2 91.2% 59.8%;
+  --accent-foreground: 217.2 91.2% 59.8%;
+  --sidebar-accent-foreground: 217.2 91.2% 59.8%;
+}
+
+body[data-theme="PURPLE"], .dark body[data-theme="PURPLE"] {
+  --primary: 285.8 73.6% 52.5%;
+  --sidebar-primary: 285.8 73.6% 52.5%;
+  --sidebar-ring: 285.8 73.6% 52.5%;
+  --ring: 285.8 73.6% 52.5%;
+  --chart-1: 285.8 73.6% 52.5%;
+  --accent-foreground: 285.8 73.6% 52.5%;
+  --sidebar-accent-foreground: 285.8 73.6% 52.5%;
+}
+
 .dark {
   --button-outline: rgba(255, 255, 255, 0.1);
   --badge-outline: rgba(255, 255, 255, 0.05);

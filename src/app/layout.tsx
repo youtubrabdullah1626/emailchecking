@@ -22,6 +22,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   let fallbackHeaderStats = null;
+  let bannerTheme = "DEFAULT";
   try {
     const session = await getSession();
     if (session?.user) {
@@ -38,13 +39,17 @@ export default async function RootLayout({
         connectionStatus: emailAcc?.connection_status || "DISCONNECTED"
       };
     }
+    const bannerThemeConfig = await prisma.platform_configs.findFirst({ where: { key: "BANNER_THEME" } });
+    if (bannerThemeConfig?.value) {
+      bannerTheme = String(bannerThemeConfig.value);
+    }
   } catch (e) {
     console.error("RootLayout error", e);
   }
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning>
+      <body suppressHydrationWarning data-theme={bannerTheme}>
         <NextTopLoader color="#4F46E5" showSpinner={false} speed={200} />
         <AppShell fallbackHeaderStats={fallbackHeaderStats}>{children}</AppShell>
         <Toaster />
