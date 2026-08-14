@@ -57,6 +57,7 @@ interface ImportContextType {
   resetImport: () => Promise<void>;
   closeSession: () => void;
   runDiagnostics: () => void;
+  removeSequencesByEmail: (emails: string[]) => void;
   updateQueueItemState: (queueId: string, liveStatus: any, lastEventTime: string) => Promise<void>;
   rescheduleQueueItem: (queueId: string, newDate: string, newTime: string) => Promise<void>;
   deleteQueueItem: (queueId: string) => Promise<void>;
@@ -677,9 +678,32 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     sequencesRef.current = [];
     queueRef.current = [];
     setSummary(null);
+    setQueueSummary(null);
     setDiagnostics([]);
     setPerformanceMetrics(null);
     setBulkProgress(null);
+  };
+
+  const removeSequencesByEmail = (emailsToRemove: string[]) => {
+    if (!emailsToRemove || emailsToRemove.length === 0) return;
+    
+    const emailSet = new Set(emailsToRemove.map(e => e.toLowerCase()));
+    
+    // Filter out sequences
+    sequencesRef.current = sequencesRef.current.filter(seq => {
+      return !emailSet.has(seq.recipientEmail.toLowerCase());
+    });
+    
+    // Filter out records just in case
+    recordsRef.current = recordsRef.current.filter(rec => {
+      const email = rec['Email'] || rec['email'] || rec['Email Address'] || rec['email_address'];
+      if (!email) return true;
+      return !emailSet.has(email.toLowerCase());
+    });
+    
+    // Note: We don't filter queueRef here because startScheduling() must be called again
+    // to rebuild the queue based on the new sequencesRef and warmup limits!
+    // The UI should call startScheduling() after calling this.
   };
 
   const deleteQueueItem = async (queueId: string) => {

@@ -14,14 +14,60 @@ import { CalendarDays, Clock, Check, AlertTriangle, Layers, Calendar } from "luc
 import { Progress } from "@/components/ui/progress";
 
 import { SystemCertification } from "./SystemCertification";
+import { DuplicateWarningModal } from "./DuplicateWarningModal";
 
 export function SchedulingPreviewWorkspace() {
-  const { queueSummary, getExecutionQueue, approveImport, appendTargetSessionId, startScheduling, setStatus, status } = useImport() as any;
+  const { queueSummary, getExecutionQueue, approveImport, appendTargetSessionId, startScheduling, setStatus, status, getSequences, removeSequencesByEmail } = useImport() as any;
   const { data: warmupStatus } = useSWR("/api/warmup/status", url => apiClient<any>(url));
   const { data: warmupSettings } = useSWR("/api/warmup/settings", url => apiClient<any>(url));
   const [queueSlice, setQueueSlice] = useState<ExecutionQueueItem[]>([]);
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 100;
+
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
+  const [duplicateList, setDuplicateList] = useState<any[]>([]);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+
+  const handleExecuteStrategy = async () => {
+    setIsCheckingDuplicates(true);
+    try {
+      const sequences = getSequences();
+      const res = await fetch("/api/smart-import/check-duplicates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sequences })
+      });
+      const data = await res.json();
+      
+      if (data.duplicates && data.duplicates.length > 0) {
+        setDuplicateList(data.duplicates);
+        setShowDuplicateModal(true);
+      } else {
+        approveImport();
+      }
+    } catch (e) {
+      console.error("Failed to check duplicates", e);
+      approveImport(); // fallback to normal flow if API fails
+    } finally {
+      setIsCheckingDuplicates(false);
+    }
+  };
+
+  const handleConfirmDuplicates = async (selectedEmailsToKeep: string[]) => {
+    const emailsToRemove = duplicateList
+      .map(d => d.email)
+      .filter(e => !selectedEmailsToKeep.includes(e));
+
+    if (emailsToRemove.length > 0) {
+      removeSequencesByEmail(emailsToRemove);
+      await startScheduling(warmupStatus, warmupSettings, undefined, true);
+    }
+    
+    // We defer execution slightly to ensure React state has settled
+    setTimeout(() => {
+      approveImport();
+    }, 100);
+  };
 
   useEffect(() => {
     const queue = getExecutionQueue();
@@ -223,14 +269,14 @@ export function SchedulingPreviewWorkspace() {
 
       <div className="flex justify-end pt-6 border-t border-border">
         <Button 
-          onClick={approveImport} 
-          disabled={status === "EXECUTING"}
+          onClick={handleExecuteStrategy} 
+          disabled={status === "EXECUTING" || isCheckingDuplicates}
           className="gap-2 shadow-md bg-emerald-600 hover:bg-emerald-700 text-white px-8 transition-all duration-300 min-w-[240px]"
         >
-          {status === "EXECUTING" ? (
+          {status === "EXECUTING" || isCheckingDuplicates ? (
             <>
               <div className="animate-spin h-4 w-4 border-2 border-white/20 border-t-white rounded-full mr-2" />
-              Syncing to Database...
+              {isCheckingDuplicates ? "Checking Duplicates..." : "Syncing to Database..."}
             </>
           ) : (
             <>
@@ -240,6 +286,13 @@ export function SchedulingPreviewWorkspace() {
           )}
         </Button>
       </div>
+
+      <DuplicateWarningModal 
+        isOpen={showDuplicateModal}
+        onOpenChange={setShowDuplicateModal}
+        duplicates={duplicateList}
+        onConfirm={handleConfirmDuplicates}
+      />
     </div>
   );
 }
