@@ -696,7 +696,8 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     
     // Filter out records just in case
     recordsRef.current = recordsRef.current.filter(rec => {
-      const email = rec['Email'] || rec['email'] || rec['Email Address'] || rec['email_address'];
+      const anyRec = rec as any;
+      const email = anyRec['Email'] || anyRec['email'] || anyRec['Email Address'] || anyRec['email_address'];
       if (!email) return true;
       return !emailSet.has(email.toLowerCase());
     });
@@ -749,6 +750,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         resetImport,
         closeSession,
         runDiagnostics,
+        removeSequencesByEmail,
         updateQueueItemState,
         rescheduleQueueItem,
         deleteQueueItem,
