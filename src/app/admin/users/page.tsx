@@ -12,7 +12,14 @@ import { Loader2, AlertTriangle, Download } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Error ${res.status}`);
+  }
+  return res.json();
+};
 
 export default function UserManagementPage() {
   const [selectedUser, setSelectedUser] = useState<MockUser | null>(null);
@@ -108,8 +115,12 @@ export default function UserManagementPage() {
         
         {error ? (
           <Alert variant="destructive">
-            <AlertTitle>Connection Error</AlertTitle>
-            <AlertDescription>Failed to load customer profiles from the database.</AlertDescription>
+            <AlertTitle>{error.message?.includes("Forbidden") ? "Access Denied" : "Connection Error"}</AlertTitle>
+            <AlertDescription>
+              {error.message?.includes("Forbidden") 
+                ? "You do not have permission to view the user management dashboard. This area is restricted to Administrators."
+                : "Failed to load customer profiles from the database."}
+            </AlertDescription>
           </Alert>
         ) : (
           <div className="flex flex-col space-y-6 animate-in fade-in duration-500">

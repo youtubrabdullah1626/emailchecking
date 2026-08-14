@@ -62,11 +62,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const fetcher = (url: string) =>
-  fetch(url).then((res) => {
-    if (!res.ok) throw new Error("Failed to load prospects");
-    return res.json();
-  });
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Error ${res.status}`);
+  }
+  return res.json();
+};
 
 interface ProspectDetail {
   id: string;

@@ -6,7 +6,14 @@ import { LegacyBadge as Badge, LegacyLoadingState as LoadingState, LegacyErrorSt
 import { LegacyPageHeader as PageHeader } from "@/components/ui/legacy-adapters";
 import { Card, CardContent, Table, TableHead, TableRow, TableHeader, TableBody, TableCell } from "@/components/ui";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Error ${res.status}`);
+  }
+  return res.json();
+};
 
 export default function OperationsDashboard() {
   const { data: diagData, error: diagError } = useSWR("/api/observability/diagnostics", fetcher, { refreshInterval: 10000 });

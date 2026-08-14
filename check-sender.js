@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function main() { const acc = await prisma.emailAccount.findFirst({ where: { connection_status: 'CONNECTED' }, orderBy: { updated_at: 'desc' } }); console.log(JSON.stringify(acc, null, 2)); } main().catch(console.error).finally(() => prisma.$disconnect());

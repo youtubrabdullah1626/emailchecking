@@ -9,6 +9,7 @@
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/nextauth";
+import prisma from "@/lib/prisma";
 
 export interface SessionUser {
   id: string;
@@ -33,16 +34,27 @@ export async function getSession(): Promise<{ user: SessionUser } | null> {
       return null;
     }
 
+    // Smart SaaS Feature: Always fetch the freshed role and suspension status from the DB
+    // This prevents JWT caching issues where a user upgrades to OWNER but is still treated as a USER
+    const dbUser = await prisma.users.findUnique({
+      where: { email: user.email },
+      select: { role: true, isSuspended: true }
+    });
+
+    if (!dbUser || dbUser.isSuspended) {
+      return null;
+    }
+
     return {
       user: {
         id: user.id,
         email: user.email || "",
         name: user.name || undefined,
-        role: user.role || "USER",
-        isSuspended: user.isSuspended || false,
+        role: dbUser.role || "USER",
+        isSuspended: dbUser.isSuspended || false,
       },
     };
-  } catch {
+  } catch (error) {
     // Fail closed — deny access if session resolution fails
     return null;
   }
