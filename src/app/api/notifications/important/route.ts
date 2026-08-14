@@ -7,9 +7,15 @@ export const fetchCache = 'force-no-store';
 
 export async function GET() {
   try {
+    const now = new Date();
     const activeAnnouncements = await prisma.announcements.findMany({
       where: {
         isActive: true,
+        scheduledAt: { lte: now },
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: now } }
+        ]
       },
       orderBy: { scheduledAt: 'desc' },
       take: 10,
