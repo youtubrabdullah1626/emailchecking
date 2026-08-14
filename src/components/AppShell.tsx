@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { FeedbackTrigger } from './feedback/FeedbackTrigger';
 import useSWR, { SWRConfig } from 'swr';
 import { SessionProvider } from 'next-auth/react';
 import { apiClient } from '@/lib/api-client';
@@ -135,6 +136,8 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
                 </div>
               </div>
             )}
+            {/* Global Milestone Feedback Trigger */}
+            <FeedbackTrigger />
           </div>
         )}
       </SWRConfig>

@@ -503,6 +503,7 @@ model users {
   sequences           Sequence[]
   sessions            sessions[]
   tracked_emails      TrackedEmail[]
+  feedbacks           feedbacks[]
 }
 
 /// Enterprise Bulk Import Job Tracker
@@ -788,4 +789,26 @@ model provider_history {
   changed_at  DateTime         @default(now())
 
   @@index([provider_id, changed_at])
+}
+
+/// User feedback and CSAT rating system
+model feedbacks {
+  id            String    @id @default(cuid())
+  user_id       String
+  rating        Int       // 1 to 5 stars
+  sentiment     String    // EXCELLENT, GOOD, AVERAGE, POOR
+  category      String?   // DELIVERABILITY, UI_UX, SCHEDULER, FEATURE_REQUEST, BUG, GENERAL
+  comment       String?
+  page_url      String?
+  status        String    @default("NEW") // NEW, REVIEWED, ACTIONED, ARCHIVED
+  founder_notes String?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @default(now()) @updatedAt
+  users         users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([rating])
+  @@index([status])
+  @@index([created_at])
+  @@map("feedbacks")
 }

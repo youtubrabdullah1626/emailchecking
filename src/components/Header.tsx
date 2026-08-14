@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { signOut, useSession } from 'next-auth/react';
-import { RefreshCw, Bell, Menu, Zap, TrendingUp, Camera, X, Settings, LogOut } from "lucide-react";
+import { RefreshCw, Bell, Menu, Zap, TrendingUp, Camera, X, Settings, LogOut, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -267,6 +267,17 @@ export function Header({ onMenuClick }: HeaderProps) {
                   <Settings className="mr-2 h-4 w-4 text-muted-foreground" />
                   <span>Settings</span>
                 </FastLink>
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className="cursor-pointer flex items-center py-2 text-foreground hover:text-amber-500 transition-colors"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent("outreachiq:open_feedback", { detail: { source: "header_menu" } }));
+                  }
+                }}
+              >
+                <Sparkles className="mr-2 h-4 w-4 text-amber-500" />
+                <span>Give Feedback</span>
               </DropdownMenuItem>
               <DialogTrigger asChild>
                 <DropdownMenuItem className="cursor-pointer flex items-center py-2">
