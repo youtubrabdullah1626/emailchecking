@@ -4,6 +4,7 @@ import {
   checkTimezoneCooldown,
   SEVEN_DAYS_MS,
 } from "@/lib/date-utils";
+import { ALL_TIMEZONES, findTimezone } from "@/lib/timezones";
 
 describe("Timezone & Platform Capacity Reset Logic", () => {
   describe("getStartOfHour", () => {
@@ -67,6 +68,24 @@ describe("Timezone & Platform Capacity Reset Logic", () => {
 
       expect(status.canChange).toBe(true);
       expect(status.remainingDays).toBe(0);
+    });
+  });
+
+  describe("Timezone String Validation & Curated Lookups", () => {
+    it("should find valid curated timezone identifiers", () => {
+      expect(findTimezone("Asia/Karachi")).toBeDefined();
+      expect(findTimezone("America/New_York")).toBeDefined();
+      expect(findTimezone("Europe/London")).toBeDefined();
+    });
+
+    it("should return undefined for invalid or spoofed strings", () => {
+      expect(findTimezone("INVALID_MALICIOUS_STRING")).toBeUndefined();
+      expect(findTimezone("Hack/Timezone")).toBeUndefined();
+    });
+
+    it("should support case-insensitive normalization", () => {
+      const match = ALL_TIMEZONES.find((t) => t.value.toLowerCase() === "asia/karachi".toLowerCase());
+      expect(match?.value).toBe("Asia/Karachi");
     });
   });
 });

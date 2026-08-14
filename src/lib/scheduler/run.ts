@@ -23,7 +23,7 @@ import { isStepFullyEligible } from "./eligibility";
 import { claimStep } from "./claim";
 import { log } from "./logger";
 import prisma from "@/lib/prisma";
-import { getStartOfHour } from "@/lib/date-utils";
+import { getStartOfDayInTimezone, getStartOfHour } from "@/lib/date-utils";
 import type {
   SchedulerRunOptions,
   SchedulerRunResult,
@@ -33,6 +33,16 @@ import type {
 
 // Default limits
 const DEFAULT_MAX_CLAIMS = 50;
+
+interface UserCapacityState {
+  timezone: string;
+  dailyLimit: number;
+  hourlyLimit: number;
+  claimedThisRun: number;
+  sentToday: number;
+  sentThisHour: number;
+  sentLast24h: number;
+}
 
 /**
  * Run the scheduler.
@@ -64,73 +74,71 @@ export async function runScheduler(
   const errors: string[] = [];
   let staleProcessingSteps: StaleStepInfo[] = [];
 
-  // ── Capacity Enforcement (Hourly, Daily, & 24h Exploit Guard) ─────────────
+  // Fetch dynamic platform limit configs
+  let maxDaily = 500;
+  let maxHourly = 50;
   try {
-    // 1. Top of the hour reset (:00:00.000)
-    const startOfHour = getStartOfHour();
-
-    // 2. Midnight UTC
-    const startOfDayUtc = new Date();
-    startOfDayUtc.setUTCHours(0, 0, 0, 0);
-
-    // 3. Absolute 24-Hour Rolling Safeguard (Hard exploit defense)
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-    const [
-      dailyLimitConfig,
-      hourlyLimitConfig,
-      emailsSentThisHour,
-      emailsSentToday,
-      emailsSentLast24h,
-    ] = await Promise.all([
+    const [dailyLimitConfig, hourlyLimitConfig] = await Promise.all([
       prisma.platform_configs.findFirst({ where: { key: "MAX_DAILY_EMAILS" } }),
       prisma.platform_configs.findFirst({ where: { key: "HOURLY_EMAIL_LIMIT" } }),
-      prisma.emailEvent.count({ where: { event_type: "SENT", occurred_at: { gte: startOfHour } } }),
-      prisma.emailEvent.count({ where: { event_type: "SENT", occurred_at: { gte: startOfDayUtc } } }),
-      prisma.emailEvent.count({ where: { event_type: "SENT", occurred_at: { gte: twentyFourHoursAgo } } }),
+    ]);
+    if (dailyLimitConfig?.value) maxDaily = parseInt(String(dailyLimitConfig.value), 10);
+    if (hourlyLimitConfig?.value) maxHourly = parseInt(String(hourlyLimitConfig.value), 10);
+  } catch (err) {
+    log("scheduler_config_fetch_warning", { runId, error: String(err) });
+  }
+
+  // Multi-tenant per-user capacity cache for this run
+  const userCapacityCache = new Map<string, UserCapacityState>();
+
+  async function getUserCapacity(userId: string, now: Date): Promise<UserCapacityState> {
+    const cached = userCapacityCache.get(userId);
+    if (cached) return cached;
+
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: { timezone: true },
+    });
+    const tz = user?.timezone || "UTC";
+    const startOfDay = getStartOfDayInTimezone(tz, now);
+    const startOfHour = getStartOfHour(now);
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    const [sentToday, sentThisHour, sentLast24h] = await Promise.all([
+      prisma.emailEvent.count({
+        where: {
+          event_type: "SENT",
+          occurred_at: { gte: startOfDay },
+          step: { sequence: { user_id: userId } },
+        },
+      }),
+      prisma.emailEvent.count({
+        where: {
+          event_type: "SENT",
+          occurred_at: { gte: startOfHour },
+          step: { sequence: { user_id: userId } },
+        },
+      }),
+      prisma.emailEvent.count({
+        where: {
+          event_type: "SENT",
+          occurred_at: { gte: twentyFourHoursAgo },
+          step: { sequence: { user_id: userId } },
+        },
+      }),
     ]);
 
-    const maxDaily = dailyLimitConfig?.value ? parseInt(String(dailyLimitConfig.value), 10) : 500;
-    const maxHourly = hourlyLimitConfig?.value ? parseInt(String(hourlyLimitConfig.value), 10) : 50;
-
-    // Bulletproof: daily limit enforces both today's count and 24h rolling count
-    const effectiveDailySent = Math.max(emailsSentToday, emailsSentLast24h);
-    const availableDaily = Math.max(0, maxDaily - effectiveDailySent);
-    const availableHourly = Math.max(0, maxHourly - emailsSentThisHour);
-
-    const dynamicMaxClaims = Math.min(availableDaily, availableHourly, maxClaims);
-
-    if (dynamicMaxClaims <= 0) {
-      log("scheduler_skipped_due_to_limits", {
-        runId,
-        availableDaily,
-        availableHourly,
-        emailsSentToday,
-        emailsSentThisHour
-      });
-      return {
-        runId,
-        startedAt: startedAt.toISOString(),
-        finishedAt: new Date().toISOString(),
-        durationMs: Date.now() - startedAt.getTime(),
-        candidatesFound: 0,
-        eligibleSteps: 0,
-        claimedSteps: 0,
-        skippedSteps: 0,
-        errorSteps: 0,
-        errors: [],
-        claimedStepIds: [],
-        dryRun,
-        status: "SUCCESS", // Or SKIPPED, but SUCCESS avoids alerting
-        staleProcessingSteps: [],
-      };
-    }
-    
-    // Override maxClaims for this run based on available capacity
-    maxClaims = dynamicMaxClaims;
-  } catch (err) {
-    log("scheduler_limit_check_failed", { runId, error: String(err) });
-    // If limits check fails, continue with default maxClaims to avoid halting completely
+    const state: UserCapacityState = {
+      timezone: tz,
+      dailyLimit: maxDaily,
+      hourlyLimit: maxHourly,
+      claimedThisRun: 0,
+      sentToday,
+      sentThisHour,
+      sentLast24h,
+    };
+    userCapacityCache.set(userId, state);
+    return state;
   }
 
   try {
@@ -140,14 +148,11 @@ export async function runScheduler(
     candidatesFound = candidates.length;
 
     // ── Phase 8: Observe stale PROCESSING steps ───────────────────────────────
-    // Stale steps are PROCESSING but have not advanced — likely a stuck process.
-    // These are logged as a WARNING for observability but NEVER auto-reset.
     staleProcessingSteps = await findStaleProcessingSteps(nowUtc);
     if (staleProcessingSteps.length > 0) {
       log("stale_processing_steps_detected", {
         runId,
         count: staleProcessingSteps.length,
-        // Log IDs as comma-separated string (LogPayload only allows primitives)
         stepIds: staleProcessingSteps.map((s) => s.stepId).join(","),
         warning:
           "These steps are stuck in PROCESSING. Manual investigation required. " +
@@ -174,7 +179,6 @@ export async function runScheduler(
       );
 
       if (!eligibility.eligible) {
-        // Should be rare — the DB query pre-filters — but this guards the race window
         log("step_not_eligible", {
           runId,
           stepId: step.id,
@@ -186,6 +190,27 @@ export async function runScheduler(
         });
         skippedSteps++;
         continue;
+      }
+
+      // Multi-Tenant Isolation Check: Enforce per-user daily, hourly, & 24h capacity
+      if (step.sequence.user_id) {
+        const userCap = await getUserCapacity(step.sequence.user_id, nowUtc);
+        const effectiveDaily = Math.max(userCap.sentToday, userCap.sentLast24h) + userCap.claimedThisRun;
+        const effectiveHourly = userCap.sentThisHour + userCap.claimedThisRun;
+
+        if (effectiveDaily >= userCap.dailyLimit || effectiveHourly >= userCap.hourlyLimit) {
+          log("step_skipped_user_capacity_exhausted", {
+            runId,
+            stepId: step.id,
+            userId: step.sequence.user_id,
+            effectiveDaily,
+            dailyLimit: userCap.dailyLimit,
+            effectiveHourly,
+            hourlyLimit: userCap.hourlyLimit,
+          });
+          skippedSteps++;
+          continue;
+        }
       }
 
       log("step_eligible", {
@@ -205,6 +230,10 @@ export async function runScheduler(
         // In dry-run mode: count as "would be claimed" without state change
         claimedSteps++;
         claimedStepIds.push(step.id);
+        if (step.sequence.user_id) {
+          const userCap = userCapacityCache.get(step.sequence.user_id);
+          if (userCap) userCap.claimedThisRun++;
+        }
         continue;
       }
 
@@ -215,6 +244,10 @@ export async function runScheduler(
         case "CLAIMED":
           claimedSteps++;
           claimedStepIds.push(step.id);
+          if (step.sequence.user_id) {
+            const userCap = userCapacityCache.get(step.sequence.user_id);
+            if (userCap) userCap.claimedThisRun++;
+          }
           log("step_claimed", {
             runId,
             stepId: step.id,

@@ -51,6 +51,7 @@ export async function findCandidateSteps(
         select: {
           id: true,
           status: true,
+          user_id: true,
           prospect: {
             select: {
               id: true,

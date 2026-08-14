@@ -2,8 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth/session";
 import { checkTimezoneCooldown } from "@/lib/date-utils";
+import { ALL_TIMEZONES } from "@/lib/timezones";
 
 export const dynamic = "force-dynamic";
+
+function isValidIanaTimezone(tz: string): boolean {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function GET() {
   try {
@@ -76,20 +86,34 @@ export async function POST(req: NextRequest) {
       updateData.name = name.trim();
     }
 
-    if (timezone && typeof timezone === "string" && timezone !== user.timezone) {
-      const cooldown = checkTimezoneCooldown(user.timezone_updated_at);
-      if (!cooldown.canChange) {
+    if (timezone && typeof timezone === "string") {
+      const trimmed = timezone.trim();
+      // Case-insensitive match against ALL_TIMEZONES or valid IANA timezone
+      const curatedMatch = ALL_TIMEZONES.find((t) => t.value.toLowerCase() === trimmed.toLowerCase());
+      const normalizedTimezone = curatedMatch ? curatedMatch.value : (isValidIanaTimezone(trimmed) ? trimmed : null);
+
+      if (!normalizedTimezone) {
         return NextResponse.json(
-          {
-            error: `Timezone can only be changed once every 7 days. You can change it again in ${cooldown.remainingDays} day(s).`,
-            cooldown,
-          },
+          { error: "Invalid IANA timezone identifier provided (e.g. 'America/New_York' or 'Asia/Karachi')." },
           { status: 400 }
         );
       }
 
-      updateData.timezone = timezone;
-      updateData.timezone_updated_at = new Date();
+      if (normalizedTimezone !== user.timezone) {
+        const cooldown = checkTimezoneCooldown(user.timezone_updated_at);
+        if (!cooldown.canChange) {
+          return NextResponse.json(
+            {
+              error: `Timezone can only be changed once every 7 days. You can change it again in ${cooldown.remainingDays} day(s).`,
+              cooldown,
+            },
+            { status: 400 }
+          );
+        }
+
+        updateData.timezone = normalizedTimezone;
+        updateData.timezone_updated_at = new Date();
+      }
     }
 
     const updatedUser = await prisma.users.update({
