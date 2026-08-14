@@ -23,6 +23,7 @@ import prisma from "@/lib/prisma";
 import { getTenantPrisma } from "@/lib/db/tenant-prisma";
 import { getSession } from "@/lib/auth/session";
 import { getSchedulerHealth } from "@/lib/scheduler/health";
+import { getStartOfDayInTimezone, getStartOfHour } from "@/lib/date-utils";
 
 export async function GET(req: NextRequest) {
   try {
@@ -33,17 +34,18 @@ export async function GET(req: NextRequest) {
     const tenantPrisma = getTenantPrisma(session.user.id);
     const userId = session.user.id;
 
-    // Use the client's exact local midnight if provided, otherwise fallback to UTC midnight
-    const localStartStr = req.headers.get('x-local-start-of-day');
-    let startOfDay = new Date();
-    if (localStartStr && !isNaN(Date.parse(localStartStr))) {
-      startOfDay = new Date(localStartStr);
-    } else {
-      startOfDay.setUTCHours(0, 0, 0, 0);
-    }
+    // Fetch user's configured timezone for mathematically exact midnight calculation
+    const userRecord = await prisma.users.findUnique({
+      where: { id: userId },
+      select: { timezone: true },
+    });
+    const userTimezone = userRecord?.timezone || "UTC";
 
-    const oneHourAgo = new Date();
-    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+    // 1. Daily Midnight: Computed in user's profile timezone
+    const startOfDay = getStartOfDayInTimezone(userTimezone);
+
+    // 2. Hourly Velocity: Resets sharply at the Top of the Hour (:00:00.000)
+    const startOfHour = getStartOfHour();
 
     const [
       activeSequences,
@@ -146,7 +148,7 @@ export async function GET(req: NextRequest) {
       prisma.emailEvent.count({
         where: {
           event_type: "SENT",
-          occurred_at: { gte: oneHourAgo },
+          occurred_at: { gte: startOfHour },
           step: { sequence: { user_id: userId } }
         },
       }),
@@ -263,6 +265,7 @@ export async function GET(req: NextRequest) {
       sequenceLimit: sequenceLimitConfig?.value ? parseInt(String(sequenceLimitConfig.value), 10) : 5,
       emailsSentThisHour: emailsSentThisHour ?? 0,
       bannerTheme: bannerThemeConfig?.value ? String(bannerThemeConfig.value) : "DEFAULT",
+      userTimezone,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to load dashboard metrics";

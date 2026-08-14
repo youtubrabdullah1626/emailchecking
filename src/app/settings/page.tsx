@@ -17,7 +17,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Mail, Clock, Cpu, Bell, Key, Zap, User } from "lucide-react";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Mail, Clock, Cpu, Bell, Key, Zap, User, Globe, Lock, ShieldCheck, CheckCircle2, AlertCircle } from "lucide-react";
+import { TIMEZONE_GROUPS, getTimezoneLabel } from "@/lib/timezones";
 
 // Existing Types
 import type { ConnectedAccountProps } from "@/components/ConnectedAccountCard";
@@ -43,7 +45,14 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [displayName, setDisplayName] = useState("Team");
+  const [timezone, setTimezone] = useState("UTC");
+  const [cooldown, setCooldown] = useState<{
+    canChange: boolean;
+    remainingDays: number;
+    nextAllowedDate: string | null;
+  }>({ canChange: true, remainingDays: 0, nextAllowedDate: null });
 
   const form = useForm<z.infer<typeof settingsSchema>>({
     resolver: zodResolver(settingsSchema) as any,
@@ -74,14 +83,22 @@ export default function SettingsPage() {
         }
       }
 
-      const [accountData, settingsData] = await Promise.all([
+      const [accountData, settingsData, profileData] = await Promise.all([
         apiClient<any>("/api/gmail/account").catch(() => ({ accounts: [] })),
-        fetch("/api/settings").then(r => r.json()).catch(() => null)
+        fetch("/api/settings").then((r) => r.json()).catch(() => null),
+        fetch("/api/user/profile").then((r) => r.json()).catch(() => null),
       ]);
+
       setAccounts(accountData.accounts ?? []);
-      
+
       if (settingsData && !settingsData.error) {
         form.reset(settingsData);
+      }
+
+      if (profileData && !profileData.error) {
+        if (profileData.name) setDisplayName(profileData.name);
+        if (profileData.timezone) setTimezone(profileData.timezone);
+        if (profileData.cooldown) setCooldown(profileData.cooldown);
       }
     } catch (err) {
       if (err instanceof ApiError) {
@@ -116,13 +133,41 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
-      
+
       if (!res.ok) throw new Error("Failed to save settings");
       toast.success("Settings updated successfully");
     } catch (err) {
       toast.error("Failed to update settings");
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: displayName, timezone }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update profile");
+      }
+
+      if (data.cooldown) {
+        setCooldown(data.cooldown);
+      }
+
+      localStorage.setItem("outreachiq_display_name", displayName);
+      toast.success("Profile & Timezone preferences saved successfully!");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to update profile";
+      toast.error(msg);
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -144,13 +189,114 @@ export default function SettingsPage() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-8">
-            <Tabs defaultValue="gmail" className="flex flex-col md:flex-row gap-6">
+            <Tabs defaultValue="profile" className="flex flex-col md:flex-row gap-6">
               <TabsList className="flex flex-col h-auto bg-transparent p-0 space-y-1 md:w-48 lg:w-64">
-                <TabsTrigger value="profile" className="w-full justify-start gap-2 px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20"><User className="h-4 w-4" /> Profile Details</TabsTrigger>
+                <TabsTrigger value="profile" className="w-full justify-start gap-2 px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20"><User className="h-4 w-4" /> Profile & Timezone</TabsTrigger>
                 <TabsTrigger value="gmail" className="w-full justify-start gap-2 px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20"><Mail className="h-4 w-4" /> Gmail Integration</TabsTrigger>
               </TabsList>
 
               <div className="flex-1 max-w-3xl">
+                <TabsContent value="profile" className="mt-0">
+                  <Card className="border-border/50 shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-xl font-bold flex items-center gap-2">
+                        <User className="h-5 w-5 text-primary" /> Profile & Workspace Timezone
+                      </CardTitle>
+                      <CardDescription>
+                        Customize your display name and primary operating timezone for precise midnight limit resets.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Display Name */}
+                      <div className="space-y-2 max-w-md">
+                        <label className="text-sm font-semibold leading-none">Display Name</label>
+                        <Input 
+                          placeholder="E.g. Abdullah Hanjra" 
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                        />
+                        <p className="text-[0.8rem] text-muted-foreground">
+                          This name is used to personalize your dashboard experience.
+                        </p>
+                      </div>
+
+                      {/* Timezone Selection */}
+                      <div className="space-y-3 pt-2 border-t border-border/40 max-w-xl">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-semibold flex items-center gap-2">
+                            <Globe className="h-4 w-4 text-primary" /> Workspace Timezone
+                          </label>
+
+                          {cooldown.canChange ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                              <CheckCircle2 className="h-3 w-3" /> Ready to modify
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                              <Lock className="h-3 w-3" /> Locked ({cooldown.remainingDays}d cooldown)
+                            </span>
+                          )}
+                        </div>
+
+                        <Select
+                          value={timezone}
+                          onValueChange={(val) => setTimezone(val)}
+                          disabled={!cooldown.canChange || isSavingProfile}
+                        >
+                          <SelectTrigger className="w-full bg-background border-border shadow-sm">
+                            <SelectValue placeholder="Select workspace timezone" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[300px]">
+                            {TIMEZONE_GROUPS.map((group) => (
+                              <SelectGroup key={group.label}>
+                                <SelectLabel className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+                                  {group.label}
+                                </SelectLabel>
+                                {group.options.map((tz) => (
+                                  <SelectItem key={tz.value} value={tz.value}>
+                                    {tz.label} ({tz.offset})
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        {/* Cooldown / Integrity Explanation Box */}
+                        {!cooldown.canChange ? (
+                          <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                            <p className="font-semibold flex items-center gap-1.5">
+                              <ShieldCheck className="h-4 w-4 text-amber-600" /> Platform Rate-Limit Protection Active
+                            </p>
+                            <p className="opacity-90">
+                              To prevent daily email capacity exploits, workspace timezones can only be changed once every 7 days. Your next available modification date is{" "}
+                              <strong>
+                                {cooldown.nextAllowedDate ? new Date(cooldown.nextAllowedDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : "in a few days"}
+                              </strong>.
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-[0.8rem] text-muted-foreground">
+                            Your <strong>Daily Email Capacity</strong> automatically resets at exactly <strong>00:00:00 (Midnight)</strong> in this timezone. You can update this once every 7 days.
+                          </p>
+                        )}
+                      </div>
+                    </CardContent>
+                    <CardFooter className="bg-muted/30 py-4 px-6 mt-4 border-t border-border/40 flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        Hourly velocity limits automatically reset at the top of every hour (:00:00).
+                      </p>
+                      <Button 
+                        type="button" 
+                        onClick={handleSaveProfile}
+                        disabled={isSavingProfile}
+                      >
+                        {isSavingProfile ? "Saving..." : "Save Preferences"}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                </TabsContent>
+
                 <TabsContent value="gmail" className="mt-0">
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-wrap items-center justify-between">
@@ -189,41 +335,6 @@ export default function SettingsPage() {
                       </div>
                     )}
                   </div>
-                </TabsContent>
-
-                <TabsContent value="profile" className="mt-0">
-                  <Card className="border-border/50">
-                    <CardHeader>
-                      <CardTitle>Profile Details</CardTitle>
-                      <CardDescription>
-                        Update how your name appears on the dashboard banner.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4 max-w-md">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium leading-none">Display Name</label>
-                        <Input 
-                          placeholder="E.g. Abdullah Hanjra" 
-                          value={displayName}
-                          onChange={(e) => setDisplayName(e.target.value)}
-                        />
-                        <p className="text-[0.8rem] text-muted-foreground">
-                          This name will be used to greet you on the dashboard.
-                        </p>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="bg-muted/50 py-4 px-6 mt-4">
-                      <Button 
-                        type="button" 
-                        onClick={() => {
-                          localStorage.setItem("outreachiq_display_name", displayName);
-                          toast.success("Profile name updated successfully");
-                        }}
-                      >
-                        Save Profile
-                      </Button>
-                    </CardFooter>
-                  </Card>
                 </TabsContent>
               </div>
             </Tabs>

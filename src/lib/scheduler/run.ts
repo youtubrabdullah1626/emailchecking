@@ -23,6 +23,7 @@ import { isStepFullyEligible } from "./eligibility";
 import { claimStep } from "./claim";
 import { log } from "./logger";
 import prisma from "@/lib/prisma";
+import { getStartOfHour } from "@/lib/date-utils";
 import type {
   SchedulerRunOptions,
   SchedulerRunResult,
@@ -63,30 +64,38 @@ export async function runScheduler(
   const errors: string[] = [];
   let staleProcessingSteps: StaleStepInfo[] = [];
 
-  // ── Capacity Enforcement (Hourly & Daily Limits) ──────────────────────────
+  // ── Capacity Enforcement (Hourly, Daily, & 24h Exploit Guard) ─────────────
   try {
-    const oneHourAgo = new Date();
-    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+    // 1. Top of the hour reset (:00:00.000)
+    const startOfHour = getStartOfHour();
 
-    const startOfDay = new Date();
-    startOfDay.setUTCHours(0, 0, 0, 0);
+    // 2. Midnight UTC
+    const startOfDayUtc = new Date();
+    startOfDayUtc.setUTCHours(0, 0, 0, 0);
+
+    // 3. Absolute 24-Hour Rolling Safeguard (Hard exploit defense)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     const [
       dailyLimitConfig,
       hourlyLimitConfig,
       emailsSentThisHour,
       emailsSentToday,
+      emailsSentLast24h,
     ] = await Promise.all([
       prisma.platform_configs.findFirst({ where: { key: "MAX_DAILY_EMAILS" } }),
       prisma.platform_configs.findFirst({ where: { key: "HOURLY_EMAIL_LIMIT" } }),
-      prisma.emailEvent.count({ where: { event_type: "SENT", occurred_at: { gte: oneHourAgo } } }),
-      prisma.emailEvent.count({ where: { event_type: "SENT", occurred_at: { gte: startOfDay } } }),
+      prisma.emailEvent.count({ where: { event_type: "SENT", occurred_at: { gte: startOfHour } } }),
+      prisma.emailEvent.count({ where: { event_type: "SENT", occurred_at: { gte: startOfDayUtc } } }),
+      prisma.emailEvent.count({ where: { event_type: "SENT", occurred_at: { gte: twentyFourHoursAgo } } }),
     ]);
 
     const maxDaily = dailyLimitConfig?.value ? parseInt(String(dailyLimitConfig.value), 10) : 500;
     const maxHourly = hourlyLimitConfig?.value ? parseInt(String(hourlyLimitConfig.value), 10) : 50;
 
-    const availableDaily = Math.max(0, maxDaily - emailsSentToday);
+    // Bulletproof: daily limit enforces both today's count and 24h rolling count
+    const effectiveDailySent = Math.max(emailsSentToday, emailsSentLast24h);
+    const availableDaily = Math.max(0, maxDaily - effectiveDailySent);
     const availableHourly = Math.max(0, maxHourly - emailsSentThisHour);
 
     const dynamicMaxClaims = Math.min(availableDaily, availableHourly, maxClaims);

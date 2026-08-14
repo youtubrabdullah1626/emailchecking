@@ -84,7 +84,8 @@ export default function DashboardPage() {
     hourlyLimit: statsData.hourlyLimit ?? 50,
     sequenceLimit: statsData.sequenceLimit ?? 5,
     emailsSentThisHour: statsData.emailsSentThisHour ?? 0,
-    bannerTheme: statsData.bannerTheme ?? "DEFAULT"
+    bannerTheme: statsData.bannerTheme ?? "DEFAULT",
+    userTimezone: statsData.userTimezone ?? "UTC"
   } : null;
 
   const recentReplies: RecentReply[] = (repliesData?.replies ?? []).slice(0, 5);
@@ -298,9 +299,16 @@ export default function DashboardPage() {
         </Card>
 
         <Card className="shadow-sm border-border flex flex-col">
-          <CardHeader className="pb-2">
-            <CardTitle>Platform Capacity</CardTitle>
-            <CardDescription>Real-time outreach & velocity limits</CardDescription>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Platform Capacity</CardTitle>
+              <CardDescription>Real-time outreach & velocity limits</CardDescription>
+            </div>
+            {stats?.userTimezone && (
+              <span className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-muted/70 text-muted-foreground border border-border/60 flex items-center gap-1" title={`Daily reset at midnight (${stats.userTimezone}) • Hourly reset at :00`}>
+                {stats.userTimezone.split('/').pop()?.replace('_', ' ') || stats.userTimezone}
+              </span>
+            )}
           </CardHeader>
           <CardContent className="flex-1 flex flex-col justify-center">
             {loading || !stats ? (

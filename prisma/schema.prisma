@@ -491,16 +491,18 @@ model users {
   role           String         @default("USER")
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @default(now()) @updatedAt
-  adminNotes     String?
-  isSuspended    Boolean        @default(false)
-  accounts       accounts[]
-  campaigns      Campaign[]
-  email_accounts EmailAccount[]
-  import_jobs    ImportJob[]
-  prospects      Prospect[]
-  sequences      Sequence[]
-  sessions       sessions[]
-  tracked_emails TrackedEmail[]
+  adminNotes          String?
+  isSuspended         Boolean        @default(false)
+  timezone            String         @default("UTC")
+  timezone_updated_at DateTime?
+  accounts            accounts[]
+  campaigns           Campaign[]
+  email_accounts      EmailAccount[]
+  import_jobs         ImportJob[]
+  prospects           Prospect[]
+  sequences           Sequence[]
+  sessions            sessions[]
+  tracked_emails      TrackedEmail[]
 }
 
 /// Enterprise Bulk Import Job Tracker
