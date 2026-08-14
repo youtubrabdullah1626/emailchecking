@@ -339,10 +339,10 @@ function ProspectsPageContent() {
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button className="gap-2" asChild>
-                <Link prefetch={true} href="/prospects/new">
+                <FastLink href="/prospects/new">
                   <Plus className="h-4 w-4" />
                   Add Prospect
-                </Link>
+                </FastLink>
               </Button>
             </>
           }
@@ -397,9 +397,9 @@ function ProspectsPageContent() {
                   </p>
                   {!search && (
                     <Button asChild>
-                      <Link prefetch={true} href="/prospects/new">
+                      <FastLink href="/prospects/new">
                         Add Your First Prospect
-                      </Link>
+                      </FastLink>
                     </Button>
                   )}
                 </div>
