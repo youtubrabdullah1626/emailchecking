@@ -11,9 +11,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     redirect("/auth/signin");
   }
 
-  // ADMIN_VIEWER is the minimum role required to view the admin panel.
-  // USER and HELPER will be blocked and redirected to the dashboard.
-  const canViewAdmin = hasRole(session.user.role as UserRole, "ADMIN_VIEWER") || session.user.email === "youtubrabdullah1626@gmail.com";
+  // HELPER is the minimum role required to view the admin panel.
+  // USER will be blocked and redirected to the dashboard.
+  const canViewAdmin = hasRole(session.user.role as UserRole, "HELPER") || session.user.email === "youtubrabdullah1626@gmail.com";
 
   if (!canViewAdmin) {
     redirect("/dashboard");

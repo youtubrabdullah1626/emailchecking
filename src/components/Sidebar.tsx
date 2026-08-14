@@ -37,7 +37,8 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
   
   const user = session?.user as any;
   const normalizedRole = user?.role?.toUpperCase() || "USER";
-  const canViewAdmin = ["ADMIN_VIEWER", "ADMIN", "OWNER"].includes(normalizedRole) || user?.email === "youtubrabdullah1626@gmail.com";
+  const isFullAdmin = ["ADMIN_VIEWER", "ADMIN", "OWNER"].includes(normalizedRole) || user?.email === "youtubrabdullah1626@gmail.com";
+  const canViewAdmin = ["HELPER", "ADMIN_VIEWER", "ADMIN", "OWNER"].includes(normalizedRole) || user?.email === "youtubrabdullah1626@gmail.com";
   
   // Use SWR to deduplicate this fetch globally with Header and Dashboard
   const { data: summary } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url));
@@ -57,14 +58,16 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
   const adminNavigation = [
     { name: "Customer Feedback", href: "/admin/feedback", icon: MessageSquareHeart },
     { name: "Announcements", href: "/admin/announcements", icon: Megaphone },
-    { name: "Import History", href: "/admin/import-history", icon: History },
-    { name: "Platform Config", href: "/admin/platform", icon: Sliders },
-    { name: "Audit Log", href: "/admin/audit", icon: Shield },
-    { name: "Active Users", href: "/admin/users", icon: UserCheck },
     { name: "Analytics", href: "/admin/analytics", icon: Activity },
-    { name: "DB Cleanup", href: "/admin/database-maintenance", icon: Database },
-    { name: "System Health", href: "/system-health", icon: Activity },
-    { name: "Scheduler", href: "/scheduler", icon: ServerCog },
+    ...(isFullAdmin ? [
+      { name: "Import History", href: "/admin/import-history", icon: History },
+      { name: "Platform Config", href: "/admin/platform", icon: Sliders },
+      { name: "Audit Log", href: "/admin/audit", icon: Shield },
+      { name: "Active Users", href: "/admin/users", icon: UserCheck },
+      { name: "DB Cleanup", href: "/admin/database-maintenance", icon: Database },
+      { name: "System Health", href: "/system-health", icon: Activity },
+      { name: "Scheduler", href: "/scheduler", icon: ServerCog },
+    ] : [])
   ];
 
   return (
