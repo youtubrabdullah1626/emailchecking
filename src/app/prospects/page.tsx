@@ -125,6 +125,10 @@ function ProspectsPageContent() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [prospectToDelete, setProspectToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const { data: campaignsData } = useSWR("/api/campaigns", fetcher);
   const campaigns = campaignsData?.data || [];
@@ -134,7 +138,17 @@ function ProspectsPageContent() {
   });
 
   const handleDeleteProspect = (id: string, name: string) => {
-    // 1. Instantly remove from SWR cache with 0ms delay!
+    setProspectToDelete({ id, name });
+  };
+
+  const confirmDeleteProspect = () => {
+    if (!prospectToDelete) return;
+    const { id, name } = prospectToDelete;
+    
+    // 1. Close dialog immediately (0ms)
+    setProspectToDelete(null);
+
+    // 2. Instantly remove from SWR cache with 0ms delay!
     mutate(
       "/api/prospects",
       (current: any) => {
@@ -147,7 +161,7 @@ function ProspectsPageContent() {
       false
     );
 
-    // 2. Show instant toast with 1-click Undo
+    // 3. Show instant toast with 1-click Undo
     let isUndone = false;
     toast.success(`Prospect "${name}" deleted`, {
       action: {
@@ -161,7 +175,7 @@ function ProspectsPageContent() {
       duration: 4000,
     });
 
-    // 3. Execute in background asynchronously
+    // 4. Execute in background asynchronously without UI freeze
     setTimeout(async () => {
       if (isUndone) return;
       try {
@@ -540,6 +554,30 @@ function ProspectsPageContent() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={!!prospectToDelete}
+        onOpenChange={(open) => !open && setProspectToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Prospect?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{" "}
+              <strong>{prospectToDelete?.name}</strong>? All their sequence history and replies will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteProspect}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Prospect
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -21,6 +21,16 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface StepItem {
   id: string;
@@ -51,14 +61,20 @@ export default function SequencesPage() {
   const [sequences, setSequences] = useState<SequenceDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [sequenceToDelete, setSequenceToDelete] = useState<{ id: string; name: string } | null>(null);
 
-  const handleDelete = async (id: string, name?: string) => {
-    // 1. Immediately remove from state (0ms delay!)
+  const confirmDeleteSequence = () => {
+    if (!sequenceToDelete) return;
+    const { id, name } = sequenceToDelete;
+
+    // 1. Close dialog immediately (0ms)
+    setSequenceToDelete(null);
+
+    // 2. Immediately remove from state (0ms delay!)
     const previousSequences = [...sequences];
     setSequences(prev => prev.filter(s => s.id !== id));
 
-    // 2. Show instant toast with Undo
+    // 3. Show instant toast with Undo
     let isUndone = false;
     toast.success(`Sequence deleted`, {
       description: name ? `For ${name}` : undefined,
@@ -73,7 +89,7 @@ export default function SequencesPage() {
       duration: 4000
     });
 
-    // 3. Delete in background asynchronously
+    // 4. Delete in background asynchronously
     setTimeout(async () => {
       if (isUndone) return;
       try {
@@ -278,7 +294,7 @@ export default function SequencesPage() {
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
-                                onClick={() => handleDelete(seq.id, seq.prospect?.name)}
+                                onClick={() => setSequenceToDelete({ id: seq.id, name: seq.prospect?.name ? `Sequence for ${seq.prospect.name}` : "Sequence" })}
                                 className="text-destructive focus:bg-destructive focus:text-destructive-foreground cursor-pointer"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -296,6 +312,29 @@ export default function SequencesPage() {
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog
+        open={!!sequenceToDelete}
+        onOpenChange={(open) => !open && setSequenceToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Sequence?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{sequenceToDelete?.name}</strong>? All pending steps and automations for this sequence will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteSequence}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Sequence
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AnimatedPage>
   );
 }

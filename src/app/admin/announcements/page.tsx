@@ -11,6 +11,16 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Megaphone, 
   Trash2, 
@@ -52,6 +62,7 @@ export default function AnnouncementsAdminPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [announcementToDelete, setAnnouncementToDelete] = useState<{ id: string; title: string } | null>(null);
 
   // Form State
   const [title, setTitle] = useState("");
@@ -292,12 +303,18 @@ export default function AnnouncementsAdminPage() {
     }
   };
 
-  const handleDelete = async (id: string, title?: string) => {
-    // 1. Immediately remove from state (0ms delay!)
+  const confirmDeleteAnnouncement = () => {
+    if (!announcementToDelete) return;
+    const { id, title } = announcementToDelete;
+
+    // 1. Close dialog immediately (0ms)
+    setAnnouncementToDelete(null);
+
+    // 2. Immediately remove from state (0ms delay!)
     const previousAnnouncements = [...announcements];
     setAnnouncements(prev => prev.filter(ann => ann.id !== id));
     
-    // 2. Show instant toast with Undo
+    // 3. Show instant toast with Undo
     let isUndone = false;
     toast.success(`Announcement deleted`, {
       description: title ? `"${title}"` : undefined,
@@ -312,7 +329,7 @@ export default function AnnouncementsAdminPage() {
       duration: 4000
     });
 
-    // 3. Delete in background asynchronously
+    // 4. Delete in background asynchronously
     setTimeout(async () => {
       if (isUndone) return;
       try {
@@ -944,7 +961,7 @@ export default function AnnouncementsAdminPage() {
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              onClick={() => handleDelete(ann.id, ann.title)}
+                              onClick={() => setAnnouncementToDelete({ id: ann.id, title: ann.title })}
                               className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2 text-xs cursor-pointer"
                             >
                               <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
@@ -960,6 +977,29 @@ export default function AnnouncementsAdminPage() {
           </div>
           
         </div>
+
+        <AlertDialog
+          open={!!announcementToDelete}
+          onOpenChange={(open) => !open && setAnnouncementToDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Announcement?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to permanently delete <strong>{announcementToDelete?.title}</strong>? It will immediately stop displaying in user notification trays.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDeleteAnnouncement}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete Announcement
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </AnimatedPage>
     </div>
   );

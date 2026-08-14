@@ -72,6 +72,7 @@ export function ImportHistoryWorkspace() {
 
   // Track hidden sessions (optimistic delete) and timers
   const [hiddenSessions, setHiddenSessions] = useState<Set<string>>(new Set());
+  const [sessionToDelete, setSessionToDelete] = useState<{ id: string; name: string } | null>(null);
   const deleteTimers = React.useRef<Record<string, NodeJS.Timeout>>({});
 
   // Removed unmount timer clearing so optimistic deletes actually execute even if user navigates away
@@ -114,13 +115,19 @@ export function ImportHistoryWorkspace() {
     loadSessions();
   };
 
-  const handleDeleteInitiated = async (id: string, campaignName?: string) => {
-    // 1. Instantly hide from UI (0ms delay!)
+  const confirmDeleteSession = () => {
+    if (!sessionToDelete) return;
+    const { id, name } = sessionToDelete;
+
+    // 1. Close dialog immediately (0ms)
+    setSessionToDelete(null);
+
+    // 2. Instantly hide from UI (0ms delay!)
     setHiddenSessions(prev => new Set(prev).add(id));
 
-    // 2. Show instant toast with Undo
+    // 3. Show instant toast with Undo
     let isUndone = false;
-    toast.success(`Campaign "${campaignName || 'Import'}" deleted`, {
+    toast.success(`Campaign "${name}" deleted`, {
       description: "Scheduled emails have been cancelled.",
       action: {
         label: "Undo",
@@ -137,7 +144,7 @@ export function ImportHistoryWorkspace() {
       duration: 4000
     });
 
-    // 3. Delete in background asynchronously
+    // 4. Delete in background asynchronously
     setTimeout(async () => {
       if (isUndone) return;
       await executeDelete(id, "CANCEL");
@@ -333,7 +340,7 @@ export function ImportHistoryWorkspace() {
                       Rename
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                      onClick={() => handleDeleteInitiated(session.sessionId, session.campaignName || "Campaign")} 
+                      onClick={() => setSessionToDelete({ id: session.sessionId, name: session.campaignName || "Campaign" })} 
                       className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
@@ -346,6 +353,29 @@ export function ImportHistoryWorkspace() {
           ))}
         </div>
       </CardContent>
+
+      <AlertDialog
+        open={!!sessionToDelete}
+        onOpenChange={(open) => !open && setSessionToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Campaign?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{sessionToDelete?.name}</strong>? All scheduled emails in this campaign will be cancelled. Your prospects will remain in your CRM.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteSession}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Campaign
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
