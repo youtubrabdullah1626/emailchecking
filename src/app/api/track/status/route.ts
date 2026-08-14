@@ -126,12 +126,18 @@ export async function POST(req: NextRequest) {
       // Map to exact step ID
       statusMap.set(step.id, { stepId: step.id, ...trackingObj });
 
-      // Map to synthetic queueId using email
+      // Map to synthetic queueId using email AND step number
       if (prospectEmail) {
         const queueIdsForEmail = emailToItemMap.get(prospectEmail);
         if (queueIdsForEmail) {
           for (const qId of queueIdsForEmail) {
-            statusMap.set(qId, { stepId: qId, ...trackingObj });
+            // qId looks like campaignId_recordId_s1 or sequenceId_s1
+            // We only want to map if the step number matches!
+            const match = qId.match(/_s(\d+)(_|$)/);
+            const qStepNum = match ? parseInt(match[1], 10) : null;
+            if (qStepNum === step.step_number || !qStepNum) {
+              statusMap.set(qId, { stepId: qId, ...trackingObj });
+            }
           }
         }
       }
