@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { AlertCircle, MessageSquare, Rocket, AlertTriangle, Info } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import Link from "next/link";
+import { FastLink } from "@/components/ui/fast-link";
 import { ImageCropper } from "./ImageCropper";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -150,9 +150,9 @@ export function Header({ onMenuClick }: HeaderProps) {
                 ? accountStats.connectedGmail 
                 : <span className="text-destructive">{accountStats.connectedGmail} (Disconnected)</span>
             ) : (
-              <Link href="/settings" className="text-primary hover:underline font-semibold flex items-center gap-1">
+              <FastLink href="/settings" className="text-primary hover:underline font-semibold flex items-center gap-1">
                 Connect Account
-              </Link>
+              </FastLink>
             )}
           </span>
         </div>
@@ -219,7 +219,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               ) : (
                 notifications.map((notif: any) => (
                   <DropdownMenuItem key={notif.id} asChild className="cursor-pointer">
-                    <Link href={notif.link || "#"} prefetch={true} className="flex items-start gap-3 p-3 w-full">
+                    <FastLink href={notif.link || "#"} className="flex items-start gap-3 p-3 w-full">
                       <div className="mt-0.5 flex-shrink-0">
                         {notif.type === "feature" ? (
                           <Rocket className="h-4 w-4 text-purple-500" />
@@ -236,7 +236,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                           {formatDistanceToNow(new Date(notif.timestamp), { addSuffix: true })}
                         </span>
                       </div>
-                    </Link>
+                    </FastLink>
                   </DropdownMenuItem>
                 ))
               )}
@@ -263,10 +263,10 @@ export function Header({ onMenuClick }: HeaderProps) {
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link prefetch={true} href="/settings" className="w-full cursor-pointer flex items-center py-2">
+                <FastLink href="/settings" className="w-full cursor-pointer flex items-center py-2">
                   <Settings className="mr-2 h-4 w-4 text-muted-foreground" />
                   <span>Settings</span>
-                </Link>
+                </FastLink>
               </DropdownMenuItem>
               <DialogTrigger asChild>
                 <DropdownMenuItem className="cursor-pointer flex items-center py-2">

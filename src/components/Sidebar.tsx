@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import Link from 'next/link';
+import { FastLink } from '@/components/ui/fast-link';
 import { usePathname } from 'next/navigation';
 import useSWR from 'swr';
 import { cn } from "@/lib/utils";
@@ -81,21 +81,20 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
           {mainNavigation.map((item) => {
             const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
             return (
-              <Link 
+              <FastLink 
                 key={item.name}
                 href={item.href}
-                prefetch={true}
                 onClick={handleLinkClick}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-sm font-medium transition-all duration-200",
+                  "flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-sm font-medium transition-all duration-150 active:scale-[0.98]",
                   isActive 
-                    ? "bg-primary/15 text-primary shadow-sm border-r-4 border-primary rounded-r-none" 
+                    ? "bg-primary/15 text-primary shadow-sm border-r-4 border-primary rounded-r-none font-semibold" 
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:translate-x-1"
                 )}
               >
                 <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
                 {item.name}
-              </Link>
+              </FastLink>
             );
           })}
         </div>
@@ -105,21 +104,20 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
           {adminNavigation.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href);
             return (
-              <Link 
+              <FastLink 
                 key={item.name}
                 href={item.href}
-                prefetch={true}
                 onClick={handleLinkClick}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-sm font-medium transition-all duration-200",
+                  "flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-sm font-medium transition-all duration-150 active:scale-[0.98]",
                   isActive 
-                    ? "bg-primary/15 text-primary shadow-sm border-r-4 border-primary rounded-r-none" 
+                    ? "bg-primary/15 text-primary shadow-sm border-r-4 border-primary rounded-r-none font-semibold" 
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:translate-x-1"
                 )}
               >
                 <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
                 {item.name}
-              </Link>
+              </FastLink>
             );
           })}
         </div>
