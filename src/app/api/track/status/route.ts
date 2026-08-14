@@ -14,7 +14,6 @@ export async function POST(req: NextRequest) {
     const stepIds: string[] = Array.isArray(body.stepIds) ? body.stepIds : [];
     const items: TrackItemQuery[] = Array.isArray(body.items) ? body.items : [];
 
-    // Combine all IDs to lookup
     const allQueryIds = new Set<string>();
     const emailToItemMap = new Map<string, string[]>(); // email -> [queueIds]
     const seqIdToItemMap = new Map<string, string[]>(); // seqId -> [queueIds]
@@ -48,91 +47,10 @@ export async function POST(req: NextRequest) {
     }
 
     const idList = Array.from(allQueryIds);
-    const emailList = Array.from(emailToItemMap.keys());
     const seqIdList = Array.from(seqIdToItemMap.keys());
-
-    // ── 1. Fetch Prospects & Reply Statuses by Email ──────────────────────────
-    const repliedEmailsSet = new Set<string>();
-    const prospectStatusMap = new Map<string, string>(); // email -> status
-
-    if (emailList.length > 0) {
-      const prospects = await prisma.prospect.findMany({
-        where: {
-          email: { in: emailList, mode: "insensitive" },
-        },
-        select: {
-          email: true,
-          status: true,
-          reply_classifications: {
-            where: { reply_type: "REAL_REPLY" },
-            select: { id: true },
-            take: 1,
-          },
-        },
-      });
-
-      for (const p of prospects) {
-        const em = p.email.toLowerCase();
-        prospectStatusMap.set(em, p.status);
-        if (p.status === "REPLIED" || (p.reply_classifications && p.reply_classifications.length > 0)) {
-          repliedEmailsSet.add(em);
-        }
-      }
-    }
-
-    // ── 2. Check tracked_emails table (by source_id OR recipient_email) ──────
-    const trackedEmails = await prisma.trackedEmail.findMany({
-      where: {
-        OR: [
-          { source_id: { in: idList } },
-          ...(emailList.length > 0 ? [{ recipient_email: { in: emailList, mode: "insensitive" as const } }] : []),
-        ],
-      },
-      select: {
-        id: true,
-        source_id: true,
-        recipient_email: true,
-        status: true,
-        open_count: true,
-        click_count: true,
-        last_opened_at: true,
-        bounced_at: true,
-        replied_at: true,
-      },
-      orderBy: { created_at: "desc" },
-    });
-
     const statusMap = new Map<string, any>();
-
-    for (const email of trackedEmails) {
-      const isReplied = email.status === "REPLIED" || repliedEmailsSet.has(email.recipient_email.toLowerCase());
-      const effectiveStatus = isReplied ? "REPLIED" : email.status;
-
-      const trackingObj = {
-        status: effectiveStatus,
-        openCount: email.open_count,
-        clickCount: email.click_count,
-        lastOpenedAt: email.last_opened_at?.toISOString() || null,
-        bouncedAt: email.bounced_at?.toISOString() || null,
-        repliedAt: email.replied_at?.toISOString() || (isReplied ? new Date().toISOString() : null),
-      };
-
-      if (email.source_id) {
-        statusMap.set(email.source_id, { stepId: email.source_id, ...trackingObj });
-      }
-
-      // Also map by recipient email for synthetic queueIds
-      const mappedQueueIds = emailToItemMap.get(email.recipient_email.toLowerCase());
-      if (mappedQueueIds) {
-        for (const qId of mappedQueueIds) {
-          if (!statusMap.has(qId) || isReplied) {
-            statusMap.set(qId, { stepId: qId, ...trackingObj });
-          }
-        }
-      }
-    }
-
-    // ── 3. Cross-reference database SequenceSteps ───────────────────────────
+    
+    // 1. Fetch relevant SequenceSteps
     const sequenceSteps = await prisma.sequenceStep.findMany({
       where: {
         OR: [
@@ -161,68 +79,74 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const realStepIds = sequenceSteps.map(s => s.id);
+
+    // 2. Fetch TrackedEmails for these exact steps
+    const trackedEmails = await prisma.trackedEmail.findMany({
+      where: {
+        source_id: { in: realStepIds },
+      },
+      select: {
+        source_id: true,
+        status: true,
+        open_count: true,
+        click_count: true,
+        last_opened_at: true,
+        bounced_at: true,
+        replied_at: true,
+      },
+    });
+
+    const trackingByStepId = new Map(trackedEmails.map(t => [t.source_id, t]));
+
+    // 3. Map everything back to the requested queueIds
     for (const step of sequenceSteps) {
       const prospectEmail = step.sequence?.prospect?.email?.toLowerCase();
       const prospectStatus = step.sequence?.prospect?.status;
-      const isReplied = prospectStatus === "REPLIED" || (prospectEmail ? repliedEmailsSet.has(prospectEmail) : false);
-
-      let stepStatus = isReplied ? "REPLIED" : step.status;
+      const isReplied = prospectStatus === "REPLIED";
+      
+      const tracking = trackingByStepId.get(step.id);
+      
+      let stepStatus = isReplied ? "REPLIED" : (tracking?.status || step.status);
       if (step.status === "CANCELLED" && isReplied) {
-        stepStatus = "CANCELLED"; // Keep CANCELLED for subsequent steps stopped by reply
+        stepStatus = "CANCELLED";
       }
 
-      const existing = statusMap.get(step.id);
       const trackingObj = {
-        stepId: step.id,
-        status: isReplied ? "REPLIED" : (existing?.status || stepStatus),
-        openCount: existing?.openCount || (isReplied ? 1 : 0),
-        clickCount: existing?.clickCount || 0,
-        lastOpenedAt: existing?.lastOpenedAt || null,
-        bouncedAt: existing?.bouncedAt || null,
-        repliedAt: isReplied ? (existing?.repliedAt || new Date().toISOString()) : null,
+        status: stepStatus,
+        openCount: tracking?.open_count || (isReplied ? 1 : 0),
+        clickCount: tracking?.click_count || 0,
+        lastOpenedAt: tracking?.last_opened_at?.toISOString() || null,
+        bouncedAt: tracking?.bounced_at?.toISOString() || null,
+        repliedAt: isReplied 
+          ? (tracking?.replied_at?.toISOString() || new Date().toISOString()) 
+          : (tracking?.replied_at?.toISOString() || null),
       };
 
-      statusMap.set(step.id, trackingObj);
+      // Map to exact step ID
+      statusMap.set(step.id, { stepId: step.id, ...trackingObj });
 
-      // Map to Smart Import queueId if matching sequence_id + step_number
-      if (step.sequence_id) {
-        const syntheticQueueId = `${step.sequence_id}_s${step.step_number}`;
-        statusMap.set(syntheticQueueId, { ...trackingObj, stepId: syntheticQueueId });
-      }
-
+      // Map to synthetic queueId using email
       if (prospectEmail) {
         const queueIdsForEmail = emailToItemMap.get(prospectEmail);
         if (queueIdsForEmail) {
           for (const qId of queueIdsForEmail) {
-            if (!statusMap.has(qId) || isReplied) {
-              statusMap.set(qId, { ...trackingObj, stepId: qId });
-            }
+            statusMap.set(qId, { stepId: qId, ...trackingObj });
           }
         }
+      }
+      
+      // Map to synthetic queueId using sequence_id + step_number
+      if (step.sequence_id) {
+        const syntheticQueueId = `${step.sequence_id}_s${step.step_number}`;
+        statusMap.set(syntheticQueueId, { stepId: syntheticQueueId, ...trackingObj });
       }
     }
 
-    // ── 4. Build Final Resolution for every requested ID ─────────────────────
+    // 4. Build Final Resolution
     const statuses = idList.map((id) => {
       const found = statusMap.get(id);
       if (found) return found;
-
-      // Check direct email fallback for this specific queueId
-      for (const [em, qIds] of emailToItemMap.entries()) {
-        if (qIds.includes(id)) {
-          if (repliedEmailsSet.has(em)) {
-            return {
-              stepId: id,
-              status: "REPLIED",
-              openCount: 1,
-              clickCount: 0,
-              lastOpenedAt: null,
-              bouncedAt: null,
-              repliedAt: new Date().toISOString(),
-            };
-          }
-        }
-      }
 
       return {
         stepId: id,
@@ -241,3 +165,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch tracking statuses" }, { status: 500 });
   }
 }
+
