@@ -3,6 +3,7 @@
 import React from 'react';
 import { FastLink } from '@/components/ui/fast-link';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import { cn } from "@/lib/utils";
 import { 
@@ -32,6 +33,10 @@ interface SidebarProps {
 
 export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  
+  const user = session?.user as any;
+  const isAdmin = user?.role === "ADMIN" || user?.role === "OWNER" || user?.email === "youtubrabdullah1626@gmail.com";
   
   // Use SWR to deduplicate this fetch globally with Header and Dashboard
   const { data: summary } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url));
@@ -99,28 +104,30 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
           })}
         </div>
 
-        <div suppressHydrationWarning className="px-3 py-2 mt-2">
-          <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">Administration</h3>
-          {adminNavigation.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href);
-            return (
-              <FastLink 
-                key={item.name}
-                href={item.href}
-                onClick={handleLinkClick}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-sm font-medium transition-all duration-150 active:scale-[0.98]",
-                  isActive 
-                    ? "bg-primary/15 text-primary shadow-sm border-r-4 border-primary rounded-r-none font-semibold" 
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:translate-x-1"
-                )}
-              >
-                <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                {item.name}
-              </FastLink>
-            );
-          })}
-        </div>
+        {isAdmin && (
+          <div suppressHydrationWarning className="px-3 py-2 mt-2">
+            <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">Administration</h3>
+            {adminNavigation.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href);
+              return (
+                <FastLink 
+                  key={item.name}
+                  href={item.href}
+                  onClick={handleLinkClick}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-sm font-medium transition-all duration-150 active:scale-[0.98]",
+                    isActive 
+                      ? "bg-primary/15 text-primary shadow-sm border-r-4 border-primary rounded-r-none font-semibold" 
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:translate-x-1"
+                  )}
+                >
+                  <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
+                  {item.name}
+                </FastLink>
+              );
+            })}
+          </div>
+        )}
       </nav>
       
       <div suppressHydrationWarning className="p-3 border-t border-sidebar-border">
