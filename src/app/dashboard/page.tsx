@@ -15,7 +15,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useSmartExecutiveBannerLogic } from "@/components/ui/smart-executive-banner";
 import { Progress } from "@/components/ui/progress";
-import { Send, Reply, AlertCircle, PlayCircle, Target, TrendingUp, Clock, Layers } from "lucide-react";
+import { Send, Reply, AlertCircle, PlayCircle, Target, TrendingUp, Clock, Layers, Eye } from "lucide-react";
 
 // Existing Types
 import type { DashboardStatsData } from "@/components/DashboardStats";
@@ -72,7 +72,10 @@ export default function DashboardPage() {
   const stats = statsData ? {
     activeSequences: statsData.activeSequences ?? 0,
     emailsSentToday: statsData.emailsSentToday ?? 0,
-    totalReplies: statsData.totalReplies ?? 0,
+    totalReplies: statsData.totalReplies ?? statsData.repliesToday ?? 0,
+    repliesToday: statsData.repliesToday ?? 0,
+    totalOpens: statsData.totalOpens ?? 0,
+    openRate: statsData.openRate ?? 0,
     pendingReviews: statsData.pendingReviews ?? 0,
     failedSteps: statsData.failedSteps ?? 0,
     stoppedSequences: statsData.stoppedSequences ?? 0,
@@ -224,11 +227,12 @@ export default function DashboardPage() {
         </AnimatedItem>
         <AnimatedItem>
           <StatCard 
-            title="Pending Reviews" 
-            value={loading ? "—" : stats?.pendingReviews ?? 0}
-            icon={<AlertCircle className="h-5 w-5" />}
+            title="Emails Opened" 
+            value={loading ? "—" : stats?.totalOpens ?? 0}
+            icon={<Eye className="h-5 w-5" />}
             iconBg={pIconBg}
-            className={stats?.pendingReviews && stats.pendingReviews > 0 ? "border-amber-200 bg-amber-50/30" : pHoverBorder}
+            className={pHoverBorder}
+            trend={stats && stats.totalOpens > 0 ? { value: stats.openRate, isPositive: true, label: "open rate" } : undefined}
           />
         </AnimatedItem>
       </AnimatedList>

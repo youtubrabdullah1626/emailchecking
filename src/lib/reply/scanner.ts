@@ -108,26 +108,47 @@ export async function scanForReplies(): Promise<ScanResult> {
 
   for (const [userId, userThreads] of threadsByUser) {
     // Look up the user's CONNECTED email account for OAuth credentials
-    let emailAccount = await prisma.emailAccount.findFirst({
-      where: {
-        user_id: userId,
-        connection_status: "CONNECTED",
-        refresh_token: { not: null },
-      },
-      select: { email: true },
-      orderBy: { created_at: "asc" },
-    });
+    let emailAccount: { email: string } | null = null;
+    
+    if (prisma.emailAccount && typeof prisma.emailAccount.findFirst === "function") {
+      try {
+        // Priority 1: Direct connected account matching the sequence's owning user
+        emailAccount = await prisma.emailAccount.findFirst({
+          where: {
+            user_id: userId,
+            connection_status: "CONNECTED",
+          },
+          select: { email: true },
+          orderBy: { updated_at: "desc" },
+        });
 
-    // Fallback: If no account matched user_id specifically, use the system's primary connected account
-    if (!emailAccount) {
-      emailAccount = await prisma.emailAccount.findFirst({
-        where: {
-          connection_status: "CONNECTED",
-          refresh_token: { not: null },
-        },
-        select: { email: true },
-        orderBy: { created_at: "asc" },
-      });
+        // Priority 2: Account matching system sender email
+        if (!emailAccount && config?.senderEmail) {
+          emailAccount = await prisma.emailAccount.findUnique({
+            where: { email: config.senderEmail },
+            select: { email: true },
+          });
+        }
+
+        // Priority 3: Any connected account with a valid refresh token in DB
+        if (!emailAccount) {
+          emailAccount = await prisma.emailAccount.findFirst({
+            where: {
+              connection_status: "CONNECTED",
+              refresh_token: { not: null },
+            },
+            select: { email: true },
+            orderBy: { created_at: "asc" },
+          });
+        }
+      } catch {
+        emailAccount = null;
+      }
+    }
+
+    // Priority 4: Env config fallback
+    if (!emailAccount && config?.senderEmail) {
+      emailAccount = { email: config.senderEmail };
     }
 
     if (!emailAccount) {

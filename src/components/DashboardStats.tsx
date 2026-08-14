@@ -20,6 +20,8 @@ export interface DashboardStatsData {
   activeSequences: number;
   emailsSentToday: number;
   totalReplies: number;
+  totalOpens?: number;
+  openRate?: number;
   pendingReviews: number;
   failedSteps: number;
   stoppedSequences: number;

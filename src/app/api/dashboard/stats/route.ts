@@ -34,10 +34,10 @@ export async function GET(req: NextRequest) {
     const tenantPrisma = getTenantPrisma(session.user.id);
     const userId = session.user.id;
 
-    // Fetch user's configured timezone for mathematically exact midnight calculation
+    // Fetch user's configured timezone and email
     const userRecord = await prisma.users.findUnique({
       where: { id: userId },
-      select: { timezone: true },
+      select: { timezone: true, email: true },
     });
     const userTimezone = userRecord?.timezone || "UTC";
 
@@ -47,11 +47,23 @@ export async function GET(req: NextRequest) {
     // 2. Hourly Velocity: Resets sharply at the Top of the Hour (:00:00.000)
     const startOfHour = getStartOfHour();
 
+    const userEmailAccounts = await prisma.emailAccount.findMany({
+      where: { user_id: userId },
+      select: { email: true }
+    });
+    const senderEmails = userEmailAccounts.map(a => a.email);
+    if (userRecord?.email && !senderEmails.includes(userRecord.email)) {
+      senderEmails.push(userRecord.email);
+    }
+
     const [
       activeSequences,
       sequenceEmailsSentToday,
       adhocEmailsSentToday,
       repliesToday,
+      totalReplies,
+      totalOpens,
+      totalTrackedSent,
       pendingReviews,
       failedSteps,
       stoppedSequences,
@@ -86,6 +98,33 @@ export async function GET(req: NextRequest) {
           classified_at: { gte: startOfDay },
           prospect: { user_id: userId }
         },
+      }),
+      prisma.replyClassification.count({
+        where: { 
+          reply_type: "REAL_REPLY",
+          prospect: { user_id: userId }
+        },
+      }),
+      prisma.trackedEmail.count({
+        where: {
+          OR: [
+            { open_count: { gt: 0 } },
+            { status: { in: ['OPENED', 'REPLIED'] } }
+          ],
+          OR: [
+            { user_id: userId },
+            { sender_email: { in: senderEmails.length > 0 ? senderEmails : [userRecord?.email || ""] } }
+          ]
+        }
+      }),
+      prisma.trackedEmail.count({
+        where: {
+          OR: [
+            { user_id: userId },
+            { sender_email: { in: senderEmails.length > 0 ? senderEmails : [userRecord?.email || ""] } }
+          ],
+          status: { in: ["SENT", "DELIVERED", "OPENED", "REPLIED"] }
+        }
       }),
       prisma.replyClassification.count({
         where: {
@@ -239,11 +278,16 @@ export async function GET(req: NextRequest) {
         : "IDLE";
 
     const emailsSentToday = sequenceEmailsSentToday + adhocEmailsSentToday;
+    const effectiveTotalSent = totalTrackedSent > 0 ? totalTrackedSent : (emailsSentToday > 0 ? emailsSentToday : 0);
+    const openRate = effectiveTotalSent > 0 ? Math.round((totalOpens / effectiveTotalSent) * 100) : (totalOpens > 0 ? 100 : 0);
 
     return NextResponse.json({
       activeSequences,
       emailsSentToday,
       repliesToday,
+      totalReplies,
+      totalOpens: totalOpens ?? 0,
+      openRate: openRate ?? 0,
       pendingReviews,
       failedSteps,
       stoppedSequences,

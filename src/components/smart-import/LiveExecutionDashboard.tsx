@@ -14,12 +14,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Send, MailOpen, Reply, AlertCircle, Clock, Activity, Calendar as CalendarIcon, User, MoreHorizontal, Play, Loader2, ArrowLeft, Trash2, RefreshCw } from "lucide-react";
+import { Send, MailOpen, Reply, AlertCircle, Clock, Activity, Calendar as CalendarIcon, User, MoreHorizontal, Play, Loader2, ArrowLeft, Trash2, RefreshCw, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO, differenceInDays } from "date-fns";
 
 type LiveItem = ExecutionQueueItem & {
-  liveStatus: "SCHEDULED" | "PROCESSING" | "SENT" | "OPENED" | "REPLIED" | "BOUNCED";
+  liveStatus: "SCHEDULED" | "PROCESSING" | "SENT" | "OPENED" | "REPLIED" | "BOUNCED" | "CANCELLED";
   lastEventTime: string;
   retryCount?: number;
 };
@@ -113,19 +113,23 @@ export function LiveExecutionDashboard() {
   // Check for Replies Worker (Every 15s)
   const checkLiveTrackingStatus = React.useCallback(async () => {
     const currentItems = liveItemsRef.current;
-    // Check items that are SENT, OPENED, or CLICKED
-    const activeItems = currentItems.filter(
-      item => item.liveStatus === "SENT" || item.liveStatus === "OPENED" || item.liveStatus === "SCHEDULED" || item.liveStatus === "BOUNCED"
-    );
+    if (currentItems.length === 0) return;
 
-    if (activeItems.length === 0) return;
-    const stepIds = activeItems.map(item => item.queueId);
+    const queryItems = currentItems.map(item => ({
+      queueId: item.queueId,
+      email: item.recipientEmail,
+      importSequenceId: item.queueId.split('_s')[0],
+      stepNumber: item.sequenceStep?.stepNumber || 1,
+    }));
 
     try {
       const res = await fetch("/api/track/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stepIds })
+        body: JSON.stringify({
+          stepIds: currentItems.map(item => item.queueId),
+          items: queryItems,
+        })
       });
       const data = await res.json();
 
@@ -135,6 +139,7 @@ export function LiveExecutionDashboard() {
         const STATUS_RANK: Record<string, number> = {
           "SCHEDULED": 0,
           "PROCESSING": 1,
+          "CANCELLED": 2,
           "BOUNCED": 2,
           "SENT": 3,
           "OPENED": 4,
@@ -142,38 +147,76 @@ export function LiveExecutionDashboard() {
           "REPLIED": 6
         };
 
-        setLiveItems(prev => prev.map(item => {
-          const tracking = data.statuses.find((s: any) => s.stepId === item.queueId);
-          if (tracking && tracking.status && tracking.status !== item.liveStatus) {
-            
-            const newRank = STATUS_RANK[tracking.status] || 0;
-            const currentRank = STATUS_RANK[item.liveStatus] || 0;
+        // Collect all replied emails to cascade stop on subsequent steps
+        const newlyRepliedEmails = new Set<string>();
 
-            // Prevent downgrading status (e.g., from SENT back to SCHEDULED) during race conditions
-            if (newRank < currentRank && !(item.liveStatus === "BOUNCED" && newRank >= 3)) {
+        setLiveItems(prev => {
+          // Pass 1: Update individual item status from tracking API
+          const updatedItems = prev.map(item => {
+            const tracking = data.statuses.find((s: any) => s.stepId === item.queueId);
+            if (tracking && tracking.status && tracking.status !== item.liveStatus) {
+              const newRank = STATUS_RANK[tracking.status] || 0;
+              const currentRank = STATUS_RANK[item.liveStatus] || 0;
+
+              // If status is REPLIED, always allow upgrade
+              if (tracking.status === "REPLIED") {
+                newlyRepliedEmails.add(item.recipientEmail.toLowerCase());
+                if (updateQueueItemState) {
+                  updateQueueItemState(item.queueId, "REPLIED", newTimeStr);
+                }
+                if (item.liveStatus !== "REPLIED") {
+                  toast.success("New Reply Detected!", {
+                    description: `${item.recipientEmail} has replied.`,
+                    icon: <Reply className="h-4 w-4 text-emerald-500" />
+                  });
+                }
+                return { ...item, liveStatus: "REPLIED" as const, lastEventTime: newTimeStr };
+              }
+
+              // Prevent downgrading status (e.g., from SENT back to SCHEDULED) during race conditions
+              if (newRank < currentRank && !(item.liveStatus === "BOUNCED" && newRank >= 3)) {
+                return item;
+              }
+
+              if (updateQueueItemState) {
+                updateQueueItemState(item.queueId, tracking.status, newTimeStr);
+              }
+
+              if (tracking.status === "OPENED" && item.liveStatus === "SENT") {
+                toast.success("Email Opened!", {
+                  description: `${item.recipientEmail} just opened your email.`,
+                  icon: <MailOpen className="h-4 w-4 text-blue-500" />
+                });
+              }
+
+              return { ...item, liveStatus: tracking.status, lastEventTime: newTimeStr };
+            }
+
+            if (item.liveStatus === "REPLIED") {
+              newlyRepliedEmails.add(item.recipientEmail.toLowerCase());
+            }
+
+            return item;
+          });
+
+          // Pass 2: Cascade auto-stop on future scheduled steps for replied prospects
+          if (newlyRepliedEmails.size > 0) {
+            return updatedItems.map(item => {
+              if (
+                newlyRepliedEmails.has(item.recipientEmail.toLowerCase()) &&
+                item.liveStatus === "SCHEDULED"
+              ) {
+                if (updateQueueItemState) {
+                  updateQueueItemState(item.queueId, "CANCELLED", newTimeStr);
+                }
+                return { ...item, liveStatus: "CANCELLED" as const, lastEventTime: newTimeStr };
+              }
               return item;
-            }
-
-            if (updateQueueItemState) {
-              updateQueueItemState(item.queueId, tracking.status, newTimeStr);
-            }
-
-            if (tracking.status === "REPLIED") {
-              toast.success("New Reply Detected!", {
-                description: `${item.recipientEmail} has replied.`,
-                icon: <Reply className="h-4 w-4 text-emerald-500" />
-              });
-            } else if (tracking.status === "OPENED" && item.liveStatus === "SENT") {
-              toast.success("Email Opened!", {
-                description: `${item.recipientEmail} just opened your email.`,
-                icon: <MailOpen className="h-4 w-4 text-blue-500" />
-              });
-            }
-
-            return { ...item, liveStatus: tracking.status, lastEventTime: newTimeStr };
+            });
           }
-          return item;
-        }));
+
+          return updatedItems;
+        });
       }
     } catch (err) {
       console.error("Failed to check tracking status", err);
@@ -345,7 +388,9 @@ export function LiveExecutionDashboard() {
 
     const success = await sendEmailViaBackend(targetItem);
     const statusStr = success ? "SENT" : "BOUNCED";
-    const timeStr = success ? new Date().toLocaleTimeString([], { hour12: false }) : new Date().toLocaleTimeString([], { hour12: false });
+    const nowObj = new Date();
+    const timeStr = nowObj.toLocaleTimeString([], { hour12: false });
+    const dateStr = nowObj.toISOString().split('T')[0];
 
     setLiveItems(prev => prev.map(item => {
       if (item.queueId === queueId) {
@@ -357,6 +402,8 @@ export function LiveExecutionDashboard() {
         return {
           ...item,
           liveStatus: statusStr as any,
+          scheduledDate: dateStr,
+          scheduledTime: timeStr.substring(0, 5),
           lastEventTime: timeStr
         };
       }
@@ -401,6 +448,7 @@ export function LiveExecutionDashboard() {
       case "SENT": return <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-200 font-normal"><Send className="h-3 w-3 mr-1" /> Sent</Badge>;
       case "OPENED": return <Badge variant="secondary" className="bg-purple-50 text-purple-600 border-purple-200 font-normal"><MailOpen className="h-3 w-3 mr-1" /> Opened</Badge>;
       case "REPLIED": return <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-medium"><Reply className="h-3 w-3 mr-1" /> Replied</Badge>;
+      case "CANCELLED": return <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 font-normal"><Ban className="h-3 w-3 mr-1" /> Stopped (Replied)</Badge>;
       case "BOUNCED": return <Badge variant="secondary" className="bg-red-50 text-red-600 border-red-200 font-normal"><AlertCircle className="h-3 w-3 mr-1" /> Failed</Badge>;
       default: return null;
     }

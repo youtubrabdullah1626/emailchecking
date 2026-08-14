@@ -67,16 +67,16 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
       isMobile ? "w-full border-none" : "w-64"
     )}>
       {!isMobile && (
-        <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
-          <div className="flex items-center gap-2 text-primary">
+        <div suppressHydrationWarning className="h-16 flex items-center px-6 border-b border-sidebar-border">
+          <div suppressHydrationWarning className="flex items-center gap-2 text-primary">
             <Layers className="h-6 w-6" />
             <span className="font-bold text-lg tracking-tight text-sidebar-foreground">OutreachIQ</span>
           </div>
         </div>
       )}
 
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        <div className="px-3 pb-2 pt-1">
+      <nav suppressHydrationWarning className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+        <div suppressHydrationWarning className="px-3 pb-2 pt-1">
           <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">Main Menu</h3>
           {mainNavigation.map((item) => {
             const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -99,7 +99,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
           })}
         </div>
 
-        <div className="px-3 py-2 mt-2">
+        <div suppressHydrationWarning className="px-3 py-2 mt-2">
           <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">Administration</h3>
           {adminNavigation.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href);
@@ -123,7 +123,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
         </div>
       </nav>
       
-      <div className="p-3 border-t border-sidebar-border">
+      <div suppressHydrationWarning className="p-3 border-t border-sidebar-border">
         <button
           type="button"
           onClick={() => {

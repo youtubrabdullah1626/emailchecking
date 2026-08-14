@@ -82,7 +82,6 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
     <SessionProvider>
       <SWRConfig 
         value={{ 
-          provider: localStorageProvider,
           fallback: fallbackHeaderStats ? { "/api/dashboard/header-stats": fallbackHeaderStats } : {},
           keepPreviousData: true,
           dedupingInterval: 4000,

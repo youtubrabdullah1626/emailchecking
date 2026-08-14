@@ -242,7 +242,7 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
   // Tracking Engine: Only inject pixel if NEXT_PUBLIC_APP_URL is a real public HTTPS URL.
   // Using localhost:3000 in a tracking pixel is a top-tier spam signal — Google flags it
   // as a hidden link to a private/internal server, identical to phishing email patterns.
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "").replace(/\/+$/, "");
   const isPublicUrl = baseUrl.startsWith("https://") && !baseUrl.includes("localhost");
   const trackingPixel = isPublicUrl
     ? TrackingInjector.generatePixel(trackingId, baseUrl)

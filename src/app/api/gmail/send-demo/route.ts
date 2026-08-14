@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendStep } from "@/lib/gmail/sender";
 import { getActiveSequence, createSequence } from "@/lib/db/sequences";
+import { getSession } from "@/lib/auth/session";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,15 +16,28 @@ export async function POST(request: NextRequest) {
     let messageId: string | undefined;
     let threadId: string | undefined;
 
-    // 1. Ensure Prospect and Sequence exist
+    // 1. Ensure Prospect and Sequence exist with strict multi-tenant session binding
     const emailLower = to.toLowerCase();
     
-    // Get a valid user from the database to avoid foreign key constraint errors
-    const firstUser = await prisma.users.findFirst();
-    if (!firstUser) {
-      return NextResponse.json({ error: "System error: No admin user found in the database." }, { status: 500 });
+    const session = await getSession();
+    let realUserId = session?.user?.id;
+
+    if (!realUserId) {
+      // Fallback: Check for connected EmailAccount user, or first user in system
+      const connectedAccount = await prisma.emailAccount.findFirst({
+        where: { connection_status: "CONNECTED", refresh_token: { not: null } },
+        select: { user_id: true }
+      });
+      if (connectedAccount?.user_id) {
+        realUserId = connectedAccount.user_id;
+      } else {
+        const firstUser = await prisma.users.findFirst({ select: { id: true } });
+        if (!firstUser) {
+          return NextResponse.json({ error: "System error: No admin user found in the database." }, { status: 500 });
+        }
+        realUserId = firstUser.id;
+      }
     }
-    const realUserId = firstUser.id;
 
     let prospect = await prisma.prospect.findFirst({ where: { email: emailLower, user_id: realUserId } });
     
@@ -118,42 +132,24 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 3. If step is already SENT, return success gracefully (prevents false Delivery Failed UI state)
-    if (step.status === "SENT") {
-      return NextResponse.json({ 
-        ok: true, 
-        alreadySent: true, 
-        messageId: step.gmail_message_id, 
-        threadId: step.gmail_thread_id 
-      });
-    }
-
-    // Claim the step atomically (PENDING or FAILED)
-    const claimed = await prisma.sequenceStep.updateMany({
-      where: { id: step.id, status: { in: ["PENDING", "FAILED"] } },
-      data: { status: "PROCESSING" },
+    // Ensure the step is ready for execution (reset stale status and IDs if retrying/re-executing)
+    await prisma.sequenceStep.update({
+      where: { id: step.id },
+      data: {
+        status: "PROCESSING",
+        gmail_message_id: null,
+        gmail_thread_id: null,
+        sent_at: null,
+      }
     });
 
-    if (claimed.count > 0) {
-      // 4. Send via the pure backend engine (injects tracking, sets thread ID, etc.)
-      const result = await sendStep(step.id);
-      if (result.outcome === "SENT") {
-        messageId = result.gmailMessageId;
-        threadId = result.gmailThreadId;
-      } else {
-        throw new Error(result.detail || "Failed to send email via backend engine");
-      }
+    // 4. Send via the pure backend engine (injects tracking, sets thread ID, etc.)
+    const result = await sendStep(step.id);
+    if (result.outcome === "SENT") {
+      messageId = result.gmailMessageId;
+      threadId = result.gmailThreadId;
     } else {
-      const currentStep = await prisma.sequenceStep.findUnique({ where: { id: step.id } });
-      if (currentStep && (currentStep.status === "SENT" || currentStep.status === "PROCESSING")) {
-        return NextResponse.json({ 
-          ok: true, 
-          alreadySent: true, 
-          messageId: currentStep.gmail_message_id, 
-          threadId: currentStep.gmail_thread_id 
-        });
-      }
-      throw new Error("Failed to claim step for sending");
+      throw new Error(result.detail || "Failed to send email via backend engine");
     }
 
     return NextResponse.json({ ok: true, messageId, threadId });

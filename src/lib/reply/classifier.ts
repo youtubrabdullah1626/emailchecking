@@ -203,8 +203,8 @@ export function classifyMessage(
     };
   }
 
-  // ── Layer 5: Known prospect email or thread-matched reply → REAL_REPLY ────
-  if (isSameEmailAddress(fromEmail, prospectEmail) || fromEmail.length > 0) {
+  // ── Layer 5: Known prospect email → REAL_REPLY ────────────────────────────
+  if (isSameEmailAddress(fromEmail, prospectEmail)) {
     return {
       gmailMessageId: message.id,
       gmailThreadId: message.threadId,
@@ -213,10 +213,11 @@ export function classifyMessage(
       subject,
       snippet,
       replyType: "REAL_REPLY",
-      reason: `Inbound reply received from "${fromEmail}" in sequence thread.`,
+      reason: `Inbound reply received from prospect email "${fromEmail}".`,
     };
   }
 
+  // ── Layer 6: Unknown sender in thread → NEEDS_REVIEW ─────────────────────
   return {
     gmailMessageId: message.id,
     gmailThreadId: message.threadId,
@@ -225,7 +226,7 @@ export function classifyMessage(
     subject,
     snippet,
     replyType: "NEEDS_REVIEW",
-    reason: `Reply from address "${fromEmail}". Manual review required.`,
+    reason: `Inbound message from unknown address "${fromEmail}" (expected prospect: "${prospectEmail}"). Manual review required.`,
   };
 }
 

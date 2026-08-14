@@ -149,12 +149,12 @@ export interface LegacyPageHeaderProps {
 }
 
 export const LegacyPageHeader: React.FC<LegacyPageHeaderProps> = ({ title, description, actions }) => (
-  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-    <div className="flex flex-col gap-1">
-      <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-      {description && <p className="text-muted-foreground">{description}</p>}
+  <div suppressHydrationWarning className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <div suppressHydrationWarning className="flex flex-col gap-1">
+      <h1 suppressHydrationWarning className="text-3xl font-bold tracking-tight">{title}</h1>
+      {description && <p suppressHydrationWarning className="text-muted-foreground">{description}</p>}
     </div>
-    {actions && <div className="flex items-center gap-2">{actions}</div>}
+    {actions && <div suppressHydrationWarning className="flex items-center gap-2">{actions}</div>}
   </div>
 );
 

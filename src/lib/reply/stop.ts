@@ -142,11 +142,6 @@ export async function applyReplyStop(
         },
       });
 
-      // ── 6.5 Universal Email Tracking Engine Event ────────────────────────
-      // Ingest the REPLIED event into the tracking engine, which will
-      // securely lock the tracking states of all outbound emails in this thread.
-      await emailTrackingService.ingestEventByProviderThreadId(classification.gmailThreadId, "REPLIED");
-
       // ── 7. Record immutable AuditLog event ────────────────────────────────
       const prospectInfo = await tx.prospect.findUnique({
         where: { id: prospectId },
@@ -188,7 +183,10 @@ export async function applyReplyStop(
         stateUpdated: true,
         classificationRecorded: true,
       };
-    });
+    }, { timeout: 25000, maxWait: 10000 });
+
+    // ── 7.5 Ingest REPLIED event to Tracking Engine ────────────────────────
+    await emailTrackingService.ingestEventByProviderThreadId(classification.gmailThreadId, "REPLIED").catch(() => {});
 
     // ── 8. Dispatch to CRM Adapter Layer (non-blocking for DB atomicity) ────
     try {

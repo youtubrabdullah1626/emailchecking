@@ -27,14 +27,15 @@ export class TrackingInjector {
 
     const policy = this.getPolicy();
     
-    // Do not inject tracking for untrusted/shared domains to protect deliverability
-    if (policy.strategy === "Disabled" || policy.strategy === "SharedDomain") {
+    // Do not inject tracking if explicitly Disabled
+    if (policy.strategy === "Disabled") {
       return "";
     }
 
-    const pixelUrl = `${baseUrl}/api/track/${trackingId}`;
+    const cleanBase = baseUrl.replace(/\/+$/, "");
+    const pixelUrl = `${cleanBase}/api/track/${trackingId}`;
     
     // Safe structurally benign pixel without hidden spam signatures
-    return `<img src="${pixelUrl}" width="1" height="1" alt="" />`;
+    return `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none;width:1px;height:1px;border:0;" />`;
   }
 }
