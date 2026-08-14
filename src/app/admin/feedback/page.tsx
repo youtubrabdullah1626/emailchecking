@@ -388,7 +388,7 @@ export default function AdminFeedbackPage() {
                     {/* Feedback Comment Text */}
                     {item.comment ? (
                       <div className="p-3.5 rounded-lg bg-muted/40 border border-border/50 text-sm text-foreground leading-relaxed">
-                        "{item.comment}"
+                        &ldquo;{item.comment}&rdquo;
                       </div>
                     ) : (
                       <div className="text-xs italic text-muted-foreground">

@@ -283,7 +283,7 @@ function ProspectsPageContent() {
         (p.company || "").toLowerCase().includes(q)
       );
     });
-  }, [prospects, search, statusFilter, campaignIdFilter, sourceFilter]);
+  }, [prospects, search, statusFilter, campaignIdFilter, sourceFilter, deletedIds]);
 
   const total = filteredProspects.length;
 

@@ -97,7 +97,7 @@ export function FeedbackDialog({
               <CheckCircle2 className="h-8 w-8" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-xl font-bold text-foreground">You're Awesome!</h3>
+              <h3 className="text-xl font-bold text-foreground">You&apos;re Awesome!</h3>
               <p className="text-sm text-muted-foreground max-w-xs">
                 Your feedback goes directly to our founding team to help shape the future of OutreachIQ.
               </p>
