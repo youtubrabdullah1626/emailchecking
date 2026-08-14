@@ -10,6 +10,8 @@
 import prisma from "@/lib/prisma";
 import type { Prospect, ProspectStatus } from "@prisma/client";
 import { errorTracker } from "@/lib/observability/errors";
+import { getSessionUser } from "@/lib/audit/rbac";
+import { getTenantPrisma } from "@/lib/db/tenant-prisma";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -76,14 +78,18 @@ export async function createProspect(
   data: CreateProspectData
 ): Promise<DbResult<Prospect>> {
   try {
-    const prospect = await prisma.prospect.create({
+    const user = await getSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const tenantPrisma = getTenantPrisma(user.id);
+
+    const prospect = await tenantPrisma.prospect.create({
       data: {
         name: data.name,
         company: data.company,
         email: data.email,
         timezone: data.timezone,
         notes: data.notes ?? null,
-        user_id: data.user_id,
+        user_id: user.id, // Ensure explicit mapping
       },
     });
     return { ok: true, data: prospect };
@@ -125,9 +131,13 @@ export async function listProspects(options?: PaginationOptions): Promise<DbPagi
     const limit = options?.limit ?? 50;
     const skip = (page - 1) * limit;
 
-    const [total, prospects] = await prisma.$transaction([
-      prisma.prospect.count(),
-      prisma.prospect.findMany({
+    const user = await getSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const tenantPrisma = getTenantPrisma(user.id);
+
+    const [total, prospects] = await tenantPrisma.$transaction([
+      tenantPrisma.prospect.count(),
+      tenantPrisma.prospect.findMany({
         skip,
         take: limit,
         orderBy: { created_at: "desc" },
@@ -193,7 +203,11 @@ export async function listProspects(options?: PaginationOptions): Promise<DbPagi
  */
 export async function getProspect(id: string): Promise<DbResult<Prospect>> {
   try {
-    const prospect = await prisma.prospect.findUnique({
+    const user = await getSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const tenantPrisma = getTenantPrisma(user.id);
+
+    const prospect = await tenantPrisma.prospect.findUnique({
       where: { id },
     });
     if (!prospect) {
@@ -226,7 +240,11 @@ export async function updateProspect(
   data: UpdateProspectData
 ): Promise<DbResult<Prospect>> {
   try {
-    const prospect = await prisma.prospect.update({
+    const user = await getSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const tenantPrisma = getTenantPrisma(user.id);
+
+    const prospect = await tenantPrisma.prospect.update({
       where: { id },
       data: {
         ...(data.name !== undefined && { name: data.name }),
@@ -271,7 +289,11 @@ export async function updateProspect(
  */
 export async function deleteProspect(id: string): Promise<DbResult<void>> {
   try {
-    await prisma.prospect.delete({ where: { id } });
+    const user = await getSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const tenantPrisma = getTenantPrisma(user.id);
+
+    await tenantPrisma.prospect.delete({ where: { id } });
     return { ok: true, data: undefined };
   } catch (error) {
     if (isNotFoundError(error)) {
