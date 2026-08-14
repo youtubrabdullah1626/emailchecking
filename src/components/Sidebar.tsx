@@ -61,9 +61,6 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
     { name: "Scheduler", href: "/scheduler", icon: ServerCog },
   ];
 
-  const schedulerStatus = summary?.schedulerStatus?.toLowerCase() || 'unknown';
-  const geminiStatus = summary?.geminiConfigured ? 'connected' : 'error';
-
   return (
     <aside suppressHydrationWarning className={cn(
       "border-r border-sidebar-border bg-sidebar flex flex-col flex-shrink-0 h-full",
@@ -126,7 +123,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
         </div>
       </nav>
       
-      <div className="p-3 border-t border-sidebar-border space-y-2">
+      <div className="p-3 border-t border-sidebar-border">
         <button
           type="button"
           onClick={() => {
@@ -142,20 +139,6 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
           </span>
           <span className="text-[10px] bg-primary/10 px-1.5 py-0.5 rounded text-primary font-bold">5★</span>
         </button>
-
-        <div className="px-2 pt-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground font-medium">Scheduler Engine</span>
-            <div className="flex items-center gap-1.5">
-              <span className={cn(
-                "h-2 w-2 rounded-full",
-                schedulerStatus === 'running' ? "bg-emerald-500" :
-                (schedulerStatus === 'error' || schedulerStatus === 'failed') ? "bg-red-500" : "bg-amber-500"
-              )} />
-              <span className="text-[11px] font-medium text-sidebar-foreground capitalize">{schedulerStatus}</span>
-            </div>
-          </div>
-        </div>
       </div>
     </aside>
   );
