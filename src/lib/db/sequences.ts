@@ -14,6 +14,7 @@ import type { SanitizedStep } from "@/lib/validations/sequence";
 import { errorTracker } from "@/lib/observability/errors";
 import { auditService } from "@/lib/audit/audit.service";
 import { getSessionUser } from "@/lib/audit/rbac";
+import { getTenantPrisma } from "@/lib/db/tenant-prisma";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -63,7 +64,11 @@ export async function getActiveSequence(
   prospectId: string
 ): Promise<DbResult<SequenceWithSteps>> {
   try {
-    const sequence = await prisma.sequence.findFirst({
+    const user = await getSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const tenantPrisma = getTenantPrisma(user.id);
+
+    const sequence = await tenantPrisma.sequence.findFirst({
       where: { 
         prospect_id: prospectId,
         status: { in: ["ACTIVE", "DRAFT"] }
@@ -94,7 +99,11 @@ export async function getLatestSequence(
   prospectId: string
 ): Promise<DbResult<SequenceWithSteps>> {
   try {
-    const sequence = await prisma.sequence.findFirst({
+    const user = await getSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const tenantPrisma = getTenantPrisma(user.id);
+
+    const sequence = await tenantPrisma.sequence.findFirst({
       where: { prospect_id: prospectId },
       orderBy: { created_at: "desc" },
       include: { steps: { orderBy: { step_number: "asc" } } },
@@ -122,7 +131,11 @@ export async function getSequenceHistory(
   prospectId: string
 ): Promise<DbResult<SequenceWithSteps[]>> {
   try {
-    const sequences = await prisma.sequence.findMany({
+    const user = await getSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const tenantPrisma = getTenantPrisma(user.id);
+
+    const sequences = await tenantPrisma.sequence.findMany({
       where: { prospect_id: prospectId },
       orderBy: { created_at: "desc" },
       include: { steps: { orderBy: { step_number: "asc" } } },
@@ -147,7 +160,11 @@ export async function getSequence(
   sequenceId: string
 ): Promise<DbResult<SequenceWithSteps>> {
   try {
-    const sequence = await prisma.sequence.findUnique({
+    const user = await getSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const tenantPrisma = getTenantPrisma(user.id);
+
+    const sequence = await tenantPrisma.sequence.findUnique({
       where: { id: sequenceId },
       include: { steps: { orderBy: { step_number: "asc" } } },
     });
@@ -175,16 +192,19 @@ export type DbPaginatedResult<T> =
 /**
  * List all sequences with prospect and step details.
  * Ordered by creation date (newest first).
+ * SECURE: Scoped strictly to the provided userId via Tenant Extension.
  */
-export async function listSequences(options?: PaginationOptions): Promise<DbPaginatedResult<SequenceWithSteps & { prospect: { id: string; name: string; company: string; email: string; status: string } }>> {
+export async function listSequences(userId: string, options?: PaginationOptions): Promise<DbPaginatedResult<SequenceWithSteps & { prospect: { id: string; name: string; company: string; email: string; status: string } }>> {
   try {
     const page = options?.page ?? 1;
     const limit = options?.limit ?? 50;
     const skip = (page - 1) * limit;
 
+    const tenantPrisma = getTenantPrisma(userId);
+
     const [total, sequences] = await Promise.all([
-      prisma.sequence.count(),
-      prisma.sequence.findMany({
+      tenantPrisma.sequence.count(),
+      tenantPrisma.sequence.findMany({
         skip,
         take: limit,
         orderBy: { created_at: "desc" },
@@ -242,14 +262,16 @@ export async function createSequence(
   steps: SanitizedStep[]
 ): Promise<DbResult<SequenceWithSteps>> {
   try {
+    const user = await getSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const tenantPrisma = getTenantPrisma(user.id);
+
     // Execute within a serializable transaction to prevent race conditions
     // when two parallel requests attempt to create a sequence for the same prospect.
-    const sequence = await prisma.$transaction(async (tx) => {
+    const sequence = await tenantPrisma.$transaction(async (tx) => {
       // 1. Lock the prospect row specifically to ensure atomicity for this prospect.
       const prospects = await tx.$queryRaw<{id: string, user_id: string}[]>`SELECT id, user_id FROM prospects WHERE id = ${prospectId} FOR UPDATE`;
-      const fallbackUser = await tx.users.findFirst({ select: { id: true } });
-      const prospectUserId = prospects[0]?.user_id || fallbackUser?.id || "";
-
+      
       // 2. ACTIVE CAMPAIGN PROTECTION (Single source of truth)
       const activeSequence = await tx.sequence.findFirst({
         where: {
@@ -266,7 +288,7 @@ export async function createSequence(
       return tx.sequence.create({
         data: {
           prospect_id: prospectId,
-          user_id: prospectUserId,
+          user_id: user.id,
           status: "DRAFT",
           steps: {
             create: steps.map((step) => ({
@@ -285,11 +307,10 @@ export async function createSequence(
     });
     
     // Log Audit Event safely
-    const user = await getSessionUser();
-    const prospect = await prisma.prospect.findUnique({ where: { id: prospectId } });
+    const prospect = await tenantPrisma.prospect.findUnique({ where: { id: prospectId } });
     auditService.logAction(
-      user?.id || 'system',
-      user?.email || 'system',
+      user.id,
+      user.email || 'system',
       'SEQUENCE_CREATED',
       'CAMPAIGN',
       prospect ? `Sequence for ${prospect.email}` : `Sequence (${sequence.id})`,
@@ -337,8 +358,12 @@ export async function updateSequence(
   steps: SanitizedStep[]
 ): Promise<DbResult<SequenceWithSteps>> {
   try {
+    const user = await getSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const tenantPrisma = getTenantPrisma(user.id);
+
     // First, check that the sequence is DRAFT — cannot edit ACTIVE/STOPPED/COMPLETED
-    const existing = await prisma.sequence.findUnique({
+    const existing = await tenantPrisma.sequence.findUnique({
       where: { id: sequenceId },
       select: { status: true },
     });
@@ -356,7 +381,7 @@ export async function updateSequence(
     }
 
     // Atomic: delete all existing steps, insert new ones
-    const sequence = await prisma.$transaction(async (tx) => {
+    const sequence = await tenantPrisma.$transaction(async (tx) => {
       await tx.sequenceStep.deleteMany({ where: { sequence_id: sequenceId } });
 
       return tx.sequence.update({
@@ -378,8 +403,7 @@ export async function updateSequence(
       });
     });
 
-    const user = await getSessionUser();
-    const prospect = await prisma.prospect.findUnique({ where: { id: sequence.prospect_id } });
+    const prospect = await tenantPrisma.prospect.findUnique({ where: { id: sequence.prospect_id } });
     auditService.logAction(
       user?.id || 'system',
       user?.email || 'system',
@@ -422,7 +446,11 @@ export async function startSequence(
   sequenceId: string
 ): Promise<DbResult<SequenceWithSteps>> {
   try {
-    const existing = await prisma.sequence.findUnique({
+    const user = await getSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const tenantPrisma = getTenantPrisma(user.id);
+
+    const existing = await tenantPrisma.sequence.findUnique({
       where: { id: sequenceId },
       select: { status: true },
     });
@@ -439,7 +467,7 @@ export async function startSequence(
       };
     }
 
-    const sequence = await prisma.sequence.update({
+    const sequence = await tenantPrisma.sequence.update({
       where: { id: sequenceId },
       data: {
         status: "ACTIVE",
@@ -448,8 +476,7 @@ export async function startSequence(
       include: { steps: { orderBy: { step_number: "asc" } } },
     });
 
-    const user = await getSessionUser();
-    const prospect = await prisma.prospect.findUnique({ where: { id: sequence.prospect_id } });
+    const prospect = await tenantPrisma.prospect.findUnique({ where: { id: sequence.prospect_id } });
     auditService.logAction(
       user?.id || 'system',
       user?.email || 'system',
@@ -487,7 +514,11 @@ export async function deleteSequence(
   sequenceId: string
 ): Promise<DbResult<void>> {
   try {
-    const existing = await prisma.sequence.findUnique({
+    const user = await getSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const tenantPrisma = getTenantPrisma(user.id);
+
+    const existing = await tenantPrisma.sequence.findUnique({
       where: { id: sequenceId },
       select: { status: true },
     });
@@ -498,17 +529,16 @@ export async function deleteSequence(
 
     // Allow deleting in any state so users can clear up the UI.
     // The cascade delete will safely remove steps.
-    const sequenceToLog = await prisma.sequence.findUnique({ 
+    const sequenceToLog = await tenantPrisma.sequence.findUnique({ 
       where: { id: sequenceId },
       include: { prospect: true }
     });
     
-    await prisma.$transaction([
-      prisma.sequenceStep.deleteMany({ where: { sequence_id: sequenceId } }),
-      prisma.sequence.delete({ where: { id: sequenceId } }),
+    await tenantPrisma.$transaction([
+      tenantPrisma.sequenceStep.deleteMany({ where: { sequence_id: sequenceId } }),
+      tenantPrisma.sequence.delete({ where: { id: sequenceId } }),
     ]);
     
-    const user = await getSessionUser();
     auditService.logAction(
       user?.id || 'system',
       user?.email || 'system',
