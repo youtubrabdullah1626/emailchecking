@@ -648,71 +648,45 @@ async function markStepSent(
   const MAX_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      await prisma.$transaction(async (tx) => {
-        await tx.sequenceStep.update({
-          where: { id: stepId },
-          data: {
-            status: "SENT",
-            sent_at: new Date(),
-            gmail_message_id: gmailMessageId,
-            gmail_thread_id: gmailThreadId,
-          },
-        });
-        await tx.emailEvent.create({
-          data: {
-            sequence_step_id: stepId,
-            event_type: "SENT",
-            metadata: { gmailMessageId, gmailThreadId },
-          },
-        });
-        if (senderEmail && tx.emailAccount?.update) {
-          await tx.emailAccount.update({
-            where: { email: senderEmail.toLowerCase() },
-            data: {
-              sent_today: { increment: 1 },
-              sent_this_hour: { increment: 1 },
-              last_seen_at: new Date(),
-            },
-          }).catch(() => {});
-        }
+      // Direct sequential updates (100% pooler-safe on Supabase transaction pooler)
+      await prisma.sequenceStep.update({
+        where: { id: stepId },
+        data: {
+          status: "SENT",
+          sent_at: new Date(),
+          gmail_message_id: gmailMessageId,
+          gmail_thread_id: gmailThreadId,
+        },
       });
-      return true;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "DB error";
-      
-      // If transaction start timed out due to connection pool saturation, execute direct fallback
-      if (msg.includes("Transaction API error") || msg.includes("Unable to start a transaction")) {
+
+      if (prisma.emailEvent?.create) {
         try {
-          await prisma.sequenceStep.update({
-            where: { id: stepId },
-            data: {
-              status: "SENT",
-              sent_at: new Date(),
-              gmail_message_id: gmailMessageId,
-              gmail_thread_id: gmailThreadId,
-            },
-          });
           await prisma.emailEvent.create({
             data: {
               sequence_step_id: stepId,
               event_type: "SENT",
               metadata: { gmailMessageId, gmailThreadId },
             },
-          }).catch(() => {});
-          if (senderEmail && prisma.emailAccount?.update) {
-            await prisma.emailAccount.update({
-              where: { email: senderEmail.toLowerCase() },
-              data: {
-                sent_today: { increment: 1 },
-                sent_this_hour: { increment: 1 },
-                last_seen_at: new Date(),
-              },
-            }).catch(() => {});
-          }
-          return true;
+          });
         } catch {}
       }
 
+      if (senderEmail && prisma.emailAccount?.update) {
+        try {
+          await prisma.emailAccount.update({
+            where: { email: senderEmail.toLowerCase() },
+            data: {
+              sent_today: { increment: 1 },
+              sent_this_hour: { increment: 1 },
+              last_seen_at: new Date(),
+            },
+          });
+        } catch {}
+      }
+
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "DB error";
       gmailLog("gmail_send_db_update_failed", {
         stepId,
         stepNumber: step.step_number,
