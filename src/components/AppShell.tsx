@@ -122,15 +122,13 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
                 {/* Drawer content */}
                 <div className="relative flex w-full max-w-xs flex-col bg-background p-0 shadow-xl z-50">
                   <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-                    <div className="flex items-center gap-2.5">
-                      <div className="h-8 w-8 rounded-xl overflow-hidden shadow-xs border border-orange-200/70 flex items-center justify-center bg-white shrink-0">
-                        <img
-                          src="/silaer-logo.png"
-                          alt="Silaer Logo"
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                      <h2 className="text-lg font-bold text-foreground">Silaer</h2>
+                    <div className="flex items-center gap-3">
+                      <img
+                        src="/silaer-logo.png"
+                        alt="Silaer Logo"
+                        className="h-10 w-10 object-contain drop-shadow-xs shrink-0"
+                      />
+                      <h2 className="text-2xl font-extrabold text-foreground tracking-tight">Silaer</h2>
                     </div>
                     <button onClick={() => setIsMobileDrawerOpen(false)} className="text-muted-foreground hover:text-foreground">
                       <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

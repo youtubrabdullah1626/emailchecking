@@ -78,16 +78,14 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
       isMobile ? "w-full border-none" : "w-64"
     )}>
       {!isMobile && (
-        <div suppressHydrationWarning className="h-16 flex items-center px-5 border-b border-sidebar-border">
-          <FastLink href="/dashboard" className="flex items-center gap-2.5 text-primary group">
-            <div className="h-8 w-8 rounded-xl overflow-hidden shadow-xs border border-orange-200/70 dark:border-slate-800 flex items-center justify-center bg-white shrink-0 group-hover:scale-105 transition-transform">
-              <img
-                src="/silaer-logo.png"
-                alt="Silaer Logo"
-                className="h-full w-full object-cover"
-              />
-            </div>
-            <span className="font-bold text-lg tracking-tight text-sidebar-foreground group-hover:text-primary transition-colors">
+        <div suppressHydrationWarning className="h-18 flex items-center px-5 border-b border-sidebar-border">
+          <FastLink href="/dashboard" className="flex items-center gap-3 text-primary group">
+            <img
+              src="/silaer-logo.png"
+              alt="Silaer Logo"
+              className="h-11 w-11 object-contain drop-shadow-xs shrink-0 group-hover:scale-105 group-hover:-translate-y-0.5 transition-all duration-200"
+            />
+            <span className="font-extrabold text-2xl tracking-tight text-sidebar-foreground group-hover:text-primary transition-colors">
               Silaer
             </span>
           </FastLink>

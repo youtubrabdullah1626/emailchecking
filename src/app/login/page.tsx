@@ -21,21 +21,21 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-lg border-border">
         <CardContent className="p-8 flex flex-col items-center text-center space-y-6">
           {/* Logo */}
-          <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md border border-orange-200/80 mb-2 flex items-center justify-center bg-white">
+          <div className="mb-3 flex items-center justify-center">
             <img
               src="/silaer-logo.png"
               alt="Silaer Logo"
-              className="h-full w-full object-cover"
+              className="h-20 w-20 object-contain drop-shadow-md hover:scale-105 transition-transform duration-200"
             />
           </div>
 
           {/* Title */}
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          <div className="space-y-1.5">
+            <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
               Silaer
             </h1>
             <p className="text-sm text-muted-foreground">
-              Sign in to manage your automated campaigns, view analytics, and monitor system health.
+              Sign in to manage your automated campaigns, view analytics, and monitor deliverability.
             </p>
           </div>
 
