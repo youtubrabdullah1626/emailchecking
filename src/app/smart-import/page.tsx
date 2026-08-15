@@ -11,7 +11,7 @@ import { WorkspaceShell } from "./WorkspaceShell";
 import { WarmupProvider } from "@/components/providers/WarmupProvider";
 
 export const metadata = {
-  title: "Smart Import | OutreachIQ",
+  title: "Smart Import | Silaer",
 };
 
 export default function SmartImportPage() {

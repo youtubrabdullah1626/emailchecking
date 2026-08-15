@@ -1,13 +1,14 @@
 import React from "react";
+import { Metadata } from "next";
 import { TimelineInspector } from "@/components/timeline/TimelineInspector";
 import { Sparkles, ShieldCheck, Activity } from "lucide-react";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "Email Timeline Inspector | OutreachIQ",
-  description: "Live Excel-style delivery forensics and tracking debugger",
+export const metadata: Metadata = {
+  title: "Email Timeline Inspector | Silaer",
+  description: "Detailed end-to-end lifecycle inspection and delivery latencies for outreach emails.",
 };
 
 export default async function TimelinePage() {

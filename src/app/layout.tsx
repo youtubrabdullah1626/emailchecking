@@ -9,11 +9,16 @@ import { getTenantPrisma } from "@/lib/db/tenant-prisma";
 
 export const metadata: Metadata = {
   title: {
-    default: "Outreach — Personal Email Automation",
-    template: "%s | Outreach",
+    default: "Silaer — Personal Email Automation",
+    template: "%s | Silaer",
   },
   description:
     "Personal outreach automation system. Build sequences once, send automatically, stop on replies.",
+  icons: {
+    icon: "/silaer-logo.png",
+    shortcut: "/silaer-logo.png",
+    apple: "/silaer-logo.png",
+  },
 };
 
 export default async function RootLayout({

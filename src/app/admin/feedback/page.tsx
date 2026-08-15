@@ -483,7 +483,7 @@ export default function AdminFeedbackPage() {
                         )}
 
                         <a
-                          href={`mailto:${item.users.email}?subject=Thank%20you%20for%20your%20feedback%20on%20OutreachIQ&body=Hi%20${encodeURIComponent(item.users.name || "there")},%0A%0AThank%20you%20so%20much%20for%20your%20${item.rating}-star%20review%20and%20helpful%20feedback!`}
+                          href={`mailto:${item.users.email}?subject=Thank%20you%20for%20your%20feedback%20on%20Silaer&body=Hi%20${encodeURIComponent(item.users.name || "there")},%0A%0AThank%20you%20so%20much%20for%20your%20${item.rating}-star%20review%20and%20helpful%20feedback!`}
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary/10 hover:bg-primary/20 text-primary font-semibold text-xs transition-colors"
                           target="_blank"
                           rel="noreferrer"

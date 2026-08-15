@@ -91,7 +91,7 @@ export function FeedbackDialog({
             <div className="space-y-1">
               <h3 className="text-lg font-bold text-foreground">You&apos;re Awesome!</h3>
               <p className="text-xs text-muted-foreground max-w-xs">
-                Your feedback goes directly to our founding team to help improve OutreachIQ.
+                Your feedback goes directly to our founding team to help improve Silaer.
               </p>
             </div>
           </div>

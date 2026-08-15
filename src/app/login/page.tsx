@@ -21,16 +21,18 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-lg border-border">
         <CardContent className="p-8 flex flex-col items-center text-center space-y-6">
           {/* Logo */}
-          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-2">
-            <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
+          <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md border border-orange-200/80 mb-2 flex items-center justify-center bg-white">
+            <img
+              src="/silaer-logo.png"
+              alt="Silaer Logo"
+              className="h-full w-full object-cover"
+            />
           </div>
 
           {/* Title */}
           <div className="space-y-2">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              OutreachIQ
+              Silaer
             </h1>
             <p className="text-sm text-muted-foreground">
               Sign in to manage your automated campaigns, view analytics, and monitor system health.
