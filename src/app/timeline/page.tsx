@@ -1,44 +1,49 @@
 import React from "react";
 import { TimelineInspector } from "@/components/timeline/TimelineInspector";
-import { Activity, ShieldCheck, Sparkles, Zap, Server } from "lucide-react";
+import { Sparkles, ShieldCheck, Activity } from "lucide-react";
 
 export const metadata = {
-  title: "Email Timeline Inspector | OutreachIQ Precision Forensics",
+  title: "Email Timeline Inspector | OutreachIQ",
   description: "Live Excel-style delivery forensics and tracking debugger",
 };
 
 export default function TimelinePage() {
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* Premium Executive Hero Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl p-6 md:p-8 shadow-md border border-slate-700/50 relative overflow-hidden">
-        {/* Subtle Decorative Ambient Elements */}
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 -mb-12 w-48 h-48 bg-orange-500/10 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold tracking-wide">
-              <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-              <span>PRECISION FORENSICS & TELEMETRY HUB</span>
+      {/* Signature OutreachIQ Warm Banner (Matches App Aesthetic) */}
+      <div className="bg-gradient-to-r from-orange-100/70 via-amber-50/60 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/80 border border-orange-200/80 dark:border-orange-950/40 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-4">
+            {/* Signature Icon Circle */}
+            <div className="h-11 w-11 rounded-full bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-200/80 dark:border-orange-800/50 shadow-xs">
+              <Activity className="h-5 w-5" />
             </div>
-            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight text-white flex items-center gap-3">
-              <span>Email Timeline Inspector</span>
-            </h1>
-            <p className="text-xs md:text-sm text-slate-300 leading-relaxed">
-              Enterprise-grade diagnostic engine auditing every single email dispatch, Google API response speed, and live prospect engagement with millisecond precision.
-            </p>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                  Email Timeline Inspector
+                </h1>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100/80 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 text-[10px] font-semibold border border-orange-200/60 dark:border-orange-800/40">
+                  <Sparkles className="h-2.5 w-2.5" />
+                  Live Forensics
+                </span>
+              </div>
+              <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Real-time tracking of every email lifecycle event, Gmail API delivery speed, and recipient engagement.
+              </p>
+            </div>
           </div>
 
-          {/* Real-time Status Badges */}
-          <div className="flex flex-wrap lg:flex-col items-start lg:items-end gap-2 shrink-0">
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs text-slate-200 shadow-xs">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-semibold text-white">Live Telemetry Connected</span>
+          {/* Clean Stream Status Badges */}
+          <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/90 dark:bg-slate-800 border border-orange-200/60 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-200 shadow-2xs">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Live Stream Active</span>
             </div>
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-800/60 border border-slate-700/60 text-xs text-slate-300">
-              <ShieldCheck className="h-4 w-4 text-indigo-400" />
-              <span>RFC-822 Audit Authenticated</span>
+            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/70 dark:bg-slate-800/60 border border-orange-100 dark:border-slate-700/60 text-xs text-slate-500 dark:text-slate-400">
+              <ShieldCheck className="h-3.5 w-3.5 text-orange-500" />
+              <span>RFC-822 Verified</span>
             </div>
           </div>
         </div>
