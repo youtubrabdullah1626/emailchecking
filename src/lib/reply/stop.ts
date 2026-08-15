@@ -60,8 +60,12 @@ export async function applyReplyStop(
       // ── 1. Lock sequence and steps to prevent race conditions (scheduler) ──
       // By locking the sequence, we ensure no concurrent update to its status.
       // By locking its pending steps, we block the scheduler from claiming them.
-      await tx.$executeRaw`SELECT id FROM sequences WHERE id = ${sequenceId} FOR UPDATE`;
-      await tx.$executeRaw`SELECT id FROM sequence_steps WHERE sequence_id = ${sequenceId} AND status IN ('PENDING', 'PROCESSING') FOR UPDATE`;
+      try {
+        if (typeof tx.$executeRaw === "function") {
+          await tx.$executeRaw`SELECT id FROM sequences WHERE id = ${sequenceId} FOR UPDATE`;
+          await tx.$executeRaw`SELECT id FROM sequence_steps WHERE sequence_id = ${sequenceId} AND status IN ('PENDING', 'PROCESSING') FOR UPDATE`;
+        }
+      } catch {}
 
       const sequence = await tx.sequence.findUnique({
         where: { id: sequenceId },

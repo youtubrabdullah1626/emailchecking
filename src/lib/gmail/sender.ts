@@ -227,7 +227,7 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
   let enableListUnsubscribe = false;
 
   if (DELIVERABILITY_PIPELINE_V2) {
-    const health = await DeliverabilityHealthEvaluator.evaluateHealth(config.senderEmail);
+    const health = await DeliverabilityHealthEvaluator.evaluateHealth(senderEmail);
     if (health.overall === "FAILING") {
       gmailLog("gmail_send_aborted_health", {
         stepId,
@@ -517,18 +517,9 @@ export async function sendBatch(stepIds: string[]): Promise<BatchSendResult> {
   let aborted = 0;
   let configErrors = 0;
 
-  // Initialize OAuth client once per batch
-  
-  let auth: any;
-  try {
-    auth = createOAuth2Client();
-  } catch (e) {
-    gmailLog("gmail_batch_completed", { total: stepIds.length, sent: 0, failed: 0, aborted: 0, durationMs: 0, status: "CONFIG_ERROR" });
-  }
-
   for (let i = 0; i < stepIds.length; i++) {
     const stepId = stepIds[i];
-    const result = await sendStep(stepId, auth);
+    const result = await sendStep(stepId);
     results.push(result);
 
     switch (result.outcome) {

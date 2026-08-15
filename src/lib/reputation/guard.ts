@@ -96,7 +96,12 @@ export async function canSendEmail(email: string): Promise<ReputationGuardResult
           where: {
             event_type: "SENT",
             occurred_at: { gte: startOfDay },
-            step: { sequence: { user_id: account.user_id } },
+            step: { 
+              sequence: { 
+                user_id: account.user_id,
+                assigned_sender_email: normalizedEmail 
+              } 
+            },
           },
         })
       : Promise.resolve(0),
@@ -105,7 +110,12 @@ export async function canSendEmail(email: string): Promise<ReputationGuardResult
           where: {
             event_type: "SENT",
             occurred_at: { gte: startOfHour },
-            step: { sequence: { user_id: account.user_id } },
+            step: { 
+              sequence: { 
+                user_id: account.user_id,
+                assigned_sender_email: normalizedEmail 
+              } 
+            },
           },
         })
       : Promise.resolve(0),
@@ -114,7 +124,12 @@ export async function canSendEmail(email: string): Promise<ReputationGuardResult
           where: {
             event_type: "SENT",
             occurred_at: { gte: twentyFourHoursAgo },
-            step: { sequence: { user_id: account.user_id } },
+            step: { 
+              sequence: { 
+                user_id: account.user_id,
+                assigned_sender_email: normalizedEmail 
+              } 
+            },
           },
         })
       : Promise.resolve(0),
