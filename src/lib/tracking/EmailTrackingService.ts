@@ -9,6 +9,7 @@ export interface RegisterEmailParams {
   subject?: string;
   sourceType: string;
   sourceId?: string;
+  userId?: string;
 }
 
 export class EmailTrackingService {
@@ -25,6 +26,7 @@ export class EmailTrackingService {
         subject: params.subject,
         source_type: params.sourceType,
         source_id: params.sourceId,
+        user_id: params.userId,
         status: "QUEUED",
       }
     });

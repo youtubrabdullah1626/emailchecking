@@ -326,6 +326,7 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
     subject: step.subject,
     sourceType: "SEQUENCE_STEP",
     sourceId: stepId,
+    userId: step.sequence.user_id || undefined,
   });
 
   // Tracking Engine: Only inject pixel if NEXT_PUBLIC_APP_URL is a real public HTTPS URL.

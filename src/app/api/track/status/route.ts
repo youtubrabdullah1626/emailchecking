@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
 
     const idList = Array.from(allQueryIds);
     const seqIdList = Array.from(seqIdToItemMap.keys());
+    const emailList = Array.from(emailToItemMap.keys());
     const statusMap = new Map<string, any>();
     
     // 1. Fetch relevant SequenceSteps
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
         OR: [
           { id: { in: idList } },
           ...(seqIdList.length > 0 ? [{ sequence_id: { in: seqIdList } }] : []),
+          ...(emailList.length > 0 ? [{ sequence: { prospect: { email: { in: emailList } } } }] : []),
         ],
       },
       select: {
@@ -81,13 +83,17 @@ export async function POST(req: NextRequest) {
 
     const realStepIds = sequenceSteps.map(s => s.id);
 
-    // 2. Fetch TrackedEmails for these exact steps
+    // 2. Fetch TrackedEmails for these exact steps and emails
     const trackedEmails = await prisma.trackedEmail.findMany({
       where: {
-        source_id: { in: realStepIds },
+        OR: [
+          ...(realStepIds.length > 0 ? [{ source_id: { in: realStepIds } }] : []),
+          ...(emailList.length > 0 ? [{ recipient_email: { in: emailList } }] : []),
+        ],
       },
       select: {
         source_id: true,
+        recipient_email: true,
         status: true,
         open_count: true,
         click_count: true,
@@ -95,9 +101,19 @@ export async function POST(req: NextRequest) {
         bounced_at: true,
         replied_at: true,
       },
+      orderBy: { created_at: "desc" },
     });
 
-    const trackingByStepId = new Map(trackedEmails.map(t => [t.source_id, t]));
+    const trackingByStepId = new Map(trackedEmails.filter(t => t.source_id).map(t => [t.source_id!, t]));
+    const trackingByEmail = new Map<string, typeof trackedEmails[0]>();
+    for (const t of trackedEmails) {
+      if (t.recipient_email) {
+        const em = t.recipient_email.toLowerCase();
+        if (!trackingByEmail.has(em)) {
+          trackingByEmail.set(em, t);
+        }
+      }
+    }
 
     // 3. Map everything back to the requested queueIds
     for (const step of sequenceSteps) {
@@ -105,7 +121,7 @@ export async function POST(req: NextRequest) {
       const prospectStatus = step.sequence?.prospect?.status;
       const isReplied = prospectStatus === "REPLIED";
       
-      const tracking = trackingByStepId.get(step.id);
+      const tracking = trackingByStepId.get(step.id) || (prospectEmail ? trackingByEmail.get(prospectEmail) : null);
       
       let stepStatus = isReplied ? "REPLIED" : (tracking?.status || step.status);
       if (step.status === "CANCELLED" && isReplied) {
@@ -131,8 +147,6 @@ export async function POST(req: NextRequest) {
         const queueIdsForEmail = emailToItemMap.get(prospectEmail);
         if (queueIdsForEmail) {
           for (const qId of queueIdsForEmail) {
-            // qId looks like campaignId_recordId_s1 or sequenceId_s1
-            // We only want to map if the step number matches!
             const match = qId.match(/_s(\d+)(_|$)/);
             const qStepNum = match ? parseInt(match[1], 10) : null;
             if (qStepNum === step.step_number || !qStepNum) {
@@ -153,6 +167,27 @@ export async function POST(req: NextRequest) {
     const statuses = idList.map((id) => {
       const found = statusMap.get(id);
       if (found) return found;
+
+      // Fallback: match by item recipient email
+      const item = items.find((it) => it.queueId === id);
+      if (item?.email) {
+        const em = item.email.toLowerCase().trim();
+        const emailTrack = trackingByEmail.get(em);
+        if (emailTrack) {
+          const isReplied = emailTrack.status === "REPLIED";
+          const isOpened = emailTrack.status === "OPENED" || emailTrack.open_count > 0;
+          const currentStatus = isReplied ? "REPLIED" : isOpened ? "OPENED" : emailTrack.status;
+          return {
+            stepId: id,
+            status: currentStatus,
+            openCount: emailTrack.open_count || (isOpened ? 1 : 0),
+            clickCount: emailTrack.click_count || 0,
+            lastOpenedAt: emailTrack.last_opened_at?.toISOString() || null,
+            bouncedAt: emailTrack.bounced_at?.toISOString() || null,
+            repliedAt: emailTrack.replied_at?.toISOString() || null,
+          };
+        }
+      }
 
       return {
         stepId: id,
