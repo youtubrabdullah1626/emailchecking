@@ -230,7 +230,7 @@ export function TimelineDetailDrawer({
                   <div className="flex-1 text-xs">
                     <div className="flex items-center justify-between font-semibold text-slate-800 dark:text-slate-200">
                       <span className="flex items-center gap-1.5">
-                        <span>3. Dispatched & Accepted by Gmail</span>
+                        <span>3. Dispatched & Confirmed by Gmail</span>
                         {item.lifecycle.gmailAccepted.latencyMs !== null && (
                           <span className="text-[10px] px-1.5 py-0.2 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 rounded font-mono font-medium">
                             +{formatLatency(item.lifecycle.gmailAccepted.latencyMs)}
@@ -242,7 +242,7 @@ export function TimelineDetailDrawer({
                       </span>
                     </div>
                     <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">
-                      Dispatched from inbox {item.senderEmail}
+                      Gmail server confirmed delivery from {item.senderEmail}
                     </p>
                   </div>
                 </div>

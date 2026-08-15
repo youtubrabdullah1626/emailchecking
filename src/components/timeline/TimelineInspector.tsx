@@ -210,14 +210,14 @@ export function TimelineInspector() {
           </div>
         </div>
 
-        {/* Avg Latency */}
+        {/* Avg Delivery Speed */}
         <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between col-span-2 lg:col-span-1">
           <div>
             <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              API Latency
+              Avg Delivery Speed
             </div>
             <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
-              +{stats.avgLatencyMs}ms
+              {stats.avgLatencyMs < 1000 ? `+${stats.avgLatencyMs}ms` : `+${(stats.avgLatencyMs / 1000).toFixed(1)}s`}
             </div>
           </div>
           <div className="h-8 w-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center">
@@ -316,7 +316,7 @@ export function TimelineInspector() {
                 <th className="py-3 px-3 font-semibold">Step & Subject</th>
                 <th className="py-3 px-3 font-semibold text-center">Scheduled</th>
                 <th className="py-3 px-3 font-semibold text-center">Sent</th>
-                <th className="py-3 px-3 font-semibold text-center">Accepted</th>
+                <th className="py-3 px-3 font-semibold text-center" title="Time taken by Gmail servers to process and confirm delivery">Delivery Speed</th>
                 <th className="py-3 px-3 font-semibold text-center">Opened</th>
                 <th className="py-3 px-3 font-semibold text-center">Replied</th>
                 <th className="py-3 px-4 font-semibold text-right">Action</th>
@@ -408,11 +408,15 @@ export function TimelineInspector() {
                         )}
                       </td>
 
-                      {/* Gmail Accepted */}
+                      {/* Delivery Speed (Gmail Server Confirmation) */}
                       <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         {isAccepted ? (
-                          <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
-                            {formatLatencyClean(item.lifecycle.gmailAccepted.latencyMs)}
+                          <span
+                            title="Time taken by Gmail servers to process and confirm delivery"
+                            className="inline-flex items-center gap-1 font-mono text-[11px] text-slate-600 dark:text-slate-400 bg-slate-100/70 dark:bg-slate-800/70 px-1.5 py-0.5 rounded border border-slate-200/50 dark:border-slate-700/50"
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            <span>{formatLatencyClean(item.lifecycle.gmailAccepted.latencyMs)}</span>
                           </span>
                         ) : isFailed ? (
                           <span className="text-rose-500 font-bold">✕</span>
