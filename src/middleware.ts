@@ -36,6 +36,10 @@ export default withAuth(
         // Always allow public routes
         if (
           pathname.startsWith("/api/auth") ||
+          pathname.startsWith("/api/track") ||
+          pathname.startsWith("/api/webhooks") ||
+          pathname.startsWith("/api/unsubscribe") ||
+          pathname.startsWith("/api/scheduler") ||
           pathname === "/login" ||
           pathname.startsWith("/_next") ||
           pathname === "/favicon.ico"
