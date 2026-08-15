@@ -22,7 +22,8 @@ import {
   History,
   Database,
   MessageSquareHeart,
-  Sparkles
+  Sparkles,
+  Clock
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 
@@ -52,6 +53,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
     { name: "Prospects", href: "/prospects", icon: Users },
     { name: "Sequences", href: "/sequences", icon: Activity },
     { name: "Smart Import", href: "/smart-import", icon: FileUp },
+    { name: "Timeline Inspector", href: "/timeline", icon: Clock },
     { name: "Replies", href: "/replies", icon: MessageSquareReply },
   ];
 
