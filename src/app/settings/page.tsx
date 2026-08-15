@@ -18,7 +18,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, Clock, Cpu, Bell, Key, Zap, User, Globe, Lock, ShieldCheck, CheckCircle2, AlertCircle, Plus, Sparkles } from "lucide-react";
+import { Mail, Clock, Cpu, Bell, Key, Zap, User, Globe, Lock, ShieldCheck, CheckCircle2, AlertCircle, Plus, Sparkles, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TIMEZONE_GROUPS, getTimezoneLabel } from "@/lib/timezones";
 
 // Existing Types
@@ -186,20 +187,56 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex-1 p-8 pt-6">
-      <AnimatedPage className="space-y-6">
-        <PageHeader 
-          title="Settings" 
-          description="Manage your account, API integrations, and platform preferences."
-        />
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+      {/* Signature Silaer Warm Header Banner */}
+      <div className="bg-gradient-to-r from-orange-100/70 via-amber-50/60 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/80 border border-orange-200/80 dark:border-orange-950/40 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-4">
+            <div className="h-11 w-11 rounded-full bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-200/80 dark:border-orange-800/50 shadow-xs">
+              <Zap className="h-5 w-5" />
+            </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-8">
-            <Tabs defaultValue="profile" className="flex flex-col md:flex-row gap-6">
-              <TabsList className="flex flex-col h-auto bg-transparent p-0 space-y-1 md:w-48 lg:w-64">
-                <TabsTrigger value="profile" className="w-full justify-start gap-2 px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20"><User className="h-4 w-4" /> Profile & Timezone</TabsTrigger>
-                <TabsTrigger value="gmail" className="w-full justify-start gap-2 px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20"><Mail className="h-4 w-4" /> Gmail Integration</TabsTrigger>
-              </TabsList>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                  Platform Settings & Inboxes
+                </h1>
+                <TooltipProvider>
+                  <Tooltip delayDuration={200}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center justify-center h-5 w-5 rounded-full bg-orange-100/80 text-orange-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-orange-200 transition-colors cursor-help"
+                      >
+                        <Info className="h-3 w-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" align="center" className="max-w-xs p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl z-50 text-xs">
+                      <p className="font-semibold text-slate-900 dark:text-white mb-1">
+                        Silaer Fleet & Preferences
+                      </p>
+                      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                        Configure connected Google Accounts, sending timezone windows, and deliverability limits.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                Manage your account, rotating Gmail fleet, and operating timezone preferences.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-8">
+          <Tabs defaultValue="profile" className="flex flex-col md:flex-row gap-6">
+            <TabsList className="flex flex-col h-auto bg-transparent p-0 space-y-1 md:w-48 lg:w-64">
+              <TabsTrigger value="profile" className="w-full justify-start gap-2 px-3 py-2.5 rounded-xl data-[state=active]:bg-orange-500/10 data-[state=active]:text-orange-600 border border-transparent data-[state=active]:border-orange-500/20 font-medium text-xs"><User className="h-4 w-4" /> Profile & Timezone</TabsTrigger>
+              <TabsTrigger value="gmail" className="w-full justify-start gap-2 px-3 py-2.5 rounded-xl data-[state=active]:bg-orange-500/10 data-[state=active]:text-orange-600 border border-transparent data-[state=active]:border-orange-500/20 font-medium text-xs"><Mail className="h-4 w-4" /> Gmail Integration</TabsTrigger>
+            </TabsList>
 
               <div className="flex-1 max-w-3xl">
                 <TabsContent value="profile" className="mt-0">
@@ -405,7 +442,6 @@ export default function SettingsPage() {
             </Tabs>
           </form>
         </Form>
-      </AnimatedPage>
     </div>
   );
 }

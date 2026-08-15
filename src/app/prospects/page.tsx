@@ -1,20 +1,12 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { FastLink } from "@/components/ui/fast-link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, formatDistanceToNow } from "date-fns";
-import { LegacyPageHeader as PageHeader } from "@/components/ui/legacy-adapters";
-import {
-  LegacyLoadingState as LoadingState,
-  LegacyErrorState as ErrorState,
-} from "@/components/ui/legacy-adapters";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import {
   Search,
   Plus,
@@ -24,9 +16,16 @@ import {
   Trash,
   ExternalLink,
   Info,
-  History,
   Sparkles,
   AlertTriangle,
+  Users,
+  Download,
+  X,
+  Send,
+  MessageSquareReply,
+  PlayCircle,
+  Clock,
+  ArrowUpRight,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -96,7 +95,26 @@ interface ProspectDetail {
   } | null;
 }
 
-function highlightMatch(text: string, query: string) {
+// Avatar color helper
+const AVATAR_COLORS = [
+  "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200/60",
+  "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200/60",
+  "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/60",
+  "bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200/60",
+  "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200/60",
+  "bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border-sky-200/60",
+];
+
+function getAvatarColor(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[index];
+}
+
+function HighlightMatch({ text, query }: { text: string; query: string }) {
   if (!query.trim() || !text) return <>{text}</>;
   const parts = text.split(new RegExp(`(${query})`, "gi"));
   return (
@@ -105,7 +123,7 @@ function highlightMatch(text: string, query: string) {
         part.toLowerCase() === query.toLowerCase() ? (
           <span
             key={i}
-            className="bg-blue-500/20 text-blue-500 font-bold px-0.5 rounded"
+            className="bg-amber-200/80 dark:bg-amber-500/30 text-amber-950 dark:text-amber-200 font-bold px-0.5 rounded"
           >
             {part}
           </span>
@@ -117,538 +135,589 @@ function highlightMatch(text: string, query: string) {
   );
 }
 
-import { useSearchParams, useRouter } from "next/navigation";
-
-function ProspectsPageContent() {
+export function ProspectsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const campaignIdFilter = searchParams.get("campaign_id");
-  const sourceFilter = searchParams.get("source");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
-  const [prospectToDelete, setProspectToDelete] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "REPLIED" | "NOT_CONTACTED">("ALL");
+  const [prospectToDelete, setProspectToDelete] = useState<{ id: string; name: string } | null>(null);
 
-  const deleteTimers = React.useRef<Record<string, NodeJS.Timeout>>({});
-  const deletedProspectsRef = React.useRef<Record<string, ProspectDetail>>({});
+  // Keyboard shortcut listener (/ or Ctrl+K to search)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.key === "k" && (e.metaKey || e.ctrlKey)) ||
+        (e.key === "/" && document.activeElement !== searchInputRef.current)
+      ) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
-  const { data: campaignsData } = useSWR("/api/campaigns", fetcher);
-  const campaigns = campaignsData?.data || [];
-
-  const { data, error, isLoading, mutate: mutateProspects } = useSWR("/api/prospects", fetcher, {
-    keepPreviousData: true,
+  const { data, error, isLoading } = useSWR<{
+    data: ProspectDetail[];
+    pagination?: { total: number };
+  }>("/api/prospects?limit=500", fetcher, {
+    revalidateOnFocus: true,
+    dedupingInterval: 5000,
   });
 
-  const prospects: ProspectDetail[] = useMemo(
-    () => data?.data || [],
-    [data?.data],
-  );
+  const prospects = data?.data || [];
 
-  const handleDeleteProspect = (id: string, name: string) => {
-    setProspectToDelete({ id, name });
+  // Summary Metrics
+  const stats = useMemo(() => {
+    let active = 0;
+    let replied = 0;
+    let notContacted = 0;
+
+    prospects.forEach((p) => {
+      if (p.status === "REPLIED") replied++;
+      else if (p.sequence?.status === "ACTIVE") active++;
+      else if (!p.sequence || p.status === "ACTIVE") notContacted++;
+    });
+
+    return {
+      total: prospects.length,
+      active,
+      replied,
+      notContacted,
+    };
+  }, [prospects]);
+
+  // Client-side filtering with 0ms instant response
+  const filteredProspects = useMemo(() => {
+    return prospects.filter((p) => {
+      if (statusFilter === "ACTIVE" && p.sequence?.status !== "ACTIVE") return false;
+      if (statusFilter === "REPLIED" && p.status !== "REPLIED") return false;
+      if (statusFilter === "NOT_CONTACTED" && (p.sequence || p.status === "REPLIED")) return false;
+
+      if (search && search.trim()) {
+        const q = search.toLowerCase().trim();
+        const matchName = p.name?.toLowerCase().includes(q);
+        const matchEmail = p.email?.toLowerCase().includes(q);
+        const matchCompany = p.company?.toLowerCase().includes(q);
+        if (!matchName && !matchEmail && !matchCompany) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [prospects, statusFilter, search]);
+
+  // Export to CSV
+  const handleExportCSV = () => {
+    if (filteredProspects.length === 0) {
+      toast.info("No prospects to export");
+      return;
+    }
+
+    const headers = ["Name", "Email", "Company", "Status", "Sequence Status", "Last Activity"];
+    const rows = filteredProspects.map((p) => [
+      `"${(p.name || "").replace(/"/g, '""')}"`,
+      `"${(p.email || "").replace(/"/g, '""')}"`,
+      `"${(p.company || "").replace(/"/g, '""')}"`,
+      `"${p.status}"`,
+      `"${p.sequence?.status || "None"}"`,
+      `"${p.lastActivityAt || p.created_at}"`,
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `prospects_export_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${filteredProspects.length} prospects to CSV`);
   };
 
-  const confirmDeleteProspect = () => {
+  const confirmDeleteProspect = async () => {
     if (!prospectToDelete) return;
     const { id, name } = prospectToDelete;
-    
-    // 1. Close dialog immediately (0ms)
     setProspectToDelete(null);
 
-    // 2. Cache full prospect object for instant 0ms restoration on Undo
-    const targetProspect = prospects.find((p) => p.id === id);
-    if (targetProspect) {
-      deletedProspectsRef.current[id] = targetProspect;
-    }
-
-    // 3. Clear any existing timer
-    if (deleteTimers.current[id]) {
-      clearTimeout(deleteTimers.current[id]);
-    }
-
-    // 4. Instantly mark as deleted in local state for 0ms reactive animation
-    setDeletedIds((prev) => new Set(prev).add(id));
-
-    // 5. Instantly update SWR cache without page reload
-    mutateProspects(
-      (current: any) => {
-        if (!current?.data) return current;
-        return {
-          ...current,
-          data: current.data.filter((p: any) => p.id !== id),
-        };
+    // Optimistic delete
+    mutate(
+      "/api/prospects?limit=500",
+      {
+        ...data,
+        data: prospects.filter((p) => p.id !== id),
       },
       false
     );
 
-    // 6. Schedule server deletion after 6-second grace window
-    const timer = setTimeout(async () => {
-      delete deleteTimers.current[id];
-      delete deletedProspectsRef.current[id];
-      try {
-        const res = await fetch(`/api/prospects/${id}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to delete prospect on server");
-        mutateProspects();
-        mutate("/api/dashboard/stats");
-        mutate("/api/replies");
-      } catch (err: any) {
-        toast.error(err.message || "Failed to delete prospect on server");
-      }
-    }, 6000);
-
-    deleteTimers.current[id] = timer;
-
-    // 7. Show instant toast with 1-click Undo
-    toast.success(`Prospect "${name}" deleted`, {
-      action: {
-        label: "Undo",
-        onClick: () => {
-          // Cancel server deletion immediately!
-          if (deleteTimers.current[id]) {
-            clearTimeout(deleteTimers.current[id]);
-            delete deleteTimers.current[id];
-          }
-
-          const restored = deletedProspectsRef.current[id];
-          delete deletedProspectsRef.current[id];
-
-          // Instantly bring row back into UI (0ms)
-          setDeletedIds((prev) => {
-            const next = new Set(prev);
-            next.delete(id);
-            return next;
-          });
-
-          // Inject directly back into SWR cache in 0ms without server fetch delay
-          if (restored) {
-            mutateProspects(
-              (current: any) => {
-                if (!current?.data) return current;
-                const exists = current.data.some((p: any) => p.id === id);
-                if (exists) return current;
-                return {
-                  ...current,
-                  data: [restored, ...current.data],
-                };
-              },
-              false
-            );
-          } else {
-            mutateProspects();
-          }
-
-          toast.info(`Prospect "${name}" restored`);
-        },
-      },
-      duration: 5500,
-    });
+    try {
+      const res = await fetch(`/api/prospects/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete prospect");
+      toast.success(`Prospect "${name}" deleted`);
+      mutate("/api/prospects?limit=500");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete prospect");
+      mutate("/api/prospects?limit=500");
+    }
   };
 
-  const filteredProspects = useMemo(() => {
-    return prospects.filter((p) => {
-      // 0. Filter out optimistically deleted
-      if (deletedIds.has(p.id)) return false;
-
-      // 0.1 Campaign Filter
-      if (campaignIdFilter && p.campaign?.id !== campaignIdFilter) {
-        return false;
-      }
-
-      // 0.5. Source Filter
-      const isSmartImport = p.source === "SMART_IMPORT" || !!p.campaign;
-      
-      if (sourceFilter === "smart_import") {
-        // When toggle is ON: Show ONLY Smart Imports
-        if (!isSmartImport) return false;
-      } else {
-        // When toggle is OFF: Show ONLY Manual (Hide Smart Imports)
-        if (isSmartImport) return false;
-      }
-
-      // 1. Status Filter
-      if (statusFilter !== "ALL" && p.status !== statusFilter) {
-        return false;
-      }
-
-      // 2. Search Filter
-      const q = search.toLowerCase().trim();
-      return (
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.email.toLowerCase().includes(q) ||
-        (p.company || "").toLowerCase().includes(q)
-      );
-    });
-  }, [prospects, search, statusFilter, campaignIdFilter, sourceFilter, deletedIds]);
-
-  const total = filteredProspects.length;
-
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6 h-full flex flex-col">
-      <div className="space-y-4">
-
-        <PageHeader
-          title={
-            <div className="flex items-center gap-2.5">
-              Prospects
-              <TooltipProvider>
-                <Tooltip delayDuration={200}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex items-center justify-center h-6 w-6 rounded-full bg-muted/50 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors focus:outline-none cursor-help mt-1"
-                    >
-                      <Info className="h-3.5 w-3.5" strokeWidth={2.5} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="right"
-                    align="center"
-                    className="max-w-[280px] p-4 bg-white border border-slate-200 shadow-xl rounded-xl z-50"
-                  >
-                    <p className="font-semibold text-slate-900 mb-2">
-                      What is a Prospect?
-                    </p>
-                    <div className="text-slate-600 text-xs leading-relaxed space-y-2">
-                      <p>A prospect is anyone you want to contact.</p>
-                      <p>
-                        Add them here, and the Smart Engine will automatically
-                        handle all emails and follow-ups. ⚡
-                      </p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+      {/* 1. Warm Silaer Signature Header */}
+      <div className="bg-gradient-to-r from-orange-100/70 via-amber-50/60 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/80 border border-orange-200/80 dark:border-orange-950/40 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-4">
+            <div className="h-11 w-11 rounded-full bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-200/80 dark:border-orange-800/50 shadow-xs">
+              <Users className="h-5 w-5" />
             </div>
-          }
-          description="Manage your contacts and their sequence status."
-          actions={
-            <>
-              <div className="flex items-center space-x-2 border rounded-md px-3 py-1.5 bg-card">
-                <Switch
-                  id="smart-import-mode"
-                  checked={sourceFilter === "smart_import" || !!campaignIdFilter}
-                  onCheckedChange={(checked) => {
-                    router.push(
-                      checked
-                        ? "/prospects?source=smart_import"
-                        : "/prospects"
-                    );
-                  }}
-                />
-                <Label htmlFor="smart-import-mode" className="text-sm cursor-pointer select-none">
-                  Smart Imports Only
-                </Label>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                  Prospect Directory
+                </h1>
+                <TooltipProvider>
+                  <Tooltip delayDuration={200}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center justify-center h-5 w-5 rounded-full bg-orange-100/80 text-orange-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-orange-200 transition-colors cursor-help"
+                      >
+                        <Info className="h-3 w-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" align="center" className="max-w-xs p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl z-50 text-xs">
+                      <p className="font-semibold text-slate-900 dark:text-white mb-1">
+                        Prospect Lead Dossier
+                      </p>
+                      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                        Manage your outreach contacts, track email lifecycle status, and launch sequences.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <Filter className="h-4 w-4" />
-                    {statusFilter === "ALL"
-                      ? "Status"
-                      : statusFilter.charAt(0) +
-                        statusFilter.slice(1).toLowerCase()}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuCheckboxItem
-                    checked={statusFilter === "ALL"}
-                    onCheckedChange={() => setStatusFilter("ALL")}
-                  >
-                    All Statuses
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={statusFilter === "ACTIVE"}
-                    onCheckedChange={() => setStatusFilter("ACTIVE")}
-                  >
-                    Active
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={statusFilter === "REPLIED"}
-                    onCheckedChange={() => setStatusFilter("REPLIED")}
-                  >
-                    Replied
-                  </DropdownMenuCheckboxItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button className="gap-2" asChild>
-                <FastLink href="/prospects/new">
-                  <Plus className="h-4 w-4" />
-                  Add Prospect
-                </FastLink>
-              </Button>
-            </>
-          }
-        />
+              <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                Manage your prospects, track active engagement, and launch outreach campaigns.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              className="gap-1.5 rounded-xl border-orange-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900 text-slate-700 dark:text-slate-300 shadow-2xs hover:bg-orange-50/50"
+            >
+              <Download className="h-3.5 w-3.5 text-orange-600" />
+              <span className="hidden sm:inline text-xs font-medium">Export CSV</span>
+            </Button>
+
+            <Button className="gap-2 bg-orange-600 hover:bg-orange-700 text-white shadow-xs rounded-xl" asChild>
+              <FastLink href="/prospects/new">
+                <Plus className="h-4 w-4" />
+                <span>Add Prospect</span>
+              </FastLink>
+            </Button>
+          </div>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="relative w-[300px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search name, email, or company..."
-            className="pl-9 bg-card"
+      {/* 2. Metric Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Total Prospects */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Total Prospects
+            </div>
+            <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
+              {stats.total}
+            </div>
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+            <Users className="h-4 w-4" />
+          </div>
+        </div>
+
+        {/* In Active Sequences */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Active Outreach
+            </div>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
+                {stats.active}
+              </span>
+              <span className="text-[11px] text-emerald-600 font-semibold">in sequence</span>
+            </div>
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <PlayCircle className="h-4 w-4" />
+          </div>
+        </div>
+
+        {/* Replied */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Replied
+            </div>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
+                {stats.replied}
+              </span>
+              <span className="text-[11px] text-indigo-600 font-semibold">engaged</span>
+            </div>
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <MessageSquareReply className="h-4 w-4" />
+          </div>
+        </div>
+
+        {/* Not Contacted */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Ready to Outreach
+            </div>
+            <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
+              {stats.notContacted}
+            </div>
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+            <Send className="h-4 w-4" />
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Toolbar: Search & Segmented Filter Tabs */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Search */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            autoComplete="off"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, email, or company... (Press / to search)"
+            className="w-full pl-9 pr-12 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-xs"
           />
+          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {search ? (
+              <button
+                onClick={() => setSearch("")}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : (
+              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700">
+                /
+              </kbd>
+            )}
+          </div>
         </div>
-        <div className="text-sm text-muted-foreground">
-          {total} prospect{total !== 1 ? "s" : ""}
+
+        {/* Filter Tabs with Live Item Counts */}
+        <div className="inline-flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
+          {[
+            { key: "ALL", label: "All", count: stats.total },
+            { key: "ACTIVE", label: "Active", count: stats.active },
+            { key: "REPLIED", label: "Replied", count: stats.replied },
+            { key: "NOT_CONTACTED", label: "Not Contacted", count: stats.notContacted },
+          ].map((tab) => {
+            const isActive = statusFilter === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setStatusFilter(tab.key as any)}
+                className={`px-3 py-1.5 rounded-lg font-medium text-[11px] flex items-center gap-1.5 transition-all ${
+                  isActive
+                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-semibold"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`text-[10px] px-1 py-0.2 rounded-full ${
+                    isActive
+                      ? "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold"
+                      : "bg-slate-200/60 dark:bg-slate-800 text-slate-400"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden border-border/50">
-        <CardContent className="p-0 flex-1 flex flex-col h-full overflow-hidden">
-          {error ? (
-            <div className="flex-1 flex items-center justify-center p-8">
-              <ErrorState
-                title="Failed to load prospects"
-                message={
-                  typeof error === "string" ? error : "An error occurred"
-                }
-                onRetry={() => window.location.reload()}
-              />
-            </div>
-          ) : isLoading && prospects.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center p-8">
-              <LoadingState message="Loading prospects..." />
-            </div>
-          ) : (
-            <div className="flex-1 overflow-auto bg-card relative">
-              {filteredProspects.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center p-12 text-center">
-                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
-                    <Search className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-medium text-foreground mb-1">
-                    No prospects found
-                  </h3>
-                  <p className="text-sm text-muted-foreground max-w-sm mb-6">
-                    {search
-                      ? "No prospects match your search criteria. Try a different term."
-                      : "You haven't added any prospects yet."}
-                  </p>
-                  {!search && (
-                    <Button asChild>
-                      <FastLink href="/prospects/new">
-                        Add Your First Prospect
-                      </FastLink>
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader className="bg-muted/50">
-                      <TableRow>
-                        <TableHead className="w-[300px]">Prospect</TableHead>
-                        <TableHead>Company</TableHead>
-                        <TableHead>Source</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Sequence</TableHead>
-                        <TableHead>Last Activity</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <AnimatePresence initial={false}>
-                        {filteredProspects.map((prospect) => {
-                          let sequenceBadgeStatus = "none";
-                          let sequenceLabel = "None";
+      {/* 4. Table */}
+      {isLoading && prospects.length === 0 ? (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3">
+          {Array.from({ length: 5 }).map((_, idx) => (
+            <div key={idx} className="h-16 bg-slate-100 dark:bg-slate-800/60 rounded-xl animate-pulse" />
+          ))}
+        </div>
+      ) : filteredProspects.length === 0 ? (
+        <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="h-12 w-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mx-auto mb-3">
+            <Users className="h-6 w-6" />
+          </div>
+          <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">
+            {search ? `No prospects match "${search}"` : "No prospects found in this view"}
+          </h3>
+          <p className="text-slate-500 dark:text-slate-400 text-xs max-w-sm mx-auto mb-5">
+            {search ? "Try adjusting your search query." : "Add contacts manually or import a CSV file to launch outreach."}
+          </p>
+          <Button className="bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs" asChild>
+            <FastLink href="/prospects/new">Add Your First Prospect</FastLink>
+          </Button>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-slate-50/90 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-[11px] uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
+                <TableRow>
+                  <TableHead className="w-[300px] py-3 px-4">Prospect</TableHead>
+                  <TableHead className="w-[180px] py-3 px-3">Company</TableHead>
+                  <TableHead className="w-[140px] py-3 px-3">Source</TableHead>
+                  <TableHead className="w-[140px] py-3 px-3">Status</TableHead>
+                  <TableHead className="w-[160px] py-3 px-3">Sequence</TableHead>
+                  <TableHead className="w-[140px] py-3 px-3">Last Activity</TableHead>
+                  <TableHead className="text-right w-[80px] py-3 px-4">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                <AnimatePresence initial={false}>
+                  {filteredProspects.map((prospect) => {
+                    const avatarStyle = getAvatarColor(prospect.email || prospect.id);
+                    const cleanCompany =
+                      prospect.company &&
+                      prospect.company.toLowerCase() !== "unknown" &&
+                      prospect.company.toLowerCase() !== "null"
+                        ? prospect.company
+                        : "—";
 
-                          if (prospect.sequence) {
-                            if (prospect.sequence.status === "ACTIVE") {
-                              sequenceBadgeStatus = "active";
-                              sequenceLabel = "Active";
-                            } else if (prospect.sequence.status === "STOPPED") {
-                              sequenceBadgeStatus = "error";
-                              sequenceLabel = "Stopped";
-                            } else if (prospect.sequence.status === "COMPLETED") {
-                              sequenceBadgeStatus = "completed";
-                              sequenceLabel = "Completed";
-                            } else {
-                              sequenceBadgeStatus = "scheduled";
-                              sequenceLabel = "Scheduled";
-                            }
-                          }
+                    let sequenceBadge = null;
+                    if (prospect.sequence) {
+                      if (prospect.sequence.status === "ACTIVE") {
+                        sequenceBadge = (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] border border-emerald-200/60">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Active
+                          </span>
+                        );
+                      } else if (prospect.sequence.status === "COMPLETED") {
+                        sequenceBadge = (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold text-[10px] border border-indigo-200/60">
+                            Completed
+                          </span>
+                        );
+                      } else {
+                        sequenceBadge = (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-semibold text-[10px] border border-amber-200/60">
+                            Paused
+                          </span>
+                        );
+                      }
+                    } else {
+                      sequenceBadge = (
+                        <span className="text-[11px] text-slate-400 font-medium">None</span>
+                      );
+                    }
 
-                          const lastActivity =
-                            prospect.lastActivityAt || prospect.created_at;
+                    const lastActivity = prospect.lastActivityAt || prospect.created_at;
 
-                          let prospectBadgeStatus = "none";
-                          let displayStatus = "Active";
-
-                          if (prospect.status === "REPLIED") {
-                            prospectBadgeStatus = "completed";
-                            displayStatus = "Replied";
-                          } else if (prospect.status === "STOPPED") {
-                            prospectBadgeStatus = "stopped";
-                            displayStatus = "Stopped";
-                          } else if (prospect.status === "COMPLETED") {
-                            prospectBadgeStatus = "completed";
-                            displayStatus = "Completed";
-                          } else {
-                            // ACTIVE
-                            if (!prospect.sequence) {
-                              prospectBadgeStatus = "pending";
-                              displayStatus = "Not Started";
-                            } else {
-                              prospectBadgeStatus = "active";
-                              displayStatus = "Active";
-                            }
-                          }
-
-                          return (
-                            <motion.tr
-                              key={prospect.id}
-                              layout
-                              initial={{ opacity: 0, scale: 0.98, y: -6 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ 
-                                opacity: 0, 
-                                scale: 0.96, 
-                                x: -24, 
-                                transition: { duration: 0.22, ease: "easeOut" } 
-                              }}
-                              transition={{ 
-                                type: "spring", 
-                                stiffness: 450, 
-                                damping: 32, 
-                                mass: 0.8 
-                              }}
-                              className="group cursor-default hover:bg-muted/30 border-b transition-colors"
+                    return (
+                      <motion.tr
+                        key={prospect.id}
+                        layout
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                        transition={{ duration: 0.15 }}
+                        onClick={() => router.push(`/prospects/${prospect.id}`)}
+                        className="group cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                      >
+                        {/* Prospect Name & Email */}
+                        <TableCell className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`h-9 w-9 rounded-xl font-bold text-xs flex items-center justify-center shrink-0 border shadow-2xs ${avatarStyle}`}
                             >
-                              <TableCell>
-                                <div className="flex items-center gap-3">
-                                  <Avatar className="h-9 w-9 border border-border shadow-sm group-hover:scale-105 transition-transform">
-                                    <AvatarFallback className="bg-primary/5 text-primary text-xs font-medium">
-                                      {prospect.name
-                                        .split(" ")
-                                        .map((n) => n[0])
-                                        .join("")
-                                        .substring(0, 2)
-                                        .toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex flex-col">
-                                    <span className="font-medium text-foreground">
-                                      {highlightMatch(prospect.name, search)}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {highlightMatch(prospect.email, search)}
-                                    </span>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {highlightMatch(prospect.company || "—", search)}
-                              </TableCell>
-                              <TableCell>
-                                {(prospect.campaign || prospect.source === "SMART_IMPORT") ? (
-                                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50/80 border border-indigo-100/50 text-indigo-600 text-[11px] font-medium tracking-tight whitespace-nowrap">
-                                    <Sparkles className="h-3 w-3 text-indigo-500" />
-                                    Smart Import
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground text-xs font-medium">Manual</span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <StatusBadge
-                                  status={prospectBadgeStatus as any}
-                                  label={displayStatus}
-                                  dot
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <StatusBadge
-                                  status={sequenceBadgeStatus as any}
-                                  label={sequenceLabel}
-                                />
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {lastActivity
-                                  ? format(new Date(lastActivity), "MMM d, yyyy")
-                                  : "Never"}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                      <span className="sr-only">Open menu</span>
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem asChild>
-                                      <FastLink
-                                        href={`/prospects/${prospect.id}`}
-                                        className="cursor-pointer"
-                                      >
-                                        <ExternalLink className="mr-2 h-4 w-4" />
-                                        View Profile
-                                      </FastLink>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        handleDeleteProspect(
-                                          prospect.id,
-                                          prospect.name,
-                                        )
-                                      }
-                                      className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
-                                    >
-                                      <Trash className="mr-2 h-4 w-4" />
-                                      Delete Prospect
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </TableCell>
-                            </motion.tr>
-                          );
-                        })}
-                      </AnimatePresence>
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                              {prospect.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .substring(0, 2)
+                                .toUpperCase() || "P"}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-semibold text-sm text-slate-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors truncate max-w-xs">
+                                <HighlightMatch text={prospect.name} query={search} />
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-xs">
+                                <HighlightMatch text={prospect.email} query={search} />
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
 
+                        {/* Company */}
+                        <TableCell className="py-3 px-3 text-xs text-slate-600 dark:text-slate-300">
+                          <HighlightMatch text={cleanCompany} query={search} />
+                        </TableCell>
+
+                        {/* Source */}
+                        <TableCell className="py-3 px-3">
+                          {prospect.campaign || prospect.source === "SMART_IMPORT" ? (
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 text-indigo-600 dark:text-indigo-400 text-[10px] font-semibold">
+                              <Sparkles className="h-3 w-3" />
+                              Smart Import
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-xs font-medium">Manual</span>
+                          )}
+                        </TableCell>
+
+                        {/* Status */}
+                        <TableCell className="py-3 px-3">
+                          {prospect.status === "REPLIED" ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold text-[10px] border border-indigo-200/60">
+                              <MessageSquareReply className="h-3 w-3 text-indigo-600" />
+                              Replied
+                            </span>
+                          ) : prospect.sequence ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] border border-emerald-200/60">
+                              Active
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-[10px]">
+                              Not Started
+                            </span>
+                          )}
+                        </TableCell>
+
+                        {/* Sequence */}
+                        <TableCell className="py-3 px-3">
+                          {sequenceBadge}
+                        </TableCell>
+
+                        {/* Last Activity */}
+                        <TableCell className="py-3 px-3 text-xs text-slate-500 dark:text-slate-400">
+                          {lastActivity ? format(new Date(lastActivity), "MMM d, yyyy") : "Never"}
+                        </TableCell>
+
+                        {/* Actions */}
+                        <TableCell className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 text-xs font-medium"
+                              asChild
+                            >
+                              <FastLink href={`/prospects/${prospect.id}`}>
+                                <ArrowUpRight className="h-3.5 w-3.5" />
+                              </FastLink>
+                            </Button>
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-lg">
+                                <DropdownMenuItem asChild>
+                                  <FastLink href={`/prospects/${prospect.id}`} className="cursor-pointer">
+                                    <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                                    View Dossier
+                                  </FastLink>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <FastLink href={`/prospects/${prospect.id}/sequence`} className="cursor-pointer">
+                                    <PlayCircle className="mr-2 h-3.5 w-3.5" />
+                                    Manage Sequence
+                                  </FastLink>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setProspectToDelete({
+                                      id: prospect.id,
+                                      name: prospect.name || "Prospect",
+                                    })
+                                  }
+                                  className="text-rose-600 focus:bg-rose-50 focus:text-rose-700 cursor-pointer"
+                                >
+                                  <Trash className="mr-2 h-3.5 w-3.5" />
+                                  Delete Prospect
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </motion.tr>
+                    );
+                  })}
+                </AnimatePresence>
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Footer Bar */}
+          <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 flex items-center justify-between text-[11px] text-slate-400">
+            <span>
+              Showing <strong className="text-slate-700 dark:text-slate-200">{filteredProspects.length}</strong> of {prospects.length} prospects
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span>Prospect Directory Synced</span>
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Alert Dialog */}
       <AlertDialog
         open={!!prospectToDelete}
         onOpenChange={(open) => !open && setProspectToDelete(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader className="sm:flex-row sm:items-start gap-4 space-y-0 text-left">
-            <div className="mx-auto sm:mx-0 h-12 w-12 rounded-2xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 ring-8 ring-red-500/5">
+            <div className="mx-auto sm:mx-0 h-12 w-12 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
               <AlertTriangle className="h-6 w-6 stroke-[2.2]" />
             </div>
             <div className="space-y-1.5 flex-1 text-center sm:text-left">
-              <AlertDialogTitle className="text-lg font-bold text-foreground">
+              <AlertDialogTitle className="text-lg font-bold text-slate-900 dark:text-white">
                 Delete Prospect
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed">
-                Are you sure you want to delete <span className="font-semibold text-foreground">{prospectToDelete?.name}</span>? All their sequence history, activity logs, and replies will be safely removed.
+              <AlertDialogDescription className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                Are you sure you want to delete <span className="font-semibold text-slate-800 dark:text-slate-200">{prospectToDelete?.name}</span>? All their sequence history, activity logs, and email records will be removed.
               </AlertDialogDescription>
             </div>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-2 sm:mt-0 gap-2.5">
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="mt-2 sm:mt-0 gap-2">
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteProspect}
-              className="bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-500/20"
+              className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl"
             >
               Delete Prospect
             </AlertDialogAction>
@@ -663,7 +732,7 @@ import { Suspense } from "react";
 
 export default function ProspectsPage() {
   return (
-    <Suspense fallback={<div className="p-8">Loading Prospects...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-sm text-slate-400">Loading Prospects...</div>}>
       <ProspectsPageContent />
     </Suspense>
   );

@@ -55,6 +55,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
     { name: "Smart Import", href: "/smart-import", icon: FileUp },
     { name: "Timeline Inspector", href: "/timeline", icon: Clock },
     { name: "Replies", href: "/replies", icon: MessageSquareReply },
+    { name: "Settings", href: "/settings", icon: Settings },
   ];
 
   const adminNavigation = [
