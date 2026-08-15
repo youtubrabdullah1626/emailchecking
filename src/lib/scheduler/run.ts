@@ -104,7 +104,7 @@ export async function runScheduler(
     const startOfHour = getStartOfHour(now);
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    const [sentToday, sentThisHour, sentLast24h] = await Promise.all([
+    const [sentToday, sentThisHour, sentLast24h, userInboxes] = await Promise.all([
       prisma.emailEvent.count({
         where: {
           event_type: "SENT",
@@ -126,12 +126,34 @@ export async function runScheduler(
           step: { sequence: { user_id: userId } },
         },
       }),
+      prisma.emailAccount.findMany({
+        where: { user_id: userId, connection_status: "CONNECTED" },
+        select: { created_at: true, warmup_status: true, daily_limit: true },
+      }),
     ]);
+
+    let dynamicUserDailyLimit = 0;
+    if (userInboxes && userInboxes.length > 0) {
+      for (const acc of userInboxes) {
+        const created = acc.created_at || now;
+        const ageInDays = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+        const baseLimit = acc.daily_limit && acc.daily_limit <= 100 ? acc.daily_limit : 50;
+        if (acc.warmup_status === "COMPLETED" || ageInDays >= 7) {
+          dynamicUserDailyLimit += baseLimit;
+        } else if (ageInDays <= 2) {
+          dynamicUserDailyLimit += Math.min(baseLimit, 10);
+        } else {
+          dynamicUserDailyLimit += Math.min(baseLimit, 25);
+        }
+      }
+    } else {
+      dynamicUserDailyLimit = maxDaily;
+    }
 
     const state: UserCapacityState = {
       timezone: tz,
-      dailyLimit: maxDaily,
-      hourlyLimit: maxHourly,
+      dailyLimit: dynamicUserDailyLimit,
+      hourlyLimit: userInboxes && userInboxes.length > 0 ? userInboxes.length * 15 : maxHourly,
       claimedThisRun: 0,
       sentToday,
       sentThisHour,

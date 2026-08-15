@@ -56,6 +56,7 @@ interface ActiveThread {
   prospectName: string;
   prospectEmail: string;
   userId: string;
+  assignedSenderEmail?: string | null;
   ourMessageIds: Set<string>;
 }
 
@@ -170,37 +171,41 @@ export async function scanForReplies(): Promise<ScanResult> {
       continue;
     }
 
-    // Create a correctly scoped OAuth client for this specific Gmail account.
-    // createOAuth2ClientForAccount() reads the refresh_token from EmailAccount
-    // in the DB — not from the global env var. This is the core multi-tenant fix.
-    let auth: any;
-    try {
-      const { createOAuth2ClientForAccount } = await import("@/lib/gmail/oauth");
-      auth = await createOAuth2ClientForAccount(emailAccount.email);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "OAuth error";
-      replyLog("reply_scan_error", {
-        userId,
-        accountEmail: emailAccount.email,
-        detail: `Failed to create OAuth client: ${msg}`,
-      });
-      for (const thread of userThreads) {
+    // Per-account OAuth client cache for this user (supports multiple rotating inboxes)
+    const { createOAuth2ClientForAccount } = await import("@/lib/gmail/oauth");
+    const authClients = new Map<string, any>();
+
+    const getAuthForEmail = async (email: string) => {
+      const normalized = email.toLowerCase();
+      if (authClients.has(normalized)) return authClients.get(normalized);
+      const client = await createOAuth2ClientForAccount(normalized);
+      authClients.set(normalized, client);
+      return client;
+    };
+
+    // Scan each thread for this user using the thread's assigned sender account auth
+    for (const thread of userThreads) {
+      const targetSender = (thread.assignedSenderEmail || emailAccount.email).toLowerCase();
+      try {
+        const auth = await getAuthForEmail(targetSender);
+        const result = await scanThread(thread, targetSender, auth);
+        results.push(result);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "OAuth error";
+        replyLog("reply_scan_error", {
+          userId,
+          accountEmail: targetSender,
+          detail: `Failed to authenticate sender ${targetSender} for thread ${thread.gmailThreadId}: ${msg}`,
+        });
         results.push({
           sequenceId: thread.sequenceId,
           prospectId: thread.prospectId,
           prospectName: thread.prospectName,
           gmailThreadId: thread.gmailThreadId,
           outcome: "ERROR",
-          detail: `OAuth client error for account ${emailAccount.email}: ${msg}`,
+          detail: `OAuth client error for account ${targetSender}: ${msg}`,
         });
       }
-      continue;
-    }
-
-    // Scan each thread for this user using their correct account's auth
-    for (const thread of userThreads) {
-      const result = await scanThread(thread, emailAccount.email, auth);
-      results.push(result);
     }
   }
 
@@ -446,6 +451,7 @@ async function loadActiveThreads(): Promise<ActiveThread[]> {
     select: {
       id: true,
       user_id: true,
+      assigned_sender_email: true,
       prospect: {
         select: {
           id: true,
@@ -484,6 +490,7 @@ async function loadActiveThreads(): Promise<ActiveThread[]> {
         prospectName: s.prospect.name,
         prospectEmail: s.prospect.email,
         userId: s.user_id,
+        assignedSenderEmail: s.assigned_sender_email,
         ourMessageIds,
       });
     }
