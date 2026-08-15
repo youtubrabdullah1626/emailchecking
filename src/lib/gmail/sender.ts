@@ -95,12 +95,11 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
   let connectedAccount: any = null;
   const assignedEmail = step.sequence.assigned_sender_email;
 
-  if (assignedEmail) {
-    // 1. Thread Continuity (Sticky Sender): Use the locked sender for Step 2+
+  // 1. Thread Continuity (Sticky Sender): ONLY for follow-ups (Step 2+)
+  if (assignedEmail && step.step_number > 1) {
     connectedAccount = await prisma.emailAccount.findFirst({
       where: { 
         email: assignedEmail.toLowerCase(),
-        user_id: step.sequence.user_id,
         connection_status: "CONNECTED",
       },
     });
@@ -114,39 +113,73 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
     }
   }
 
-  // 2. Step 1 (Fresh sequence) or Fallback: Load-balance across all active inboxes for this user
+  // 2. Step 1 (Fresh sequence) or Fallback: Live load-balance across all active inboxes
   if (!connectedAccount) {
     if (prisma.emailAccount?.findMany) {
-      const activeInboxes = await prisma.emailAccount.findMany({
+      let activeInboxes = await prisma.emailAccount.findMany({
         where: { 
           connection_status: "CONNECTED",
-          user_id: step.sequence.user_id,
+          ...(step.sequence.user_id ? { user_id: step.sequence.user_id } : {}),
         },
-        orderBy: [
-          { health_score: "desc" },
-          { sent_today: "asc" },
-          { last_seen_at: "asc" },
-        ],
       });
 
+      if (!activeInboxes || activeInboxes.length === 0) {
+        activeInboxes = await prisma.emailAccount.findMany({
+          where: { connection_status: "CONNECTED" },
+        });
+      }
+
       if (activeInboxes && activeInboxes.length > 0) {
-        connectedAccount = activeInboxes[0];
+        const startOfDay = new Date();
+        startOfDay.setUTCHours(0, 0, 0, 0);
+
+        // Count today's sent emails per inbox for live round-robin load balancing
+        const inboxesWithCounts = await Promise.all(
+          activeInboxes.map(async (acc) => {
+            const count = await prisma.emailEvent.count({
+              where: {
+                event_type: "SENT",
+                occurred_at: { gte: startOfDay },
+                step: {
+                  sequence: {
+                    assigned_sender_email: acc.email.toLowerCase(),
+                  },
+                },
+              },
+            }).catch(() => acc.sent_today || 0);
+
+            return {
+              account: acc,
+              sentCount: count,
+              lastSeen: acc.last_seen_at ? new Date(acc.last_seen_at).getTime() : 0,
+            };
+          })
+        );
+
+        // Sort by:
+        // 1. Least sent today (primary load balance)
+        // 2. Oldest last_seen_at (secondary alternation)
+        inboxesWithCounts.sort((a, b) => {
+          if (a.sentCount !== b.sentCount) return a.sentCount - b.sentCount;
+          return a.lastSeen - b.lastSeen;
+        });
+
+        connectedAccount = inboxesWithCounts[0].account;
       }
     } else if (prisma.emailAccount?.findFirst) {
       connectedAccount = await prisma.emailAccount.findFirst({
         where: { 
           connection_status: "CONNECTED",
-          user_id: step.sequence.user_id 
         },
         orderBy: { updated_at: "desc" }
       });
     }
 
     // Lock this sequence to the selected inbox for unbroken future thread continuity
-    if (!assignedEmail && connectedAccount && prisma.sequence?.update) {
+    if (connectedAccount && prisma.sequence?.update) {
       await prisma.sequence.update({
         where: { id: step.sequence.id },
-        data: { assigned_sender_email: connectedAccount.email },
+        data: { assigned_sender_email: connectedAccount.email.toLowerCase() },
       }).catch((err) => {
         gmailLog("gmail_sticky_lock_failed", {
           sequenceId: step.sequence.id,
