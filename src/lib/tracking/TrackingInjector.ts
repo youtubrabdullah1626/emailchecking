@@ -35,7 +35,7 @@ export class TrackingInjector {
     const cleanBase = baseUrl.replace(/\/+$/, "");
     const pixelUrl = `${cleanBase}/api/track/${trackingId}`;
     
-    // Safe structurally benign pixel without hidden spam signatures
-    return `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none;width:1px;height:1px;border:0;" />`;
+    // Standard 1x1 tracking pixel compatible with Gmail Google Image Proxy
+    return `<img src="${pixelUrl}" width="1" height="1" border="0" alt="" style="display:block;width:1px;min-width:1px;height:1px;min-height:1px;border:0;outline:none;" />`;
   }
 }
