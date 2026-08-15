@@ -125,7 +125,7 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
         orderBy: [
           { health_score: "desc" },
           { sent_today: "asc" },
-          { updated_at: "desc" },
+          { last_seen_at: "asc" },
         ],
       });
 
@@ -436,7 +436,8 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
     stepId,
     gmailMessageId,
     gmailThreadId,
-    step
+    step,
+    senderEmail
   );
 
   if (!dbUpdateSuccess) {
@@ -608,7 +609,8 @@ async function markStepSent(
   stepId: string,
   gmailMessageId: string,
   gmailThreadId: string,
-  step: StepForSend
+  step: StepForSend,
+  senderEmail?: string
 ): Promise<boolean> {
   const MAX_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -630,6 +632,16 @@ async function markStepSent(
             metadata: { gmailMessageId, gmailThreadId },
           },
         });
+        if (senderEmail && tx.emailAccount?.update) {
+          await tx.emailAccount.update({
+            where: { email: senderEmail.toLowerCase() },
+            data: {
+              sent_today: { increment: 1 },
+              sent_this_hour: { increment: 1 },
+              last_seen_at: new Date(),
+            },
+          }).catch(() => {});
+        }
       });
       return true;
     } catch (err) {
