@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
       throw new Error(result.detail || "Failed to send email via backend engine");
     }
 
-    return NextResponse.json({ ok: true, messageId, threadId });
+    return NextResponse.json({ ok: true, messageId, threadId, stepId: step.id, sequenceId: sequence.id });
   } catch (err: any) {
     console.error("send-demo error", err);
     return NextResponse.json({ error: err.message || "Failed to send email" }, { status: 500 });

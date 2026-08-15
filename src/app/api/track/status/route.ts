@@ -3,9 +3,11 @@ import prisma from "@/lib/prisma";
 
 interface TrackItemQuery {
   queueId: string;
+  stepId?: string;
   email?: string;
   importSequenceId?: string;
   stepNumber?: number;
+  liveStatus?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -167,11 +169,25 @@ export async function POST(req: NextRequest) {
 
     // 4. Build Final Resolution
     const statuses = idList.map((id) => {
+      const item = items.find((it) => it.queueId === id);
+
+      // If the client item is still SCHEDULED or PROCESSING, do NOT override with historical tracking
+      if (item?.liveStatus === "SCHEDULED" || item?.liveStatus === "PROCESSING") {
+        return {
+          stepId: id,
+          status: item.liveStatus,
+          openCount: 0,
+          clickCount: 0,
+          lastOpenedAt: null,
+          bouncedAt: null,
+          repliedAt: null,
+        };
+      }
+
       const found = statusMap.get(id);
       if (found) return found;
 
-      // Fallback: match by item recipient email
-      const item = items.find((it) => it.queueId === id);
+      // Fallback: match by item recipient email only for already SENT items
       if (item?.email) {
         const em = item.email.toLowerCase().trim();
         const emailTrack = trackingByEmail.get(em);

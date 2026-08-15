@@ -54,7 +54,7 @@ export function LiveExecutionDashboard() {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
   // Helper to actually send the email via the backend
-  const sendEmailViaBackend = async (item: LiveItem): Promise<boolean> => {
+  const sendEmailViaBackend = async (item: LiveItem): Promise<{ ok: boolean; stepId?: string }> => {
     try {
       const res = await fetch("/api/gmail/send-demo", {
         method: "POST",
@@ -76,13 +76,13 @@ export function LiveExecutionDashboard() {
         } else {
           toast.error("Delivery Failed", { description: data.error || "Unknown API error" });
         }
-        return false;
+        return { ok: false };
       }
-      return true;
+      return { ok: true, stepId: data.stepId };
     } catch (e: any) {
       console.error("Network error sending email", e);
       toast.error("Network Error", { description: e.message || "Failed to reach backend." });
-      return false;
+      return { ok: false };
     }
   };
 
@@ -117,9 +117,11 @@ export function LiveExecutionDashboard() {
 
     const queryItems = currentItems.map(item => ({
       queueId: item.queueId,
+      stepId: (item as any).realStepId,
       email: item.recipientEmail,
       importSequenceId: item.queueId.split('_s')[0],
       stepNumber: item.sequenceStep?.stepNumber || 1,
+      liveStatus: item.liveStatus,
     }));
 
     try {
@@ -154,7 +156,21 @@ export function LiveExecutionDashboard() {
           // Pass 1: Update individual item status from tracking API
           const updatedItems = prev.map(item => {
             const tracking = data.statuses.find((s: any) => s.stepId === item.queueId);
-            if (tracking && tracking.status && tracking.status !== item.liveStatus) {
+            if (!tracking) return item;
+
+            // Never let tracking upgrade un-sent (SCHEDULED / PROCESSING) items
+            if (item.liveStatus === "SCHEDULED" || item.liveStatus === "PROCESSING") {
+              if (tracking.status === "REPLIED") {
+                newlyRepliedEmails.add(item.recipientEmail.toLowerCase());
+                if (updateQueueItemState) {
+                  updateQueueItemState(item.queueId, "REPLIED", newTimeStr);
+                }
+                return { ...item, liveStatus: "REPLIED" as const, lastEventTime: newTimeStr };
+              }
+              return item;
+            }
+
+            if (tracking.status && tracking.status !== item.liveStatus) {
               const newRank = STATUS_RANK[tracking.status] || 0;
               const currentRank = STATUS_RANK[item.liveStatus] || 0;
 
@@ -302,14 +318,14 @@ export function LiveExecutionDashboard() {
             ));
 
             // 2. Fire the side-effect EXACTLY ONCE (outside of setState to avoid Strict Mode double-invocation)
-            sendEmailViaBackend(item).then(success => {
+            sendEmailViaBackend(item).then(result => {
               const timeStr = new Date().toLocaleTimeString([], { hour12: false });
 
-              if (success) {
+              if (result.ok) {
                   setLiveItems(prev => prev.map(ci => {
                     if (ci.queueId === item.queueId) {
                       toast.success("Email Sent Automatically", { description: `Delivered to ${ci.recipientEmail}` });
-                      return { ...ci, liveStatus: "SENT", lastEventTime: timeStr };
+                      return { ...ci, liveStatus: "SENT", lastEventTime: timeStr, realStepId: result.stepId } as any;
                     }
                     return ci;
                   }));
