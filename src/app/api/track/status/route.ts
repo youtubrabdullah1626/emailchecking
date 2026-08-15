@@ -51,14 +51,15 @@ export async function POST(req: NextRequest) {
     const emailList = Array.from(emailToItemMap.keys());
     const statusMap = new Map<string, any>();
     
-    // 1. Fetch relevant SequenceSteps
-    const sequenceSteps = await prisma.sequenceStep.findMany({
+    // 1. Fetch relevant SequenceSteps safely
+    const stepOrConditions: any[] = [];
+    if (idList.length > 0) stepOrConditions.push({ id: { in: idList } });
+    if (seqIdList.length > 0) stepOrConditions.push({ sequence_id: { in: seqIdList } });
+    if (emailList.length > 0) stepOrConditions.push({ sequence: { prospect: { email: { in: emailList } } } });
+
+    const sequenceSteps = stepOrConditions.length > 0 ? await prisma.sequenceStep.findMany({
       where: {
-        OR: [
-          { id: { in: idList } },
-          ...(seqIdList.length > 0 ? [{ sequence_id: { in: seqIdList } }] : []),
-          ...(emailList.length > 0 ? [{ sequence: { prospect: { email: { in: emailList } } } }] : []),
-        ],
+        OR: stepOrConditions,
       },
       select: {
         id: true,
@@ -79,17 +80,18 @@ export async function POST(req: NextRequest) {
           },
         },
       },
-    });
+    }) : [];
 
     const realStepIds = sequenceSteps.map(s => s.id);
 
-    // 2. Fetch TrackedEmails for these exact steps and emails
-    const trackedEmails = await prisma.trackedEmail.findMany({
+    // 2. Fetch TrackedEmails safely for these exact steps and emails
+    const trackedOrConditions: any[] = [];
+    if (realStepIds.length > 0) trackedOrConditions.push({ source_id: { in: realStepIds } });
+    if (emailList.length > 0) trackedOrConditions.push({ recipient_email: { in: emailList } });
+
+    const trackedEmails = trackedOrConditions.length > 0 ? await prisma.trackedEmail.findMany({
       where: {
-        OR: [
-          ...(realStepIds.length > 0 ? [{ source_id: { in: realStepIds } }] : []),
-          ...(emailList.length > 0 ? [{ recipient_email: { in: emailList } }] : []),
-        ],
+        OR: trackedOrConditions,
       },
       select: {
         source_id: true,
@@ -102,7 +104,7 @@ export async function POST(req: NextRequest) {
         replied_at: true,
       },
       orderBy: { created_at: "desc" },
-    });
+    }) : [];
 
     const trackingByStepId = new Map(trackedEmails.filter(t => t.source_id).map(t => [t.source_id!, t]));
     const trackingByEmail = new Map<string, typeof trackedEmails[0]>();
