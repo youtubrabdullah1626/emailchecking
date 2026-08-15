@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useTimelineData } from "@/hooks/useTimelineData";
 import { TimelineEmailItem } from "@/app/api/timeline/route";
 import { TimelineDetailDrawer } from "./TimelineDetailDrawer";
@@ -18,8 +18,40 @@ import {
   ChevronRight,
   Inbox,
   ArrowUpRight,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
+
+// Smart Component to highlight and bold matching query text
+function HighlightMatch({ text, query }: { text: string | null | undefined; query: string }) {
+  if (!text) return <span>—</span>;
+  if (!query || !query.trim()) return <>{text}</>;
+  
+  const q = query.trim();
+  try {
+    const escaped = q.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+    const regex = new RegExp(`(${escaped})`, "gi");
+    const parts = text.split(regex);
+    return (
+      <>
+        {parts.map((part, i) =>
+          part.toLowerCase() === q.toLowerCase() ? (
+            <mark
+              key={i}
+              className="bg-amber-200 dark:bg-amber-500/40 text-slate-950 dark:text-amber-100 font-bold px-0.5 rounded-xs shadow-xs"
+            >
+              {part}
+            </mark>
+          ) : (
+            <span key={i}>{part}</span>
+          )
+        )}
+      </>
+    );
+  } catch {
+    return <>{text}</>;
+  }
+}
 
 export function TimelineInspector() {
   const {
@@ -27,8 +59,6 @@ export function TimelineInspector() {
     stats,
     isLoading,
     isValidating,
-    search,
-    setSearch,
     statusFilter,
     setStatusFilter,
     timeRange,
@@ -38,8 +68,24 @@ export function TimelineInspector() {
     refreshNow,
   } = useTimelineData();
 
+  const [localSearch, setLocalSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<TimelineEmailItem | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Instant 0ms Client-Side Filter on Top of Data
+  const filteredItems = useMemo(() => {
+    if (!localSearch || !localSearch.trim()) return items;
+    const q = localSearch.toLowerCase().trim();
+    return items.filter((item) => {
+      const matchEmail = item.recipientEmail.toLowerCase().includes(q);
+      const matchName = item.recipientName?.toLowerCase().includes(q);
+      const matchSender = item.senderEmail.toLowerCase().includes(q);
+      const matchSubject = item.subject.toLowerCase().includes(q);
+      const matchMsgId = item.gmailMessageId?.toLowerCase().includes(q);
+      const matchStatus = item.overallStatus.toLowerCase().includes(q);
+      return matchEmail || matchName || matchSender || matchSubject || matchMsgId || matchStatus;
+    });
+  }, [items, localSearch]);
 
   const handleRowClick = (item: TimelineEmailItem) => {
     setSelectedItem(item);
@@ -47,7 +93,7 @@ export function TimelineInspector() {
   };
 
   const exportToCSV = () => {
-    if (items.length === 0) {
+    if (filteredItems.length === 0) {
       toast.error("No data to export");
       return;
     }
@@ -74,7 +120,7 @@ export function TimelineInspector() {
       "Error Message",
     ];
 
-    const rows = items.map((i) => [
+    const rows = filteredItems.map((i) => [
       `"${i.recipientEmail}"`,
       `"${i.recipientName || ""}"`,
       `"${i.senderEmail}"`,
@@ -111,7 +157,7 @@ export function TimelineInspector() {
     link.click();
     document.body.removeChild(link);
     toast.success("CSV Exported", {
-      description: `Downloaded ${items.length} records.`,
+      description: `Downloaded ${filteredItems.length} records.`,
     });
   };
 
@@ -141,7 +187,7 @@ export function TimelineInspector() {
       {/* 1. Harmonious SaaS KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {/* Total Sent */}
-        <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Total Sent
@@ -156,7 +202,7 @@ export function TimelineInspector() {
         </div>
 
         {/* Opened */}
-        <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Opened
@@ -176,7 +222,7 @@ export function TimelineInspector() {
         </div>
 
         {/* Replied */}
-        <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Replied
@@ -196,7 +242,7 @@ export function TimelineInspector() {
         </div>
 
         {/* Failed */}
-        <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Failed
@@ -211,7 +257,7 @@ export function TimelineInspector() {
         </div>
 
         {/* Avg Delivery Speed */}
-        <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between col-span-2 lg:col-span-1">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between col-span-2 lg:col-span-1">
           <div>
             <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Avg Delivery Speed
@@ -228,16 +274,30 @@ export function TimelineInspector() {
 
       {/* 2. Control Toolbar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-        {/* Search */}
+        {/* Instant Search Bar (with autocomplete off and clear button) */}
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search lead, inbox, subject..."
-            className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-600 transition-all shadow-xs"
+            name="timeline_filter_query_unique"
+            id="timeline_filter_query_unique"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck="false"
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
+            placeholder="Instant search email, name, subject..."
+            className="w-full pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-xs"
           />
+          {localSearch && (
+            <button
+              onClick={() => setLocalSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              title="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
         {/* Status Filter Tabs & Controls */}
@@ -330,15 +390,17 @@ export function TimelineInspector() {
                     <span className="text-xs">Loading email timeline stream...</span>
                   </td>
                 </tr>
-              ) : items.length === 0 ? (
+              ) : filteredItems.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-slate-400">
                     <Inbox className="h-6 w-6 mx-auto text-slate-300 dark:text-slate-700 mb-2" />
-                    <span className="text-xs">No email records found.</span>
+                    <span className="text-xs">
+                      {localSearch ? `No email records match "${localSearch}".` : "No email records found."}
+                    </span>
                   </td>
                 </tr>
               ) : (
-                items.map((item) => {
+                filteredItems.map((item) => {
                   const isSent = item.lifecycle.sent.status === "COMPLETED";
                   const isAccepted = item.lifecycle.gmailAccepted.status === "COMPLETED";
                   const isFailed = item.overallStatus === "FAILED" || item.overallStatus === "BOUNCED";
@@ -351,7 +413,7 @@ export function TimelineInspector() {
                       onClick={() => handleRowClick(item)}
                       className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 cursor-pointer transition-colors group"
                     >
-                      {/* Recipient */}
+                      {/* Recipient (with HighlightMatch) */}
                       <td className="py-2.5 px-4">
                         <div className="flex items-center gap-2">
                           <div className="h-6 w-6 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-[10px] flex items-center justify-center shrink-0">
@@ -359,30 +421,30 @@ export function TimelineInspector() {
                           </div>
                           <div className="min-w-0">
                             <span className="font-semibold text-slate-900 dark:text-white truncate block">
-                              {item.recipientEmail}
+                              <HighlightMatch text={item.recipientEmail} query={localSearch} />
                             </span>
                             {item.recipientName && (
                               <span className="text-[10px] text-slate-400 block truncate">
-                                {item.recipientName}
+                                <HighlightMatch text={item.recipientName} query={localSearch} />
                               </span>
                             )}
                           </div>
                         </div>
                       </td>
 
-                      {/* Sender Inbox */}
+                      {/* Sender Inbox (with HighlightMatch) */}
                       <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600 dark:text-slate-400 truncate max-w-[160px]">
-                        {item.senderEmail}
+                        <HighlightMatch text={item.senderEmail} query={localSearch} />
                       </td>
 
-                      {/* Step & Subject */}
+                      {/* Step & Subject (with HighlightMatch) */}
                       <td className="py-2.5 px-3 max-w-xs">
                         <div className="flex items-center gap-1.5 truncate">
                           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 shrink-0">
                             Step {item.stepNumber}
                           </span>
                           <span className="text-slate-800 dark:text-slate-200 truncate">
-                            {item.subject}
+                            <HighlightMatch text={item.subject} query={localSearch} />
                           </span>
                         </div>
                       </td>
@@ -466,7 +528,10 @@ export function TimelineInspector() {
 
         {/* Footer */}
         <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 flex items-center justify-between text-[11px] text-slate-400">
-          <span>{items.length} records tracked</span>
+          <span>
+            Showing <strong className="text-slate-700 dark:text-slate-200">{filteredItems.length}</strong> of {items.length} records
+            {localSearch && <span className="ml-1 text-indigo-600 dark:text-indigo-400 font-medium">(filtered by &quot;{localSearch}&quot;)</span>}
+          </span>
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             <span>Connected to Live Telemetry Stream</span>
