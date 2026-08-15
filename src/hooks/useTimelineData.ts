@@ -20,6 +20,7 @@ interface TimelineResponse {
     replyRate: number;
     totalFailed: number;
     avgLatencyMs: number;
+    bannerTheme?: string;
   };
 }
 

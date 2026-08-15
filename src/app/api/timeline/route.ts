@@ -226,7 +226,10 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 5. Aggregate Summary KPIs
+    // 5. Aggregate Summary KPIs & Dynamic Platform Theme
+    const bannerThemeConfig = await prisma.platform_configs.findFirst({ where: { key: "BANNER_THEME" } });
+    const bannerTheme = bannerThemeConfig?.value ? String(bannerThemeConfig.value).toUpperCase() : "ORANGE";
+
     const totalSent = items.filter(i => i.lifecycle.sent.status === "COMPLETED").length;
     const totalOpened = items.filter(i => i.lifecycle.opened.status === "COMPLETED").length;
     const totalReplied = items.filter(i => i.lifecycle.replied.status === "COMPLETED").length;
@@ -261,7 +264,8 @@ export async function GET(req: NextRequest) {
         totalReplied,
         replyRate,
         totalFailed,
-        avgLatencyMs
+        avgLatencyMs,
+        bannerTheme
       }
     });
   } catch (error: any) {
