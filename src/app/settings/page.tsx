@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, Clock, Cpu, Bell, Key, Zap, User, Globe, Lock, ShieldCheck, CheckCircle2, AlertCircle } from "lucide-react";
+import { Mail, Clock, Cpu, Bell, Key, Zap, User, Globe, Lock, ShieldCheck, CheckCircle2, AlertCircle, Plus, Sparkles } from "lucide-react";
 import { TIMEZONE_GROUPS, getTimezoneLabel } from "@/lib/timezones";
 
 // Existing Types
@@ -326,23 +326,60 @@ export default function SettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="gmail" className="mt-0">
-                  <div className="flex flex-col gap-4">
-                    <div className="flex flex-wrap items-center justify-between">
+                  <div className="flex flex-col gap-6">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
                       <div>
                         <h2 className="text-xl font-bold tracking-tight text-foreground">
                           Connected Gmail Accounts ({accounts.length})
                         </h2>
-                        <p className="text-sm text-muted-foreground mt-1">Connect your Google Workspace accounts for sending outreach.</p>
+                        <p className="text-sm text-muted-foreground mt-1">Connect your Google Workspace accounts for multi-inbox smart rotation and automated outreach.</p>
                       </div>
-                      {accounts.length === 0 && (
-                        <Button asChild>
-                          <a href="/api/auth/gmail">Add Account</a>
-                        </Button>
-                      )}
+                      <Button asChild className="gap-2 shadow-sm font-semibold">
+                        <a href="/api/auth/gmail">
+                          <Plus className="h-4 w-4" />
+                          {accounts.length === 0 ? "Connect Gmail Account" : "Connect Another Inbox"}
+                        </a>
+                      </Button>
                     </div>
 
+                    {/* Multi-Inbox Fleet Overview Banner */}
+                    {accounts.length > 0 && (
+                      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-5 shadow-sm space-y-4">
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                          <div className="space-y-1">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                              <Sparkles className="h-3.5 w-3.5" /> Multi-Inbox Fleet Engine
+                            </span>
+                            <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                              ⚡ Smart Load Rotation & Sticky Thread Protection
+                            </h3>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-3.5 py-1.5 bg-background/80 backdrop-blur rounded-xl border border-border/80 text-xs font-semibold text-foreground shadow-xs">
+                              Total Fleet Capacity: <strong className="text-primary">{accounts.reduce((acc, a) => acc + (a.dailyLimit || 50), 0)} emails/day</strong>
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-2 bg-background/60 backdrop-blur p-2.5 rounded-xl border border-border/40">
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">🔒 Sticky Sender:</span>
+                            <span>Thread continuity locked</span>
+                          </div>
+                          <div className="flex items-center gap-2 bg-background/60 backdrop-blur p-2.5 rounded-xl border border-border/40">
+                            <span className="text-blue-600 dark:text-blue-400 font-bold">🔥 Auto-Ramp:</span>
+                            <span>Domain reputation protected</span>
+                          </div>
+                          <div className="flex items-center gap-2 bg-background/60 backdrop-blur p-2.5 rounded-xl border border-border/40">
+                            <span className="text-purple-600 dark:text-purple-400 font-bold">⏱️ Human Jitter:</span>
+                            <span>15s–45s anti-spam delays</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {accounts.length === 0 ? (
-                      <Card className="border-primary bg-primary/5 shadow-sm mt-4">
+                      <Card className="border-primary bg-primary/5 shadow-sm mt-2">
                         <CardContent className="p-8">
                           <div className="flex flex-col gap-2 items-center text-center">
                             <h3 className="text-xl font-bold text-foreground">No Gmail Account Connected</h3>
@@ -356,7 +393,7 @@ export default function SettingsPage() {
                         </CardContent>
                       </Card>
                     ) : (
-                      <div className="grid grid-cols-1 gap-4 mt-4">
+                      <div className="grid grid-cols-1 gap-4">
                         {accounts.map((acc) => (
                           <ConnectedAccountCard key={acc.email} account={acc} onAccountUpdated={loadData} />
                         ))}

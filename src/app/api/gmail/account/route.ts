@@ -45,7 +45,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     // Only fetch accounts belonging to the authenticated user
     const userAccounts = await tenantPrisma.emailAccount.findMany({
-      select: { email: true, sent_today: true, health_score: true, connection_status: true }
+      select: { 
+        email: true, 
+        sent_today: true, 
+        health_score: true, 
+        connection_status: true,
+        created_at: true,
+        warmup_status: true,
+        daily_limit: true,
+      }
     });
 
     const healthSummaries = await listAllAccountHealth();
@@ -61,9 +69,32 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           errorCount: 0,
         };
 
+        const now = new Date();
+        const created = account.created_at || now;
+        const ageInDays = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+        const baseLimit = account.daily_limit || 50;
+        
+        let dailyLimit = baseLimit;
+        let warmupStage = "MATURE";
+
+        if (account.warmup_status === "COMPLETED") {
+          dailyLimit = baseLimit;
+          warmupStage = "COMPLETED";
+        } else if (ageInDays <= 2) {
+          dailyLimit = Math.min(baseLimit, 10);
+          warmupStage = "DAY_1_3";
+        } else if (ageInDays <= 6) {
+          dailyLimit = Math.min(baseLimit, 25);
+          warmupStage = "DAY_4_7";
+        }
+
         return {
           ...summary,
           sentToday: account?.sent_today || 0,
+          dailyLimit,
+          warmupStage,
+          warmupStatus: account.warmup_status || "PENDING",
+          ageInDays,
           replyCount: 0, // Simplified to avoid slow counts
           lastEmailSentAt: null,
           lastReplyDetectedAt: null,
