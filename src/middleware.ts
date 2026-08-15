@@ -57,9 +57,9 @@ export default withAuth(
   }
 );
 
-// Apply middleware to all routes except Next.js internals and static files
+// Apply middleware to all routes except public endpoints, Next.js internals, and static files
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!api/track|api/webhooks|api/unsubscribe|api/scheduler|api/auth|_next/static|_next/image|favicon.ico).*)",
   ],
 };
