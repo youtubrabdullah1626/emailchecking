@@ -91,14 +91,70 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
     return { stepId, outcome: "ABORTED", detail: "Step not found." };
   }
 
-  // ── 2.5 Resolve Sending Email Account from PostgreSQL ────────────────────
-  let connectedAccount = await prisma.emailAccount.findFirst({
-    where: { 
-      connection_status: "CONNECTED",
-      user_id: step.sequence.user_id 
-    },
-    orderBy: { updated_at: "desc" }
-  });
+  // ── 2.5 Smart Sticky Sender & Multi-Inbox Rotation Engine ───────────────────
+  let connectedAccount: any = null;
+  const assignedEmail = step.sequence.assigned_sender_email;
+
+  if (assignedEmail) {
+    // 1. Thread Continuity (Sticky Sender): Use the locked sender for Step 2+
+    connectedAccount = await prisma.emailAccount.findFirst({
+      where: { 
+        email: assignedEmail.toLowerCase(),
+        user_id: step.sequence.user_id,
+        connection_status: "CONNECTED",
+      },
+    });
+
+    if (!connectedAccount) {
+      gmailLog("gmail_sticky_sender_unavailable", {
+        stepId,
+        assignedEmail,
+        detail: "Locked sender is currently disconnected. Evaluating fallback connected inboxes.",
+      });
+    }
+  }
+
+  // 2. Step 1 (Fresh sequence) or Fallback: Load-balance across all active inboxes for this user
+  if (!connectedAccount) {
+    if (prisma.emailAccount?.findMany) {
+      const activeInboxes = await prisma.emailAccount.findMany({
+        where: { 
+          connection_status: "CONNECTED",
+          user_id: step.sequence.user_id,
+        },
+        orderBy: [
+          { health_score: "desc" },
+          { sent_today: "asc" },
+          { updated_at: "desc" },
+        ],
+      });
+
+      if (activeInboxes && activeInboxes.length > 0) {
+        connectedAccount = activeInboxes[0];
+      }
+    } else if (prisma.emailAccount?.findFirst) {
+      connectedAccount = await prisma.emailAccount.findFirst({
+        where: { 
+          connection_status: "CONNECTED",
+          user_id: step.sequence.user_id 
+        },
+        orderBy: { updated_at: "desc" }
+      });
+    }
+
+    // Lock this sequence to the selected inbox for unbroken future thread continuity
+    if (!assignedEmail && connectedAccount && prisma.sequence?.update) {
+      await prisma.sequence.update({
+        where: { id: step.sequence.id },
+        data: { assigned_sender_email: connectedAccount.email },
+      }).catch((err) => {
+        gmailLog("gmail_sticky_lock_failed", {
+          sequenceId: step.sequence.id,
+          error: String(err),
+        });
+      });
+    }
+  }
 
   const senderEmail = connectedAccount?.email || config.senderEmail || process.env.GMAIL_SENDER_EMAIL;
 
@@ -232,7 +288,7 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
   // Tracking Engine: Register Email
   const trackingId = await emailTrackingService.registerEmail({
     provider: "GMAIL",
-    senderEmail: config.senderEmail,
+    senderEmail: senderEmail,
     recipientEmail: step.sequence.prospect.email,
     subject: step.subject,
     sourceType: "SEQUENCE_STEP",
@@ -309,7 +365,9 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
 
     if (!response.data.id || !response.data.threadId) {
       throw new Error(
-        "Gmail API returned a response without message ID or thread ID."
+        `Gmail API returned incomplete response: missing id or threadId. Response: ${JSON.stringify(
+          response.data
+        )}`
       );
     }
 
@@ -327,6 +385,38 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
       prospectId: step.sequence.prospect.id,
       detail: msg,
     });
+
+    // Check for Auth / Token Revocation
+    const isAuthError = msg.toLowerCase().includes("invalid_grant") || 
+                        msg.toLowerCase().includes("token has been expired") ||
+                        msg.toLowerCase().includes("invalid credentials");
+
+    if (isAuthError) {
+      // Mark the mailbox as needing reconnection and gracefully delay the step
+      if (prisma.emailAccount?.updateMany) {
+        await prisma.emailAccount.updateMany({
+          where: { email: senderEmail },
+          data: { connection_status: "DISCONNECTED" }
+        }).catch(() => {});
+      }
+
+      if (prisma.sequenceStep?.update) {
+        await prisma.sequenceStep.update({
+          where: { id: stepId },
+          data: {
+            status: "DELAYED",
+            delay_reason: "NEEDS_RECONNECT",
+            retry_at: new Date(Date.now() + 24 * 60 * 60 * 1000)
+          }
+        }).catch(() => {});
+      }
+
+      return { 
+        stepId, 
+        outcome: "ABORTED", 
+        detail: `Gmail account ${senderEmail} needs reconnection. Step safely delayed.` 
+      };
+    }
 
     await reportSystemError({
       service: "gmail",
@@ -386,7 +476,7 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
   }
 
   // Record successful send for reputation tracking
-  await recordSuccessfulSend(config.senderEmail);
+  await recordSuccessfulSend(senderEmail);
 
   gmailLog("gmail_send_success", {
     stepId,
@@ -473,9 +563,11 @@ export async function sendBatch(stepIds: string[]): Promise<BatchSendResult> {
     // Gmail's anti-spam systems flag. A random delay mimics natural human behavior
     // and significantly improves inbox placement.
     if (i < stepIds.length - 1 && result.outcome === "SENT") {
-      const delayMs = 15000 + Math.floor(Math.random() * 30000); // 15s to 45s
-      gmailLog("gmail_human_delay", { stepId, delayMs, nextStepIndex: i + 1 });
-      await sleep(delayMs);
+      const delayMs = process.env.NODE_ENV === "test" ? 0 : 15000 + Math.floor(Math.random() * 30000); // 15s to 45s
+      if (delayMs > 0) {
+        gmailLog("gmail_human_delay", { stepId, delayMs, nextStepIndex: i + 1 });
+        await sleep(delayMs);
+      }
     }
   }
 

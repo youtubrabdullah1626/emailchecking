@@ -61,7 +61,7 @@ export function getOAuthConfig(): OAuthConfig | null {
   const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
   const senderEmail = process.env.GMAIL_SENDER_EMAIL;
 
-  if (!clientId || !clientSecret || !refreshToken) {
+  if (!clientId || !clientSecret || !refreshToken || !senderEmail) {
     return null;
   }
 
@@ -69,7 +69,7 @@ export function getOAuthConfig(): OAuthConfig | null {
     clientId, 
     clientSecret, 
     refreshToken, 
-    senderEmail: senderEmail || "" 
+    senderEmail 
   };
 }
 

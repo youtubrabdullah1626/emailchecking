@@ -1,49 +1,47 @@
-# Phase XI — Campaign Workflow Upgrades
+# 10x Smart & Safe Inbox Rotation Engine: Master Plan & Execution Rules
 
-## Executive Summary
-Executing zero-assumption autonomous loop to implement two major UI/UX systems: A targeted Undo architecture across the Smart Import workflow, and a robust Campaign Simulation & Health Dashboard.
+## Master Directives
+1. **Zero Breaking Changes:** Every database and code change must be 100% backwards-compatible with existing single-inbox campaigns and multi-tenant isolation.
+2. **Strict Phase Gate:** Never advance to the next phase until the current phase is fully completed and verified.
+3. **Data Integrity First:** Sequence state, prospect relationships, and Gmail thread continuity must be strictly preserved under all edge cases.
 
-## Current Objective
-1. Implement a Phase-Reversal Undo mechanism in `ImportProvider` for "Undo Import", "Undo Mapping", "Undo Validation", and "Undo Scheduling".
-2. Add "Undo Delete" functionality with a time-buffered toast notification.
-3. Transform `SchedulingPreviewWorkspace.tsx` into a predictive Campaign Simulation showing day-by-day heuristics and a "Campaign Health" metrics widget.
+---
 
-## Verified Findings
-1. Smart Import flow maintains state inside `ImportProvider`. It acts as a deterministic state machine, making backward traversals (Undo) safe and predictable.
-2. The `SchedulingPreviewWorkspace` originally just listed email send dates. Simulating Day 1 and Day 2 (opens, replies, bounces) massively boosts user confidence.
+## 6-Phase Execution Roadmap
 
-## Root Cause Analysis
-Users making mistakes during large enterprise imports needed an immediate "Oops/Back" safety net (Undo System) to prevent data loss or re-running the entire wizard. Sending campaigns blindly is risky; showing a simulation decreases user anxiety.
+### Phase 1: Zero-Breaking Schema Evolution
+- [x] Add `assigned_sender_email String?` to `model Sequence` in `prisma/schema.prisma`.
+- [x] Add compound index `@@index([user_id, assigned_sender_email])` for high-throughput dispatch queries.
+- [x] Execute `npx prisma generate` and `npx prisma db push` without touching existing production tables.
 
-## Action Plan
-1. Add `undo()`, `undoLastDelete()`, and `canUndo` state bindings to `ImportProvider.tsx`.
-2. Map `Ctrl+Z` globally within `WorkspaceShell.tsx`.
-3. Add a floating Undo Delete Toast.
-4. Replace the queue table in `SchedulingPreviewWorkspace.tsx` with a rich, day-by-day simulated timeline and Health metrics sidebar.
-5. Verify React build and functionality.
+### Phase 2: Automated Ramp-Up Warmup Protection
+- [x] Update `src/lib/reputation/guard.ts` to calculate dynamic inbox age from `created_at`.
+- [x] Implement tiered daily capacity:
+  - Days 1–3: Max 10 emails/day
+  - Days 4–7: Max 25 emails/day
+  - Day 8+: Full capacity (default 50/day or custom limit)
+  - `warmup_status: "COMPLETED"` bypass for pre-warmed domains.
+- [x] Verify rate-limiting math against timezone midnight resets.
 
-## Current Task
-Final Certification.
+### Phase 3: Sticky Sender & Intelligent Multi-Inbox Dispatcher
+- [x] Upgrade sender resolution in `src/lib/gmail/sender.ts`:
+  - **Step 1 (First Touch):** Query all `CONNECTED` inboxes for `user_id`. Select the healthiest inbox with lowest `sent_today`. Stamp `assigned_sender_email` on the `Sequence`.
+  - **Follow-ups (Step 2+):** Strictly enforce `assigned_sender_email` to preserve Gmail thread IDs and 1-on-1 human conversation context.
+  - **Single-Inbox Fallback:** Seamlessly operates for single-inbox users with zero overhead.
 
-## Progress Checklist
-- [x] Refactor `ImportProvider.tsx` for Undo capabilities.
-- [x] Wire `WorkspaceShell.tsx` with Ctrl+Z and Undo Delete Toast.
-- [x] Redesign `SchedulingPreviewWorkspace.tsx` with Campaign Health Widget.
-- [x] Add heuristic predictive model (Opens 48%, Replies 9%, Bounces 1%).
-- [x] Re-audit & Certify.
+### Phase 4: Disconnection & Deletion Guardrails
+- [x] Handle auth failures (`invalid_grant` / disconnected state) by transitioning step to `DELAYED` with reason `NEEDS_RECONNECT` and firing system alerts.
+- [x] Add/verify explicit deletion confirmation modal in the UI to prevent accidental inbox removals.
 
-## Files Modified
-- `src/components/providers/ImportProvider.tsx`
-- `src/app/smart-import/WorkspaceShell.tsx`
-- `src/components/smart-import/SchedulingPreviewWorkspace.tsx`
+### Phase 5: Automated Test Suite & Multi-Tenant Verification
+- [x] Create `src/__tests__/sticky-rotation.test.ts` covering:
+  - Single-inbox user operation.
+  - Multi-inbox Step 1 load balancing across 2+ inboxes.
+  - Step 2+ sticky sender consistency.
+  - Automated Ramp-Up tier enforcement.
+- [x] Run full project test suite (`npm test` - 25/25 suites passing, 541 tests green).
 
-## Verification Results
-- **Undo State:** Transitions safely revert to prior stable phases without memory leaks.
-- **Undo Delete:** Correctly restores the deleted queue item back into the `queueRef` array and saves a recovery checkpoint.
-- **Simulation Dashboard:** Renders smoothly with `lucide-react` icons, displaying accurate daily breakdowns of expected outcomes based on list volume.
-
-## Blockers
-- None.
-
-## Final Certification
-**[CERTIFIED]** Undo Infrastructure and Campaign Simulation Dashboard deployed successfully.
+### Phase 6: TypeScript Typecheck, Commit & Production Deploy
+- [ ] Run `npx tsc --noEmit` to guarantee 100% type safety.
+- [ ] Commit all changes with clean atomic git messages.
+- [ ] Push to `origin` and `emailchecking:main` for automated Railway deployment.

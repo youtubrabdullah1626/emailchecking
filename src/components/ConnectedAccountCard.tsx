@@ -106,7 +106,7 @@ function ConnectedAccountCardComponent({
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={() => {
-                if (window.confirm(`Are you sure you want to permanently delete ${account.email}? This action cannot be undone.`)) {
+                if (window.confirm(`⚠️ Are you sure you want to permanently delete ${account.email}? Active sequence follow-ups locked to this inbox will be automatically reassigned to your other active inboxes. This action cannot be undone.`)) {
                   handleAction("DELETE_ACCOUNT");
                 }
               }}

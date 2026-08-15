@@ -37,6 +37,12 @@ jest.mock("@/lib/prisma", () => ({
   },
 }));
 
+jest.mock("@/lib/auth/session", () => ({
+  getSession: jest.fn().mockResolvedValue({
+    user: { id: "test-user-id", email: "test@example.com", role: "OWNER" },
+  }),
+}));
+
 // ── Import after mocks ────────────────────────────────────────────────────────
 
 import { POST } from "@/app/api/sequences/[id]/retry/route";
@@ -71,6 +77,7 @@ function makeStep(overrides: { id?: string; retry_count?: number } = {}) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockFindUnique.mockResolvedValue({ id: "seq-001" });
 });
 
 describe("POST /api/sequences/[id]/retry — authentication", () => {

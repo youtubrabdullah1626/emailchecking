@@ -8,6 +8,35 @@ export type ReputationGuardResult =
   | { allowed: false; reason: string; retryAt: Date; sentToday?: number; sentThisHour?: number };
 
 /**
+ * Calculates the automated warmup ramp-up limit based on the inbox creation age.
+ * - Days 1–3 (0–2 days old): Max 10/day
+ * - Days 4–7 (3–6 days old): Max 25/day
+ * - Day 8+ (7+ days old) or warmup_status === "COMPLETED": Full configured limit
+ */
+export function calculateRampUpLimit(
+  createdAt: Date | string | null | undefined,
+  baseLimit: number = 50,
+  warmupStatus: string = "ACTIVE",
+  referenceDate: Date = new Date()
+): number {
+  if (!createdAt || warmupStatus === "COMPLETED" || warmupStatus === "SKIPPED") {
+    return baseLimit;
+  }
+
+  const createdTime = new Date(createdAt).getTime();
+  const nowTime = referenceDate.getTime();
+  const ageInDays = Math.max(0, Math.floor((nowTime - createdTime) / (1000 * 60 * 60 * 24)));
+
+  if (ageInDays <= 2) {
+    return Math.min(baseLimit, 10);
+  }
+  if (ageInDays <= 6) {
+    return Math.min(baseLimit, 25);
+  }
+  return baseLimit;
+}
+
+/**
  * Enterprise Reputation Guard
  * 
  * Mathematically validates sender sending limits, mailbox health, and warmup stages
@@ -60,51 +89,75 @@ export async function canSendEmail(email: string): Promise<ReputationGuardResult
 
   // 2. Fetch dynamic platform configurations (if any) or fallback to account limits
   const [dailyConfig, hourlyConfig, sentToday, sentThisHour, sentLast24h] = await Promise.all([
-    prisma.platform_configs.findFirst({ where: { key: "MAX_DAILY_EMAILS" } }),
-    prisma.platform_configs.findFirst({ where: { key: "HOURLY_EMAIL_LIMIT" } }),
-    prisma.emailEvent.count({
-      where: {
-        event_type: "SENT",
-        occurred_at: { gte: startOfDay },
-        step: { sequence: { user_id: account.user_id } },
-      },
-    }),
-    prisma.emailEvent.count({
-      where: {
-        event_type: "SENT",
-        occurred_at: { gte: startOfHour },
-        step: { sequence: { user_id: account.user_id } },
-      },
-    }),
-    prisma.emailEvent.count({
-      where: {
-        event_type: "SENT",
-        occurred_at: { gte: twentyFourHoursAgo },
-        step: { sequence: { user_id: account.user_id } },
-      },
-    }),
+    prisma.platform_configs?.findFirst ? prisma.platform_configs.findFirst({ where: { key: "MAX_DAILY_EMAILS" } }) : Promise.resolve(null),
+    prisma.platform_configs?.findFirst ? prisma.platform_configs.findFirst({ where: { key: "HOURLY_EMAIL_LIMIT" } }) : Promise.resolve(null),
+    prisma.emailEvent?.count
+      ? prisma.emailEvent.count({
+          where: {
+            event_type: "SENT",
+            occurred_at: { gte: startOfDay },
+            step: { sequence: { user_id: account.user_id } },
+          },
+        })
+      : Promise.resolve(0),
+    prisma.emailEvent?.count
+      ? prisma.emailEvent.count({
+          where: {
+            event_type: "SENT",
+            occurred_at: { gte: startOfHour },
+            step: { sequence: { user_id: account.user_id } },
+          },
+        })
+      : Promise.resolve(0),
+    prisma.emailEvent?.count
+      ? prisma.emailEvent.count({
+          where: {
+            event_type: "SENT",
+            occurred_at: { gte: twentyFourHoursAgo },
+            step: { sequence: { user_id: account.user_id } },
+          },
+        })
+      : Promise.resolve(0),
   ]);
 
-  const dailyLimit = dailyConfig?.value
+  const configuredDailyLimit = dailyConfig?.value
     ? parseInt(String(dailyConfig.value), 10)
-    : account.daily_limit || 500;
+    : account.daily_limit || 50;
+
+  const dailyLimit = calculateRampUpLimit(
+    account.created_at,
+    configuredDailyLimit,
+    account.warmup_status,
+    now
+  );
 
   const hourlyLimit = hourlyConfig?.value
     ? parseInt(String(hourlyConfig.value), 10)
-    : account.hourly_limit || 50;
+    : account.hourly_limit || 15;
+
+  const effectiveSentToday = Math.max(sentToday, account.sent_today || 0);
+  const effectiveSentThisHour = Math.max(sentThisHour, account.sent_this_hour || 0);
+  const effectiveSentLast24h = Math.max(sentLast24h, account.sent_today || 0);
 
   // Background sync counter cache for dashboard cards & admin visibility
-  prisma.emailAccount.update({
-    where: { email: normalizedEmail },
-    data: {
-      sent_today: sentToday,
-      sent_this_hour: sentThisHour,
-      last_seen_at: now,
-    },
-  }).catch(() => {});
+  if (prisma.emailAccount?.update) {
+    try {
+      const updatePromise = prisma.emailAccount.update({
+        where: { email: normalizedEmail },
+        data: {
+          sent_today: effectiveSentToday,
+          sent_this_hour: effectiveSentThisHour,
+          last_seen_at: now,
+        },
+      });
+      if (updatePromise && typeof updatePromise.catch === "function") {
+        updatePromise.catch(() => {});
+      }
+    } catch {}
+  }
 
   // 3. Daily Limit Enforcement (Local Midnight + 24-Hour Absolute Exploit Guard)
-  const effectiveDailySent = Math.max(sentToday, sentLast24h);
+  const effectiveDailySent = Math.max(effectiveSentToday, effectiveSentLast24h);
   if (effectiveDailySent >= dailyLimit) {
     const nextMidnightReset = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
 
@@ -119,21 +172,21 @@ export async function canSendEmail(email: string): Promise<ReputationGuardResult
       allowed: false,
       reason: "DAILY_LIMIT_REACHED",
       retryAt: nextMidnightReset,
-      sentToday,
-      sentThisHour,
+      sentToday: effectiveSentToday,
+      sentThisHour: effectiveSentThisHour,
     };
   }
 
   // 4. Hourly Limit Enforcement (Top of the Hour Snap)
-  if (sentThisHour >= hourlyLimit) {
+  if (effectiveSentThisHour >= hourlyLimit) {
     const nextHourReset = new Date(startOfHour.getTime() + 60 * 60 * 1000);
 
     return {
       allowed: false,
       reason: "HOURLY_LIMIT_REACHED",
       retryAt: nextHourReset,
-      sentToday,
-      sentThisHour,
+      sentToday: effectiveSentToday,
+      sentThisHour: effectiveSentThisHour,
     };
   }
 

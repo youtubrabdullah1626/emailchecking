@@ -70,6 +70,7 @@ export interface StepForSend {
     id: string;
     status: string;
     user_id: string;
+    assigned_sender_email?: string | null;
     prospect: {
       id: string;
       name: string;

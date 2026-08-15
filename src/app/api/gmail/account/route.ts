@@ -171,6 +171,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     if (action === "DELETE_ACCOUNT") {
+      // Gracefully clear sticky lock on any active sequences so they dynamically fall back to remaining inboxes
+      await prisma.sequence.updateMany({
+        where: { user_id: session.user.id, assigned_sender_email: email },
+        data: { assigned_sender_email: null }
+      }).catch(() => {});
+
       await tenantPrisma.emailAccount.deleteMany({ where: { email } });
       await prisma.gmailWatchState.deleteMany({ where: { email } });
       

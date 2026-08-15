@@ -40,6 +40,7 @@ export async function loadStepForSend(
           id: true,
           status: true,
           user_id: true,
+          assigned_sender_email: true,
           prospect: {
             select: {
               id: true,
