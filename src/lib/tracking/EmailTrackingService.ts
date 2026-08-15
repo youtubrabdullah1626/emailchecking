@@ -62,25 +62,28 @@ export class EmailTrackingService {
     metadata?: any,
     reqData?: { ip?: string, userAgent?: string }
   ): Promise<void> {
-    // 1. Log the immutable event independently so it's always recorded even if the transaction below fails
-    await prisma.trackingEvent.create({
-      data: {
-        tracked_email_id: trackingId,
-        event_type: eventType,
-        ip_address: reqData?.ip,
-        user_agent: reqData?.userAgent,
-        metadata: metadata || undefined
+    // 1. Log the immutable event independently
+    if (prisma.trackingEvent?.create) {
+      try {
+        await prisma.trackingEvent.create({
+          data: {
+            tracked_email_id: trackingId,
+            event_type: eventType,
+            ip_address: reqData?.ip,
+            user_agent: reqData?.userAgent,
+            metadata: metadata || undefined
+          }
+        });
+      } catch (err) {
+        console.error("[EmailTrackingService] Failed to create trackingEvent:", err);
       }
-    });
+    }
 
-    // 2. State Machine Resolution with Atomic Row Lock
-    await prisma.$transaction(async (tx) => {
-      // Lock the row to prevent concurrent Read-Modify-Write race conditions
-      await tx.$executeRaw`SELECT id FROM "tracked_emails" WHERE id = ${trackingId} FOR UPDATE`;
-
-      const trackedEmail = await tx.trackedEmail.findUnique({
+    // 2. Direct State Machine Resolution (Pooler-safe)
+    try {
+      const trackedEmail = await prisma.trackedEmail.findUnique({
         where: { id: trackingId },
-        select: { status: true, open_count: true, click_count: true, first_opened_at: true }
+        select: { status: true, open_count: true, click_count: true, first_opened_at: true, source_type: true, source_id: true }
       });
 
       if (!trackedEmail) return;
@@ -90,7 +93,7 @@ export class EmailTrackingService {
       let nextStatus = currentStatus;
 
       if (eventType === "OPENED") {
-        updates.open_count = trackedEmail.open_count + 1;
+        updates.open_count = (trackedEmail.open_count || 0) + 1;
         updates.last_opened_at = new Date();
         if (!trackedEmail.first_opened_at) {
           updates.first_opened_at = new Date();
@@ -100,7 +103,7 @@ export class EmailTrackingService {
         }
       } 
       else if (eventType === "CLICKED") {
-        updates.click_count = trackedEmail.click_count + 1;
+        updates.click_count = (trackedEmail.click_count || 0) + 1;
         if (currentStatus !== "REPLIED" && currentStatus !== "BOUNCED" && currentStatus !== "COMPLAINT") {
           nextStatus = "CLICKED";
         }
@@ -113,7 +116,7 @@ export class EmailTrackingService {
       }
       else if (eventType === "BOUNCED") {
         updates.bounced_at = new Date();
-        nextStatus = "BOUNCED"; // Bounced overrides mostly anything
+        nextStatus = "BOUNCED";
       }
       else if (eventType === "COMPLAINT") {
         nextStatus = "COMPLAINT";
@@ -133,14 +136,15 @@ export class EmailTrackingService {
         updates.status = nextStatus;
       }
 
-      // Update the aggregate model safely within the lock
       if (Object.keys(updates).length > 0) {
-        await tx.trackedEmail.update({
+        await prisma.trackedEmail.update({
           where: { id: trackingId },
           data: updates
         });
       }
-    });
+    } catch (err) {
+      console.error("[EmailTrackingService] Failed to update trackedEmail:", err);
+    }
   }
 
   /**
