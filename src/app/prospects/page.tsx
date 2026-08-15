@@ -135,7 +135,7 @@ function HighlightMatch({ text, query }: { text: string; query: string }) {
   );
 }
 
-export function ProspectsPageContent() {
+function ProspectsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -167,7 +167,7 @@ export function ProspectsPageContent() {
     dedupingInterval: 5000,
   });
 
-  const prospects = data?.data || [];
+  const prospects = useMemo(() => data?.data || [], [data?.data]);
 
   // Summary Metrics
   const stats = useMemo(() => {
