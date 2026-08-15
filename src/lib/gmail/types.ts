@@ -102,5 +102,7 @@ export type GmailLogEvent =
   | "gmail_send_aborted_health"
   | "gmail_fetch_prev_msg_failed"
   | "gmail_tracking_pixel_disabled"
-  | "gmail_human_delay";
+  | "gmail_human_delay"
+  | "gmail_sticky_sender_unavailable"
+  | "gmail_sticky_lock_failed";
 
