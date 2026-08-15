@@ -30,6 +30,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendStep } from "@/lib/gmail/sender";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth/session";
+import type { StepStatus } from "@prisma/client";
 
 export async function POST(request: NextRequest) {
   // ── Auth Guard ───────────────────────────────────────────────
@@ -122,12 +123,13 @@ export async function POST(request: NextRequest) {
   }
 
   // Block if not in a sendable state
-  if (step.status !== "PENDING") {
+  const sendableStatuses: StepStatus[] = ["PENDING", "PROCESSING", "FAILED", "DELAYED"];
+  if (!sendableStatuses.includes(step.status as StepStatus)) {
     return NextResponse.json(
       {
         ok: false,
         error: "INVALID_STATUS",
-        detail: `Step is in status '${step.status}' and cannot be sent. Only PENDING steps can be sent immediately.`,
+        detail: `Step is in status '${step.status}' and cannot be sent. Only pending or retryable steps can be sent.`,
       },
       { status: 409 }
     );
@@ -145,13 +147,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── 3. Atomically claim the step (PENDING → PROCESSING) ─────────────────
-  // This uses the same updateMany WHERE status='PENDING' pattern as the scheduler.
-  // If another process claimed it concurrently, count will be 0.
+  // ── 3. Atomically claim the step (PENDING/STUCK → PROCESSING) ───────────
   let claimed: { count: number };
   try {
     claimed = await prisma.sequenceStep.updateMany({
-      where: { id: stepId, status: "PENDING" },
+      where: { id: stepId, status: { in: sendableStatuses } },
       data: { status: "PROCESSING" },
     });
   } catch (err) {

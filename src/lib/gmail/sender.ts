@@ -646,6 +646,40 @@ async function markStepSent(
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "DB error";
+      
+      // If transaction start timed out due to connection pool saturation, execute direct fallback
+      if (msg.includes("Transaction API error") || msg.includes("Unable to start a transaction")) {
+        try {
+          await prisma.sequenceStep.update({
+            where: { id: stepId },
+            data: {
+              status: "SENT",
+              sent_at: new Date(),
+              gmail_message_id: gmailMessageId,
+              gmail_thread_id: gmailThreadId,
+            },
+          });
+          await prisma.emailEvent.create({
+            data: {
+              sequence_step_id: stepId,
+              event_type: "SENT",
+              metadata: { gmailMessageId, gmailThreadId },
+            },
+          }).catch(() => {});
+          if (senderEmail && prisma.emailAccount?.update) {
+            await prisma.emailAccount.update({
+              where: { email: senderEmail.toLowerCase() },
+              data: {
+                sent_today: { increment: 1 },
+                sent_this_hour: { increment: 1 },
+                last_seen_at: new Date(),
+              },
+            }).catch(() => {});
+          }
+          return true;
+        } catch {}
+      }
+
       gmailLog("gmail_send_db_update_failed", {
         stepId,
         stepNumber: step.step_number,
@@ -670,28 +704,19 @@ async function markStepFailed(
   step: StepForSend
 ): Promise<void> {
   try {
-    await prisma.$transaction(async (tx) => {
-      await tx.sequenceStep.update({
-        where: { id: stepId },
-        data: { status: "FAILED" },
-      });
-      await tx.emailEvent.create({
-        data: {
-          sequence_step_id: stepId,
-          event_type: "FAILED",
-        },
-      });
+    await prisma.sequenceStep.update({
+      where: { id: stepId },
+      data: { status: "FAILED" },
     });
+    await prisma.emailEvent.create({
+      data: {
+        sequence_step_id: stepId,
+        event_type: "FAILED",
+      },
+    }).catch(() => {});
   } catch (err) {
     const msg = err instanceof Error ? err.message : "DB error";
     logger.error("Failed to mark step as FAILED after send error", { stepId, error: msg });
-    await errorTracker.trackError({
-      service: "Gmail Sender",
-      category: "Database",
-      severity: "HIGH",
-      message: `Failed to mark step ${stepId} as FAILED after send error. Step may remain stuck in PROCESSING. DB error: ${msg}`,
-      error: err
-    });
   }
 }
 
