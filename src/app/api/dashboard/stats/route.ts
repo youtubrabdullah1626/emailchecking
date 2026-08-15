@@ -49,7 +49,13 @@ export async function GET(req: NextRequest) {
 
     const userEmailAccounts = await prisma.emailAccount.findMany({
       where: { user_id: userId },
-      select: { email: true }
+      select: { 
+        email: true, 
+        connection_status: true, 
+        created_at: true, 
+        warmup_status: true, 
+        daily_limit: true 
+      }
     });
     const senderEmails = userEmailAccounts.map(a => a.email);
     if (userRecord?.email && !senderEmails.includes(userRecord.email)) {
@@ -287,6 +293,27 @@ export async function GET(req: NextRequest) {
     const effectiveTotalSent = totalTrackedSent > 0 ? totalTrackedSent : (emailsSentToday > 0 ? emailsSentToday : 0);
     const openRate = effectiveTotalSent > 0 ? Math.round((totalOpens / effectiveTotalSent) * 100) : (totalOpens > 0 ? 100 : 0);
 
+    // Compute dynamic fleet daily limit
+    const connectedAccounts = userEmailAccounts.filter(a => a.connection_status === "CONNECTED");
+    let totalFleetDailyLimit = 0;
+    if (connectedAccounts.length > 0) {
+      for (const acc of connectedAccounts) {
+        const now = new Date();
+        const created = acc.created_at || now;
+        const ageInDays = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+        const baseLimit = acc.daily_limit && acc.daily_limit <= 100 ? acc.daily_limit : 50;
+        if (acc.warmup_status === "COMPLETED" || ageInDays >= 7) {
+          totalFleetDailyLimit += baseLimit;
+        } else if (ageInDays <= 2) {
+          totalFleetDailyLimit += Math.min(baseLimit, 10);
+        } else {
+          totalFleetDailyLimit += Math.min(baseLimit, 25);
+        }
+      }
+    } else {
+      totalFleetDailyLimit = dailyLimitConfig?.value ? parseInt(String(dailyLimitConfig.value), 10) : 50;
+    }
+
     return NextResponse.json({
       activeSequences,
       emailsSentToday,
@@ -310,8 +337,8 @@ export async function GET(req: NextRequest) {
       ),
       geminiConfigured: !!process.env.GEMINI_API_KEY,
       systemTimestamp: new Date().toISOString(),
-      dailyLimit: dailyLimitConfig?.value ? parseInt(String(dailyLimitConfig.value), 10) : 500,
-      hourlyLimit: hourlyLimitConfig?.value ? parseInt(String(hourlyLimitConfig.value), 10) : 50,
+      dailyLimit: totalFleetDailyLimit,
+      hourlyLimit: hourlyLimitConfig?.value ? parseInt(String(hourlyLimitConfig.value), 10) : (connectedAccounts.length > 0 ? connectedAccounts.length * 15 : 15),
       sequenceLimit: sequenceLimitConfig?.value ? parseInt(String(sequenceLimitConfig.value), 10) : 5,
       emailsSentThisHour: emailsSentThisHour ?? 0,
       bannerTheme: bannerThemeConfig?.value ? String(bannerThemeConfig.value) : "DEFAULT",

@@ -141,10 +141,19 @@ export function Header({ onMenuClick }: HeaderProps) {
       
       <div className="flex items-center gap-2 md:gap-4">
         <div className="hidden md:flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Sending Email:</span>
+          <span className="text-muted-foreground">
+            {accountStats?.inboxCount && accountStats.inboxCount > 1 ? "Active Fleet:" : "Sending Email:"}
+          </span>
           <span className="font-medium">
             {!mounted || accountStats === undefined ? (
               <span className="animate-pulse bg-slate-200 text-transparent rounded px-1">Loading...</span>
+            ) : accountStats?.inboxCount && accountStats.inboxCount > 1 ? (
+              <FastLink 
+                href="/settings" 
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+              >
+                <Sparkles className="h-3 w-3" /> {accountStats.connectedGmail}
+              </FastLink>
             ) : accountStats?.connectedGmail ? (
               accountStats.connectionStatus === 'CONNECTED' 
                 ? accountStats.connectedGmail 

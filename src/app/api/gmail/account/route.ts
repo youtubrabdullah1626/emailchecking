@@ -43,6 +43,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     const tenantPrisma = getTenantPrisma(session.user.id);
 
+    // Fetch user's configured timezone
+    const userRecord = await prisma.users.findUnique({
+      where: { id: session.user.id },
+      select: { timezone: true },
+    });
+    const userTimezone = userRecord?.timezone || "UTC";
+    const { getStartOfDayInTimezone } = await import("@/lib/date-utils");
+    const startOfDay = getStartOfDayInTimezone(userTimezone);
+
     // Only fetch accounts belonging to the authenticated user
     const userAccounts = await tenantPrisma.emailAccount.findMany({
       select: { 
@@ -58,9 +67,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     const healthSummaries = await listAllAccountHealth();
 
-    const startOfDay = new Date();
-    startOfDay.setUTCHours(0, 0, 0, 0);
-
     const accountDetails = await Promise.all(
       userAccounts.map(async (account) => {
         const summary = healthSummaries.find(h => h.email === account.email) || {
@@ -72,10 +78,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         const now = new Date();
         const created = account.created_at || now;
         const ageInDays = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
-        const baseLimit = account.daily_limit || 50;
+        
+        // Cold outreach safe baseline limit: 50 emails/day per mailbox
+        const baseLimit = account.daily_limit && account.daily_limit <= 100 ? account.daily_limit : 50;
         
         let dailyLimit = baseLimit;
-        let warmupStage = "MATURE";
+        let warmupStage: "DAY_1_3" | "DAY_4_7" | "MATURE" | "COMPLETED" = "MATURE";
 
         if (account.warmup_status === "COMPLETED") {
           dailyLimit = baseLimit;
@@ -88,14 +96,29 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           warmupStage = "DAY_4_7";
         }
 
+        // Live real-time sent count for today (single source of truth)
+        const normalizedEmail = account.email.toLowerCase();
+        const actualSentToday = await prisma.emailEvent.count({
+          where: {
+            event_type: "SENT",
+            occurred_at: { gte: startOfDay },
+            step: {
+              sequence: {
+                user_id: session.user.id,
+                assigned_sender_email: normalizedEmail,
+              }
+            }
+          }
+        }).catch(() => 0);
+
         return {
           ...summary,
-          sentToday: account?.sent_today || 0,
+          sentToday: actualSentToday,
           dailyLimit,
           warmupStage,
           warmupStatus: account.warmup_status || "PENDING",
           ageInDays,
-          replyCount: 0, // Simplified to avoid slow counts
+          replyCount: 0,
           lastEmailSentAt: null,
           lastReplyDetectedAt: null,
           healthScore: account?.health_score || (summary.healthStatus === "HEALTHY" ? 100 : summary.healthStatus === "EXPIRING_SOON" ? 85 : 40),

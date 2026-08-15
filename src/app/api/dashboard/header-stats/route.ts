@@ -17,15 +17,27 @@ export async function GET() {
 
     const tenantPrisma = getTenantPrisma(session.user.id);
     
-    // Run only the lightning-fast query needed for the global Header Account Status
-    const emailAccount = await tenantPrisma.emailAccount.findFirst({
+    // Query all connected email accounts for this user
+    const connectedAccounts = await tenantPrisma.emailAccount.findMany({
+      where: { connection_status: "CONNECTED" },
       orderBy: { updated_at: "desc" },
-      select: { email: true, connection_status: true }
+      select: { email: true }
     });
 
+    const inboxCount = connectedAccounts.length;
+    let connectedGmail: string | null = null;
+
+    if (inboxCount === 1) {
+      connectedGmail = connectedAccounts[0].email;
+    } else if (inboxCount > 1) {
+      connectedGmail = `${inboxCount} Inboxes Rotating`;
+    }
+
     return NextResponse.json({
-      connectedGmail: emailAccount?.email || null,
-      connectionStatus: emailAccount?.connection_status || "DISCONNECTED"
+      connectedGmail,
+      inboxCount,
+      accounts: connectedAccounts.map(a => a.email),
+      connectionStatus: inboxCount > 0 ? "CONNECTED" : "DISCONNECTED"
     });
 
   } catch (error: any) {
