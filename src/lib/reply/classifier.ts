@@ -261,6 +261,7 @@ export function mostActionableClassification(
  *   - "john@example.com" → "john@example.com"
  */
 export function extractEmailAddress(fromHeader: string): string {
+  if (!fromHeader || typeof fromHeader !== "string") return "";
   // Try to extract from angle brackets first
   const angleMatch = fromHeader.match(/<([^>]+)>/);
   if (angleMatch) return angleMatch[1].trim().toLowerCase();

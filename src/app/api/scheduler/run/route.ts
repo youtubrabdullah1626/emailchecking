@@ -76,6 +76,22 @@ export const POST = withObservability(async (request: NextRequest) => {
   }
 
   try {
+    // Auto-recover any DELAYED steps whose cooldown/retry time has elapsed
+    if (!dryRun) {
+      await prisma.sequenceStep.updateMany({
+        where: {
+          status: "DELAYED",
+          retry_at: { lte: new Date() },
+          sequence: { status: "ACTIVE" },
+        },
+        data: {
+          status: "PENDING",
+          delay_reason: null,
+          retry_at: null,
+        },
+      }).catch(() => {});
+    }
+
     const result = await runScheduler({ dryRun, maxClaims });
     
     // Actually send the emails if not a dry run and steps were claimed

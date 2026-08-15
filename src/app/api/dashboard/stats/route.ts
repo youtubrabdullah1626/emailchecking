@@ -264,21 +264,34 @@ export async function GET(req: NextRequest) {
       }
     })();
 
-    // 2. Auto-trigger scheduler + sender if any pending steps are due
-    if (schedulerHealth.pendingDueCount > 0) {
-      (async () => {
-        try {
+    // 2. Auto-trigger scheduler + sender if any pending or delayed steps are due
+    (async () => {
+      try {
+        await prisma.sequenceStep.updateMany({
+          where: {
+            status: "DELAYED",
+            retry_at: { lte: new Date() },
+            sequence: { status: "ACTIVE" },
+          },
+          data: {
+            status: "PENDING",
+            delay_reason: null,
+            retry_at: null,
+          },
+        }).catch(() => {});
+
+        if (schedulerHealth.pendingDueCount > 0) {
           const { runScheduler } = await import("@/lib/scheduler/run");
           const { sendBatch } = await import("@/lib/gmail/sender");
           const result = await runScheduler({ dryRun: false });
           if (result.claimedStepIds && result.claimedStepIds.length > 0) {
             await sendBatch(result.claimedStepIds);
           }
-        } catch (err) {
-          console.error("Auto-scheduler background execution error:", err);
         }
-      })();
-    }
+      } catch (err) {
+        console.error("Auto-scheduler background execution error:", err);
+      }
+    })();
 
     const schedulerStatus =
       schedulerHealth.staleProcessingCount && schedulerHealth.staleProcessingCount > 0
