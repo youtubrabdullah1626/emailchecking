@@ -9,8 +9,6 @@ import {
   RefreshCw,
   Download,
   Check,
-  X,
-  Minus,
   Send,
   Eye,
   MessageSquareReply,
@@ -19,7 +17,7 @@ import {
   Radio,
   ChevronRight,
   Inbox,
-  Sparkles,
+  ArrowUpRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -117,104 +115,119 @@ export function TimelineInspector() {
     });
   };
 
-  const formatTimeOnly = (isoString: string | null | undefined) => {
+  const formatCleanTime = (isoString: string | null | undefined) => {
     if (!isoString) return "—";
     const d = new Date(isoString);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
   };
 
-  const formatDateOnly = (isoString: string | null | undefined) => {
+  const formatCleanDate = (isoString: string | null | undefined) => {
     if (!isoString) return "—";
     const d = new Date(isoString);
-    return `${d.getMonth() + 1}/${d.getDate()} ${d.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    })}`;
+    const month = d.toLocaleString([], { month: "short" });
+    const day = d.getDate();
+    const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
+    return `${month} ${day}, ${time}`;
+  };
+
+  const formatLatencyClean = (ms: number | null | undefined) => {
+    if (ms === null || ms === undefined) return "—";
+    if (ms < 1000) return `+${ms}ms`;
+    return `+${(ms / 1000).toFixed(1)}s`;
   };
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto">
-      {/* 1. Ultra-Clean Minimalist KPI Header Strip */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-xl p-4 shadow-sm">
-        <div className="grid grid-cols-2 sm:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-800 gap-y-3 sm:gap-y-0">
-          {/* Sent */}
-          <div className="px-4 first:pl-2">
-            <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <Send className="h-3 w-3 text-blue-500" />
-              <span>Total Sent</span>
+    <div className="space-y-4 max-w-full">
+      {/* 1. Harmonious SaaS KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        {/* Total Sent */}
+        <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Total Sent
             </div>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
-                {stats.totalSent}
-              </span>
-              <span className="text-[11px] text-slate-400">emails</span>
+            <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
+              {stats.totalSent}
             </div>
           </div>
+          <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+            <Send className="h-4 w-4" />
+          </div>
+        </div>
 
-          {/* Opened */}
-          <div className="px-4">
-            <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <Eye className="h-3 w-3 text-purple-500" />
-              <span>Opened</span>
+        {/* Opened */}
+        <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Opened
             </div>
-            <div className="mt-1 flex items-baseline gap-1.5">
+            <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
                 {stats.totalOpened}
               </span>
-              <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
-                ({stats.openRate}%)
+              <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
+                {stats.openRate}%
               </span>
             </div>
           </div>
+          <div className="h-8 w-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <Eye className="h-4 w-4" />
+          </div>
+        </div>
 
-          {/* Replied */}
-          <div className="px-4">
-            <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <MessageSquareReply className="h-3 w-3 text-emerald-500" />
-              <span>Replied</span>
+        {/* Replied */}
+        <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Replied
             </div>
-            <div className="mt-1 flex items-baseline gap-1.5">
+            <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
                 {stats.totalReplied}
               </span>
-              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                ({stats.replyRate}%)
+              <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                {stats.replyRate}%
               </span>
             </div>
           </div>
+          <div className="h-8 w-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <MessageSquareReply className="h-4 w-4" />
+          </div>
+        </div>
 
-          {/* Failed */}
-          <div className="px-4">
-            <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <AlertCircle className="h-3 w-3 text-rose-500" />
-              <span>Failed</span>
+        {/* Failed */}
+        <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Failed
             </div>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
-                {stats.totalFailed}
-              </span>
-              <span className="text-[11px] text-slate-400">issues</span>
+            <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
+              {stats.totalFailed}
             </div>
           </div>
+          <div className="h-8 w-8 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+            <AlertCircle className="h-4 w-4" />
+          </div>
+        </div>
 
-          {/* Avg Latency */}
-          <div className="px-4 last:pr-2 col-span-2 sm:col-span-1">
-            <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <Zap className="h-3 w-3 text-amber-500" />
-              <span>Avg Latency</span>
+        {/* Avg Latency */}
+        <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between col-span-2 lg:col-span-1">
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              API Latency
             </div>
-            <div className="mt-1 flex items-baseline gap-1">
-              <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
-                +{stats.avgLatencyMs}
-              </span>
-              <span className="text-[11px] text-slate-400">ms</span>
+            <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
+              +{stats.avgLatencyMs}ms
             </div>
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+            <Zap className="h-4 w-4" />
           </div>
         </div>
       </div>
 
-      {/* 2. Sleek Filter & Search Controls */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+      {/* 2. Control Toolbar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
         {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -222,15 +235,15 @@ export function TimelineInspector() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search email, name, subject..."
-            className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-sm"
+            placeholder="Search lead, inbox, subject..."
+            className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-600 transition-all shadow-xs"
           />
         </div>
 
-        {/* Filter Tabs & Quick Actions */}
+        {/* Status Filter Tabs & Controls */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Segmented Filter */}
-          <div className="inline-flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-800/80 text-xs">
+          <div className="inline-flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs">
             {["ALL", "OPENED", "REPLIED", "SENT", "FAILED"].map((tab) => (
               <button
                 key={tab}
@@ -238,7 +251,7 @@ export function TimelineInspector() {
                 className={`px-2.5 py-1 rounded-md font-medium text-[11px] transition-all ${
                   statusFilter === tab
                     ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-semibold"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
                 }`}
               >
                 {tab === "ALL" ? "All" : tab.charAt(0) + tab.slice(1).toLowerCase()}
@@ -250,7 +263,7 @@ export function TimelineInspector() {
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value)}
-            className="px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-700 dark:text-slate-300 focus:outline-none shadow-sm cursor-pointer"
+            className="px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-700 dark:text-slate-300 focus:outline-none shadow-xs cursor-pointer"
           >
             <option value="all">All Time</option>
             <option value="today">Today</option>
@@ -258,33 +271,33 @@ export function TimelineInspector() {
             <option value="30d">Last 30d</option>
           </select>
 
-          {/* Live Sync Toggle */}
+          {/* Live Sync Status */}
           <button
             onClick={toggleLiveSync}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border shadow-sm transition-all ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border shadow-xs transition-all ${
               isLiveSync
-                ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300"
-                : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500"
+                ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white"
+                : "bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-800"
             }`}
           >
-            <span className={`h-1.5 w-1.5 rounded-full ${isLiveSync ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
-            <span className="text-[11px]">{isLiveSync ? "Live" : "Paused"}</span>
+            <span className={`h-1.5 w-1.5 rounded-full ${isLiveSync ? "bg-emerald-400 animate-pulse" : "bg-slate-400"}`} />
+            <span className="text-[11px]">{isLiveSync ? "Live Stream" : "Paused"}</span>
           </button>
 
           {/* Refresh */}
           <button
             onClick={refreshNow}
             disabled={isValidating}
-            className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 shadow-sm transition-all disabled:opacity-50"
+            className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white shadow-xs transition-all disabled:opacity-50"
             title="Refresh stream"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isValidating ? "animate-spin text-orange-500" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isValidating ? "animate-spin text-indigo-500" : ""}`} />
           </button>
 
           {/* CSV Export */}
           <button
             onClick={exportToCSV}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 shadow-sm transition-all"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 shadow-xs transition-all"
           >
             <Download className="h-3 w-3" />
             <span className="text-[11px]">CSV</span>
@@ -292,36 +305,36 @@ export function TimelineInspector() {
         </div>
       </div>
 
-      {/* 3. Clean, Lightweight Excel/Calendar Table */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+      {/* 3. Professional Spreadsheet Table */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50/75 dark:bg-slate-950/60 border-b border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-medium text-[11px]">
-                <th className="py-2.5 px-4">Recipient</th>
-                <th className="py-2.5 px-3">Sender Inbox</th>
-                <th className="py-2.5 px-3">Step & Subject</th>
-                <th className="py-2.5 px-3 text-center">Scheduled</th>
-                <th className="py-2.5 px-3 text-center">Sent</th>
-                <th className="py-2.5 px-3 text-center">Accepted</th>
-                <th className="py-2.5 px-3 text-center">Opened</th>
-                <th className="py-2.5 px-3 text-center">Replied</th>
-                <th className="py-2.5 px-4 text-right">Details</th>
+              <tr className="bg-slate-50/90 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-[11px] uppercase tracking-wider">
+                <th className="py-3 px-4 font-semibold">Recipient</th>
+                <th className="py-3 px-3 font-semibold">Sender Account</th>
+                <th className="py-3 px-3 font-semibold">Step & Subject</th>
+                <th className="py-3 px-3 font-semibold text-center">Scheduled</th>
+                <th className="py-3 px-3 font-semibold text-center">Sent</th>
+                <th className="py-3 px-3 font-semibold text-center">Accepted</th>
+                <th className="py-3 px-3 font-semibold text-center">Opened</th>
+                <th className="py-3 px-3 font-semibold text-center">Replied</th>
+                <th className="py-3 px-4 font-semibold text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
               {isLoading ? (
                 <tr>
-                  <td colSpan={9} className="py-10 text-center text-slate-400">
-                    <RefreshCw className="h-5 w-5 animate-spin mx-auto text-orange-500 mb-1.5" />
-                    <span className="text-xs">Loading email telemetry...</span>
+                  <td colSpan={9} className="py-12 text-center text-slate-400">
+                    <RefreshCw className="h-5 w-5 animate-spin mx-auto text-indigo-500 mb-2" />
+                    <span className="text-xs">Loading email timeline stream...</span>
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-10 text-center text-slate-400">
-                    <Inbox className="h-6 w-6 mx-auto text-slate-300 dark:text-slate-700 mb-1.5" />
-                    <span className="text-xs">No records found.</span>
+                  <td colSpan={9} className="py-12 text-center text-slate-400">
+                    <Inbox className="h-6 w-6 mx-auto text-slate-300 dark:text-slate-700 mb-2" />
+                    <span className="text-xs">No email records found.</span>
                   </td>
                 </tr>
               ) : (
@@ -336,51 +349,59 @@ export function TimelineInspector() {
                     <tr
                       key={item.id}
                       onClick={() => handleRowClick(item)}
-                      className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 cursor-pointer transition-colors group"
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 cursor-pointer transition-colors group"
                     >
                       {/* Recipient */}
                       <td className="py-2.5 px-4">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-slate-900 dark:text-white">
-                            {item.recipientEmail}
-                          </span>
-                          {item.recipientName && (
-                            <span className="text-[10px] text-slate-400 hidden lg:inline">
-                              ({item.recipientName})
+                          <div className="h-6 w-6 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-[10px] flex items-center justify-center shrink-0">
+                            {item.recipientName ? item.recipientName.charAt(0).toUpperCase() : item.recipientEmail.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="font-semibold text-slate-900 dark:text-white truncate block">
+                              {item.recipientEmail}
                             </span>
-                          )}
+                            {item.recipientName && (
+                              <span className="text-[10px] text-slate-400 block truncate">
+                                {item.recipientName}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
 
                       {/* Sender Inbox */}
-                      <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400 font-mono text-[11px] max-w-[150px] truncate">
+                      <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600 dark:text-slate-400 truncate max-w-[160px]">
                         {item.senderEmail}
                       </td>
 
-                      {/* Subject */}
-                      <td className="py-2.5 px-3 text-slate-800 dark:text-slate-200 max-w-xs truncate">
-                        <span className="inline-block text-[10px] font-semibold px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 mr-1.5">
-                          S{item.stepNumber}
-                        </span>
-                        <span>{item.subject}</span>
+                      {/* Step & Subject */}
+                      <td className="py-2.5 px-3 max-w-xs">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 shrink-0">
+                            Step {item.stepNumber}
+                          </span>
+                          <span className="text-slate-800 dark:text-slate-200 truncate">
+                            {item.subject}
+                          </span>
+                        </div>
                       </td>
 
                       {/* Scheduled */}
-                      <td className="py-2.5 px-3 text-center text-slate-500 dark:text-slate-400 font-mono text-[11px]">
-                        {formatDateOnly(item.lifecycle.scheduled.at)}
+                      <td className="py-2.5 px-3 text-center text-slate-500 dark:text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                        {formatCleanDate(item.lifecycle.scheduled.at)}
                       </td>
 
                       {/* Sent */}
-                      <td className="py-2.5 px-3 text-center">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         {isSent ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-medium text-[11px]">
-                            <Check className="h-3 w-3 text-emerald-600" />
-                            <span>{formatTimeOnly(item.lifecycle.sent.at)}</span>
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono text-[11px] border border-slate-200/60 dark:border-slate-700/60">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            <span>{formatCleanTime(item.lifecycle.sent.at)}</span>
                           </span>
                         ) : isFailed ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 font-medium text-[11px]">
-                            <X className="h-3 w-3 text-rose-600" />
-                            <span>Failed</span>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-medium text-[11px] border border-rose-200/60 dark:border-rose-900/60">
+                            Failed
                           </span>
                         ) : (
                           <span className="text-slate-300 dark:text-slate-600 font-bold">—</span>
@@ -388,31 +409,24 @@ export function TimelineInspector() {
                       </td>
 
                       {/* Gmail Accepted */}
-                      <td className="py-2.5 px-3 text-center">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         {isAccepted ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium text-[11px]">
-                            <Check className="h-3 w-3" />
-                            {item.lifecycle.gmailAccepted.latencyMs !== null && (
-                              <span className="font-mono text-[10px] opacity-80">
-                                +{item.lifecycle.gmailAccepted.latencyMs}ms
-                              </span>
-                            )}
+                          <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                            {formatLatencyClean(item.lifecycle.gmailAccepted.latencyMs)}
                           </span>
                         ) : isFailed ? (
-                          <span className="text-rose-500">
-                            <X className="h-3.5 w-3.5 mx-auto" />
-                          </span>
+                          <span className="text-rose-500 font-bold">✕</span>
                         ) : (
                           <span className="text-slate-300 dark:text-slate-600 font-bold">—</span>
                         )}
                       </td>
 
                       {/* Opened */}
-                      <td className="py-2.5 px-3 text-center">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         {isOpened ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 font-semibold text-[11px]">
-                            <Check className="h-3 w-3 text-purple-600" />
-                            <span>{item.lifecycle.opened.count}x</span>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold text-[11px] border border-indigo-200/60 dark:border-indigo-800/60">
+                            <Check className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />
+                            <span>{item.lifecycle.opened.count} {item.lifecycle.opened.count === 1 ? "open" : "opens"}</span>
                           </span>
                         ) : (
                           <span className="text-slate-300 dark:text-slate-600 font-bold">—</span>
@@ -420,10 +434,10 @@ export function TimelineInspector() {
                       </td>
 
                       {/* Replied */}
-                      <td className="py-2.5 px-3 text-center">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         {isReplied ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-semibold text-[11px]">
-                            <Check className="h-3 w-3 text-emerald-600" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold text-[11px] border border-emerald-200/60 dark:border-emerald-800/60">
+                            <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                             <span>Replied</span>
                           </span>
                         ) : (
@@ -431,11 +445,11 @@ export function TimelineInspector() {
                         )}
                       </td>
 
-                      {/* Details */}
-                      <td className="py-2.5 px-4 text-right">
-                        <span className="inline-flex items-center text-slate-400 group-hover:text-orange-500 font-medium text-[11px] transition-colors">
+                      {/* Action */}
+                      <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-slate-500 hover:text-slate-900 dark:hover:text-white font-medium text-[11px] group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-colors">
                           <span>Inspect</span>
-                          <ChevronRight className="h-3 w-3 ml-0.5" />
+                          <ArrowUpRight className="h-3 w-3" />
                         </span>
                       </td>
                     </tr>
@@ -447,11 +461,11 @@ export function TimelineInspector() {
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/40 flex items-center justify-between text-[11px] text-slate-400">
-          <span>{items.length} records displayed</span>
+        <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 flex items-center justify-between text-[11px] text-slate-400">
+          <span>{items.length} records tracked</span>
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <span>Auto-synced</span>
+            <span>Connected to Live Telemetry Stream</span>
           </span>
         </div>
       </div>
