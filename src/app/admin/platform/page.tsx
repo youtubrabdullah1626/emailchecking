@@ -1,8 +1,10 @@
 "use client";
 
+import React, { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { PageHeader } from "@/components/ui/page-header";
+import { Sliders, Info, Sparkles, Shield, Cpu, RefreshCw, Layers } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { OverviewTab } from "./components/tabs/OverviewTab";
 import { FeatureFlagsTab } from "./components/tabs/FeatureFlagsTab";
 import { PlatformLimitsTab } from "./components/tabs/PlatformLimitsTab";
@@ -14,7 +16,7 @@ import { ApiFeatureFlag, ApiPlatformConfig, ApiProviderConfig } from "./hooks/ty
 
 type SelectedItem = ApiFeatureFlag | ApiPlatformConfig | ApiProviderConfig | null;
 
-export default function PlatformConfigurationPage() {
+function PlatformConfigurationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -41,53 +43,89 @@ export default function PlatformConfigurationPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50/30 text-foreground pb-20">
-      <div className="flex-1 p-8 pt-6 max-w-[1600px] w-full mx-auto space-y-8">
-        <PageHeader
-          title="Platform Configuration"
-          description="Manage enterprise feature flags, limits, and provider routing safely."
-        />
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+      {/* Signature Silaer Warm Header Banner */}
+      <div className="bg-gradient-to-r from-orange-100/70 via-amber-50/60 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/80 border border-orange-200/80 dark:border-orange-950/40 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-4">
+            <div className="h-11 w-11 rounded-full bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-200/80 dark:border-orange-800/50 shadow-xs">
+              <Sliders className="h-5 w-5" />
+            </div>
 
-        <Tabs value={activeTab} onValueChange={setTab} className="w-full">
-          <TabsList className="w-full justify-start border-b border-border rounded-none h-auto p-0 bg-transparent mb-8 space-x-6 overflow-x-auto overflow-y-hidden no-scrollbar">
-            {[
-              { value: "overview", label: "Overview" },
-              { value: "feature-flags", label: "Feature Flags" },
-              { value: "platform-limits", label: "Platform Limits" },
-              { value: "provider-routing", label: "Provider Routing" },
-              { value: "rollouts", label: "Rollouts" },
-              { value: "version-history", label: "Version History" },
-            ].map(({ value, label }) => (
-              <TabsTrigger
-                key={value}
-                value={value}
-                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground rounded-none px-0 pb-3 pt-2 font-medium"
-              >
-                {label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          <TabsContent value="overview" className="mt-0 focus-visible:outline-none">
-            <OverviewTab />
-          </TabsContent>
-          <TabsContent value="feature-flags" className="mt-0 focus-visible:outline-none">
-            <FeatureFlagsTab onSelect={(item) => setDrawerItem(item, "flag")} />
-          </TabsContent>
-          <TabsContent value="platform-limits" className="mt-0 focus-visible:outline-none">
-            <PlatformLimitsTab onSelect={(item) => setDrawerItem(item, "config")} />
-          </TabsContent>
-          <TabsContent value="provider-routing" className="mt-0 focus-visible:outline-none">
-            <ProviderRoutingTab onSelect={(item) => setDrawerItem(item, "provider")} />
-          </TabsContent>
-          <TabsContent value="rollouts" className="mt-0 focus-visible:outline-none">
-            <RolloutsTab onSelect={(item) => setDrawerItem(item, "flag")} />
-          </TabsContent>
-          <TabsContent value="version-history" className="mt-0 focus-visible:outline-none">
-            <VersionHistoryTab />
-          </TabsContent>
-        </Tabs>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                  Platform Configuration & Theme Controller
+                </h1>
+                <TooltipProvider>
+                  <Tooltip delayDuration={200}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center justify-center h-5 w-5 rounded-full bg-orange-100/80 text-orange-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-orange-200 transition-colors cursor-help"
+                      >
+                        <Info className="h-3 w-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" align="center" className="max-w-xs p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl z-50 text-xs">
+                      <p className="font-semibold text-slate-900 dark:text-white mb-1">
+                        Global Operational Governance
+                      </p>
+                      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                        Control global rate limits, BANNER_THEME color tinting, feature toggles, and Google API routing across all user workspaces.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                Manage system limits, live banner themes, feature toggles, and provider routing safely.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <Tabs value={activeTab} onValueChange={setTab} className="w-full space-y-6">
+        <TabsList className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-2xl shadow-xs flex flex-wrap h-auto gap-1">
+          {[
+            { value: "overview", label: "Overview", icon: Layers },
+            { value: "feature-flags", label: "Feature Flags", icon: Sparkles },
+            { value: "platform-limits", label: "Platform Limits & Theme", icon: Sliders },
+            { value: "provider-routing", label: "Provider Routing", icon: Cpu },
+            { value: "rollouts", label: "Rollouts", icon: Shield },
+            { value: "version-history", label: "Version History", icon: RefreshCw },
+          ].map(({ value, label, icon: Icon }) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold data-[state=active]:bg-orange-500/10 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 border border-transparent data-[state=active]:border-orange-500/20 flex items-center gap-1.5 transition-all"
+            >
+              <Icon className="h-3.5 w-3.5" />
+              <span>{label}</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value="overview" className="mt-0 focus-visible:outline-none">
+          <OverviewTab />
+        </TabsContent>
+        <TabsContent value="feature-flags" className="mt-0 focus-visible:outline-none">
+          <FeatureFlagsTab onSelect={(item) => setDrawerItem(item, "flag")} />
+        </TabsContent>
+        <TabsContent value="platform-limits" className="mt-0 focus-visible:outline-none">
+          <PlatformLimitsTab onSelect={(item) => setDrawerItem(item, "config")} />
+        </TabsContent>
+        <TabsContent value="provider-routing" className="mt-0 focus-visible:outline-none">
+          <ProviderRoutingTab onSelect={(item) => setDrawerItem(item, "provider")} />
+        </TabsContent>
+        <TabsContent value="rollouts" className="mt-0 focus-visible:outline-none">
+          <RolloutsTab onSelect={(item) => setDrawerItem(item, "flag")} />
+        </TabsContent>
+        <TabsContent value="version-history" className="mt-0 focus-visible:outline-none">
+          <VersionHistoryTab />
+        </TabsContent>
+      </Tabs>
 
       <ConfigurationDrawer 
         itemKey={drawerItemKey} 
@@ -95,5 +133,13 @@ export default function PlatformConfigurationPage() {
         onClose={() => setDrawerItem(null)} 
       />
     </div>
+  );
+}
+
+export default function PlatformConfigurationPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-slate-400">Loading Configuration...</div>}>
+      <PlatformConfigurationContent />
+    </Suspense>
   );
 }

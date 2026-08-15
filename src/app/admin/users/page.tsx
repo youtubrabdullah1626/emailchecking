@@ -1,16 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
-import { LegacyPageHeader as PageHeader } from "@/components/ui/legacy-adapters";
+import React, { useState, Suspense } from "react";
+import { UserCheck, Info, Sparkles, Download, ShieldAlert, AlertTriangle, Users } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { UserSearchFilters } from "./components/UserSearchFilters";
 import { UserDataGrid } from "./components/UserDataGrid";
 import { UserProfileDrawer } from "./components/UserProfileDrawer";
 import { AssignRoleDialog } from "./components/AssignRoleDialog";
 import { MockUser } from "./types";
-
 import useSWR from "swr";
 import { useSession } from "next-auth/react";
-import { Loader2, AlertTriangle, Download, ShieldAlert } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
@@ -23,7 +23,7 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-export default function UserManagementPage() {
+function UserManagementContent() {
   const { data: session } = useSession();
   const user = session?.user as any;
   const normalizedRole = user?.role?.toUpperCase() || "USER";
@@ -42,7 +42,7 @@ export default function UserManagementPage() {
   });
 
   const users: MockUser[] = data?.users || [];
-  const totalUsers = data?.pagination?.total || 0;
+  const totalUsers = data?.pagination?.total || users.length;
 
   // Apply filters client-side
   const filteredUsers = users.filter((u) => {
@@ -97,72 +97,108 @@ export default function UserManagementPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground pb-20">
-      <div className="flex-1 space-y-6 p-8 pt-6 max-w-[1600px] w-full mx-auto">
-        <PageHeader
-          title="User Management"
-          description="View, manage, and monitor all users across the platform."
-          actions={
-            <div className="flex items-center gap-3">
-              <Button 
-                variant={needsAttentionOnly ? "destructive" : "outline"}
-                size="sm" 
-                onClick={() => setNeedsAttentionOnly(!needsAttentionOnly)}
-                className="gap-2"
-              >
-                <AlertTriangle className="h-4 w-4" />
-                {needsAttentionOnly ? "Showing Needs Attention" : "Find Needs Attention"}
-              </Button>
-              <Button onClick={handleExportCSV} variant="outline" size="sm" className="gap-2">
-                <Download className="h-4 w-4" />
-                Export CSV
-              </Button>
-              {canAssignRoles && (
-                <Button onClick={() => setIsAssignRoleOpen(true)} size="sm" className="gap-2 shadow-md">
-                  <ShieldAlert className="h-4 w-4" />
-                  Assign Role
-                </Button>
-              )}
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+      {/* Signature Silaer Warm Header Banner */}
+      <div className="bg-gradient-to-r from-orange-100/70 via-amber-50/60 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/80 border border-orange-200/80 dark:border-orange-950/40 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-4">
+            <div className="h-11 w-11 rounded-full bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-200/80 dark:border-orange-800/50 shadow-xs">
+              <UserCheck className="h-5 w-5" />
             </div>
-          }
-        />
-        
-        {error ? (
-          <Alert variant="destructive">
-            <AlertTitle>{error.message?.includes("Forbidden") ? "Access Denied" : "Connection Error"}</AlertTitle>
-            <AlertDescription>
-              {error.message?.includes("Forbidden") 
-                ? "You do not have permission to view the user management dashboard. This area is restricted to Administrators."
-                : "Failed to load customer profiles from the database."}
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <div className="flex flex-col space-y-6 animate-in fade-in duration-500">
-            <UserSearchFilters 
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              roleFilter={roleFilter}
-              setRoleFilter={setRoleFilter}
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              healthFilter={healthFilter}
-              setHealthFilter={setHealthFilter}
-            />
-            
-            {isLoading ? (
-              <div className="h-64 flex items-center justify-center border border-border rounded-lg bg-card">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                  User Directory & Access Control
+                </h1>
+                <TooltipProvider>
+                  <Tooltip delayDuration={200}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center justify-center h-5 w-5 rounded-full bg-orange-100/80 text-orange-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-orange-200 transition-colors cursor-help"
+                      >
+                        <Info className="h-3 w-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" align="center" className="max-w-xs p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl z-50 text-xs">
+                      <p className="font-semibold text-slate-900 dark:text-white mb-1">
+                        Enterprise RBAC Manager
+                      </p>
+                      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                        Manage user accounts, assign system roles (USER, HELPER, ADMIN, OWNER), inspect active sessions, and oversee deliverability health.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
-            ) : (
-              <UserDataGrid 
-                users={filteredUsers} 
-                onUserSelected={setSelectedUser} 
-                searchQuery={searchQuery}
-              />
+              <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                View, audit, and manage user accounts, RBAC permissions, and sending health across Silaer.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
+            <Button 
+              variant={needsAttentionOnly ? "destructive" : "outline"}
+              size="sm" 
+              onClick={() => setNeedsAttentionOnly(!needsAttentionOnly)}
+              className="gap-1.5 rounded-xl border-orange-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900 shadow-2xs text-xs font-semibold"
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span>{needsAttentionOnly ? "Showing Issues" : "Needs Attention"}</span>
+            </Button>
+
+            <Button onClick={handleExportCSV} variant="outline" size="sm" className="gap-1.5 rounded-xl border-orange-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900 text-slate-700 dark:text-slate-300 shadow-2xs text-xs font-semibold hover:bg-orange-50/50">
+              <Download className="h-3.5 w-3.5 text-orange-600" />
+              <span className="hidden sm:inline">Export CSV</span>
+            </Button>
+
+            {canAssignRoles && (
+              <Button onClick={() => setIsAssignRoleOpen(true)} size="sm" className="gap-2 bg-orange-600 hover:bg-orange-700 text-white shadow-xs rounded-xl text-xs font-semibold">
+                <ShieldAlert className="h-4 w-4" />
+                <span>Assign Role</span>
+              </Button>
             )}
           </div>
-        )}
+        </div>
       </div>
+      
+      {error ? (
+        <Alert variant="destructive" className="rounded-2xl">
+          <AlertTitle>{error.message?.includes("Forbidden") ? "Access Denied" : "Connection Error"}</AlertTitle>
+          <AlertDescription>
+            {error.message?.includes("Forbidden") 
+              ? "You do not have permission to view the user management dashboard. This area is restricted to Administrators."
+              : "Failed to load customer profiles from the database."}
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <div className="flex flex-col space-y-6 animate-in fade-in duration-300">
+          <UserSearchFilters 
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            roleFilter={roleFilter}
+            setRoleFilter={setRoleFilter}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            healthFilter={healthFilter}
+            setHealthFilter={setHealthFilter}
+          />
+          
+          {isLoading ? (
+            <div className="h-64 flex items-center justify-center border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900">
+              <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+            </div>
+          ) : (
+            <UserDataGrid 
+              users={filteredUsers} 
+              onUserSelected={setSelectedUser} 
+              searchQuery={searchQuery}
+            />
+          )}
+        </div>
+      )}
 
       <UserProfileDrawer 
         user={selectedUser} 
@@ -173,8 +209,16 @@ export default function UserManagementPage() {
       <AssignRoleDialog
         isOpen={isAssignRoleOpen}
         onClose={() => setIsAssignRoleOpen(false)}
-        onSuccess={() => mutate()} // Refresh user list after updating role
+        onSuccess={() => mutate()}
       />
     </div>
+  );
+}
+
+export default function UserManagementPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-slate-400">Loading User Directory...</div>}>
+      <UserManagementContent />
+    </Suspense>
   );
 }

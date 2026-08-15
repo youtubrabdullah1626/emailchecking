@@ -128,21 +128,43 @@ export default function SchedulerPage() {
 
   return (
     <WarmupProvider>
-      <AnimatedPage className="space-y-8 p-8 pt-6">
-        <PageHeader 
-          title="Scheduler Operations" 
-          description="Monitor and control the background task execution engine."
-        >
-          <Button variant="outline" className="gap-2" onClick={handleScan} disabled={scanning || loading}>
-            <MailSearch className="h-4 w-4" /> Scan Replies
-          </Button>
-          <Button variant="secondary" className="gap-2 bg-secondary/50 border shadow-sm" onClick={handleDryRun} disabled={running || loading}>
-            <RefreshCw className="h-4 w-4" /> Dry Run
-          </Button>
-          <Button className="gap-2" onClick={handleRun} disabled={running || loading}>
-            <Play className="h-4 w-4" fill="currentColor" /> Force Run
-          </Button>
-        </PageHeader>
+      <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+        {/* Signature Silaer Warm Header Banner */}
+        <div className="bg-gradient-to-r from-orange-100/70 via-amber-50/60 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/80 border border-orange-200/80 dark:border-orange-950/40 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-4">
+              <div className="h-11 w-11 rounded-full bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-200/80 dark:border-orange-800/50 shadow-xs">
+                <ServerCog className="h-5 w-5" />
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                    Cron Scheduler Operations & Heartbeat
+                  </h1>
+                </div>
+                <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                  Monitor and control the background task execution engine, reply scanners, and warmup schedules.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
+              <Button variant="outline" size="sm" className="gap-1.5 rounded-xl border-orange-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900 text-xs font-semibold shadow-2xs hover:bg-orange-50/50" onClick={handleScan} disabled={scanning || loading}>
+                <MailSearch className="h-3.5 w-3.5 text-orange-600" /> 
+                <span>Scan Replies</span>
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5 rounded-xl border-orange-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900 text-xs font-semibold shadow-2xs hover:bg-orange-50/50" onClick={handleDryRun} disabled={running || loading}>
+                <RefreshCw className="h-3.5 w-3.5 text-orange-600" /> 
+                <span>Dry Run</span>
+              </Button>
+              <Button size="sm" className="gap-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-semibold shadow-xs" onClick={handleRun} disabled={running || loading}>
+                <Play className="h-3.5 w-3.5" fill="currentColor" /> 
+                <span>Force Run</span>
+              </Button>
+            </div>
+          </div>
+        </div>
 
         {error && (
           <ErrorState title="Telemetry Error" message={error} onRetry={loadStats} />
@@ -323,9 +345,9 @@ export default function SchedulerPage() {
               Execute Now
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      </AnimatedPage>
+          </DialogContent>
+        </Dialog>
+      </div>
     </WarmupProvider>
   );
 }

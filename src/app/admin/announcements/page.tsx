@@ -431,12 +431,28 @@ export default function AnnouncementsAdminPage() {
   }, [announcements]);
 
   return (
-    <div className="flex-1 p-8 pt-6">
-      <AnimatedPage className="space-y-8">
-        <PageHeader 
-          title="Broadcasting & Scheduling Studio" 
-          description="Create, schedule date-range campaigns, and broadcast global announcements to your users."
-        />
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+      {/* Signature Silaer Warm Header Banner */}
+      <div className="bg-gradient-to-r from-orange-100/70 via-amber-50/60 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/80 border border-orange-200/80 dark:border-orange-950/40 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-4">
+            <div className="h-11 w-11 rounded-full bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-200/80 dark:border-orange-800/50 shadow-xs">
+              <Megaphone className="h-5 w-5" />
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                  Broadcasting & Notification Studio
+                </h1>
+              </div>
+              <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                Create, schedule, and broadcast in-app announcements across all user workspaces.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
@@ -1052,7 +1068,6 @@ export default function AnnouncementsAdminPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </AnimatedPage>
     </div>
   );
 }

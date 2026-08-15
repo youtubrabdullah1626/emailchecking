@@ -87,52 +87,67 @@ export default function AuditPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground pb-20">
-      <div className="flex-1 space-y-6 p-8 pt-6 max-w-[1600px] w-full mx-auto">
-        <PageHeader
-          title="Audit Log & Activity Center"
-          description="Track important actions across the platform."
-          actions={
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setIsLiveMode(!isLiveMode)}
-                className={`px-4 py-2 rounded-md shadow-sm text-[13px] font-medium transition-all flex items-center gap-2 ${
-                  isLiveMode 
-                    ? "bg-green-500 text-white shadow-green-500/20" 
-                    : "bg-background border border-border text-foreground hover:bg-muted"
-                }`}
-              >
-                <span className={`w-2 h-2 rounded-full ${isLiveMode ? "bg-white animate-pulse" : "bg-slate-400"}`}></span>
-                Live Mode
-              </button>
-
-              <button 
-                onClick={() => setDeleteMode("all")}
-                disabled={isClearing}
-                className="px-4 py-2 bg-red-500 text-white rounded-md shadow-sm text-[13px] font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
-              >
-                Clear All Logs
-              </button>
-
-              <button 
-                onClick={refresh}
-                disabled={isLoading || isRefreshing || isClearing || isLiveMode}
-                className="px-4 py-2 bg-background border border-border text-foreground rounded-md shadow-sm text-[13px] font-medium hover:bg-muted transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing && !isLiveMode ? "animate-spin" : ""}`} />
-                Refresh
-              </button>
-
-              <button 
-                onClick={handleExport}
-                className="px-4 py-2 bg-background border border-border text-foreground rounded-md shadow-sm text-[13px] font-medium hover:bg-muted transition-colors flex items-center gap-2"
-              >
-                <Download className="w-3.5 h-3.5 text-slate-500" />
-                Export CSV
-              </button>
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+      {/* Signature Silaer Warm Header Banner */}
+      <div className="bg-gradient-to-r from-orange-100/70 via-amber-50/60 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/80 border border-orange-200/80 dark:border-orange-950/40 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-4">
+            <div className="h-11 w-11 rounded-full bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-200/80 dark:border-orange-800/50 shadow-xs">
+              <RefreshCw className="h-5 w-5" />
             </div>
-          }
-        />
+
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                  Security Audit Log & Forensic Stream
+                </h1>
+              </div>
+              <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                Immutable activity logs, role change tracking, and operational security forensics.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
+            <button
+              onClick={() => setIsLiveMode(!isLiveMode)}
+              className={`px-3 py-1.5 rounded-xl shadow-2xs text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                isLiveMode 
+                  ? "bg-emerald-500 text-white shadow-emerald-500/20" 
+                  : "bg-white/80 dark:bg-slate-900 border border-orange-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-orange-50/50"
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${isLiveMode ? "bg-white animate-pulse" : "bg-slate-400"}`}></span>
+              Live Mode
+            </button>
+
+            <button 
+              onClick={refresh}
+              disabled={isLoading || isRefreshing || isClearing || isLiveMode}
+              className="px-3 py-1.5 bg-white/80 dark:bg-slate-900 border border-orange-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl shadow-2xs text-xs font-semibold hover:bg-orange-50/50 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-orange-600 ${isRefreshing && !isLiveMode ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
+
+            <button 
+              onClick={handleExport}
+              className="px-3 py-1.5 bg-white/80 dark:bg-slate-900 border border-orange-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl shadow-2xs text-xs font-semibold hover:bg-orange-50/50 transition-colors flex items-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5 text-orange-600" />
+              <span className="hidden sm:inline">Export CSV</span>
+            </button>
+
+            <button 
+              onClick={() => setDeleteMode("all")}
+              disabled={isClearing}
+              className="px-3 py-1.5 bg-rose-600 text-white rounded-xl shadow-xs text-xs font-semibold hover:bg-rose-700 transition-colors disabled:opacity-50"
+            >
+              Clear Logs
+            </button>
+          </div>
+        </div>
+      </div>
 
         <div className="animate-in fade-in duration-500 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -219,7 +234,6 @@ export default function AuditPage() {
             </div>
           </Card>
         </div>
-      </div>
 
       <AuditEventDrawer 
         event={selectedEvent}
