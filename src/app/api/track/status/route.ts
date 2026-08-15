@@ -205,7 +205,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ statuses });
   } catch (error) {
     console.error("[POST /api/track/status] Error:", error);
-    return NextResponse.json({ error: "Failed to fetch tracking statuses" }, { status: 500 });
+    return NextResponse.json({ 
+      error: "Failed to fetch tracking statuses",
+      detail: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
   }
 }
 
