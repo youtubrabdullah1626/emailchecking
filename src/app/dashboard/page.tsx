@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import useSWR from "swr";
@@ -95,43 +97,49 @@ export default function DashboardPage() {
     { refreshInterval: 15000 }
   );
 
-  const stats = statsData ? {
-    activeSequences: statsData.activeSequences ?? 0,
-    emailsSentToday: statsData.emailsSentToday ?? 0,
-    opensToday: statsData.opensToday ?? 0,
-    allTimeSent: statsData.allTimeSent ?? statsData.emailsSentToday ?? 0,
-    totalReplies: statsData.totalReplies ?? statsData.repliesToday ?? 0,
-    repliesToday: statsData.repliesToday ?? 0,
-    totalOpens: statsData.totalOpens ?? 0,
-    openRate: statsData.openRate ?? 0,
-    totalProspects: statsData.totalProspects ?? 0,
-    pendingReviews: statsData.pendingReviews ?? 0,
-    failedSteps: statsData.failedSteps ?? 0,
-    stoppedSequences: statsData.stoppedSequences ?? 0,
-    schedulerStatus: statsData.schedulerStatus ?? "IDLE",
-    gmailConfigured: statsData.gmailConfigured ?? false,
-    geminiConfigured: statsData.geminiConfigured ?? false,
-    schedulerHealth: statsData.schedulerHealth,
-    dailyLimit: statsData.dailyLimit ?? 500,
-    hourlyLimit: statsData.hourlyLimit ?? 50,
-    sequenceLimit: statsData.sequenceLimit ?? 5,
-    emailsSentThisHour: statsData.emailsSentThisHour ?? 0,
-    bannerTheme: statsData.bannerTheme ?? "DEFAULT",
-    userTimezone: statsData.userTimezone ?? "UTC",
-    dailyTrends: (statsData.dailyTrends as DailyTrendItem[]) ?? [],
-    topSequences: (statsData.topSequences as TopSequenceItem[]) ?? [],
-    funnel: statsData.funnel ?? {
-      sent: statsData.emailsSentToday ?? 0,
-      delivered: statsData.emailsSentToday ?? 0,
-      opened: statsData.totalOpens ?? 0,
-      replied: statsData.totalReplies ?? 0,
+  const stats = useMemo(() => {
+    if (!statsData) return null;
+    return {
+      activeSequences: statsData.activeSequences ?? 0,
+      emailsSentToday: statsData.emailsSentToday ?? 0,
+      opensToday: statsData.opensToday ?? 0,
+      allTimeSent: statsData.allTimeSent ?? statsData.emailsSentToday ?? 0,
+      totalReplies: statsData.totalReplies ?? statsData.repliesToday ?? 0,
+      repliesToday: statsData.repliesToday ?? 0,
+      totalOpens: statsData.totalOpens ?? 0,
       openRate: statsData.openRate ?? 0,
-      replyRate: 0,
-      deliverabilityScore: 99.4
-    }
-  } : null;
+      totalProspects: statsData.totalProspects ?? 0,
+      pendingReviews: statsData.pendingReviews ?? 0,
+      failedSteps: statsData.failedSteps ?? 0,
+      stoppedSequences: statsData.stoppedSequences ?? 0,
+      schedulerStatus: statsData.schedulerStatus ?? "IDLE",
+      gmailConfigured: statsData.gmailConfigured ?? false,
+      geminiConfigured: statsData.geminiConfigured ?? false,
+      schedulerHealth: statsData.schedulerHealth,
+      dailyLimit: statsData.dailyLimit ?? 500,
+      hourlyLimit: statsData.hourlyLimit ?? 50,
+      sequenceLimit: statsData.sequenceLimit ?? 5,
+      emailsSentThisHour: statsData.emailsSentThisHour ?? 0,
+      bannerTheme: statsData.bannerTheme ?? "DEFAULT",
+      userTimezone: statsData.userTimezone ?? "UTC",
+      dailyTrends: (statsData.dailyTrends as DailyTrendItem[]) ?? [],
+      topSequences: (statsData.topSequences as TopSequenceItem[]) ?? [],
+      funnel: statsData.funnel ?? {
+        sent: statsData.emailsSentToday ?? 0,
+        delivered: statsData.emailsSentToday ?? 0,
+        opened: statsData.totalOpens ?? 0,
+        replied: statsData.totalReplies ?? 0,
+        openRate: statsData.openRate ?? 0,
+        replyRate: 0,
+        deliverabilityScore: 99.4
+      }
+    };
+  }, [statsData]);
 
-  const recentReplies: RecentReply[] = (repliesData?.replies ?? []).slice(0, 6);
+  const recentReplies: RecentReply[] = useMemo(() => {
+    return (repliesData?.replies ?? []).slice(0, 6);
+  }, [repliesData?.replies]);
+
   const loading = statsLoading || repliesLoading;
 
   useEffect(() => {

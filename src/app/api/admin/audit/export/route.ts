@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { auditService } from "@/lib/audit/audit.service";
 import { getSessionUser } from "@/lib/audit/rbac";

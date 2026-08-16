@@ -1,6 +1,8 @@
 /**
  * GET /api/admin/platform/providers/history?key=PROVIDER_KEY
  */
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { providerRoutingService } from "@/lib/platform/provider-routing.service";
 import { getPlatformSessionUser } from "@/lib/platform/platform.rbac";

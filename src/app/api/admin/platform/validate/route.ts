@@ -3,6 +3,8 @@
  * Validates a config/provider value without persisting. For real-time UI feedback.
  */
 
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { configValidationService } from "@/lib/platform/config-validation.service";
 import { getPlatformSessionUser } from "@/lib/platform/platform.rbac";

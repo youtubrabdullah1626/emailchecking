@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { ReactNode } from "react";
 import { getSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
