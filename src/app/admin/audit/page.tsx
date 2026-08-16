@@ -88,11 +88,11 @@ export default function AuditPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* Signature Silaer Warm Header Banner */}
-      <div className="bg-gradient-to-r from-orange-100/70 via-amber-50/60 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/80 border border-orange-200/80 dark:border-orange-950/40 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden">
+      {/* Signature Silaer Dynamic Header Banner */}
+      <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-card border border-primary/20 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden transition-colors duration-300">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-start sm:items-center gap-4">
-            <div className="h-11 w-11 rounded-full bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-200/80 dark:border-orange-800/50 shadow-xs">
+            <div className="h-11 w-11 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 border border-primary/25 shadow-xs">
               <RefreshCw className="h-5 w-5" />
             </div>
 
@@ -114,7 +114,7 @@ export default function AuditPage() {
               className={`px-3 py-1.5 rounded-xl shadow-2xs text-xs font-semibold transition-all flex items-center gap-1.5 ${
                 isLiveMode 
                   ? "bg-emerald-500 text-white shadow-emerald-500/20" 
-                  : "bg-white/80 dark:bg-slate-900 border border-orange-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-orange-50/50"
+                  : "bg-card border border-border text-foreground hover:bg-primary/10"
               }`}
             >
               <span className={`w-2 h-2 rounded-full ${isLiveMode ? "bg-white animate-pulse" : "bg-slate-400"}`}></span>
@@ -124,17 +124,17 @@ export default function AuditPage() {
             <button 
               onClick={refresh}
               disabled={isLoading || isRefreshing || isClearing || isLiveMode}
-              className="px-3 py-1.5 bg-white/80 dark:bg-slate-900 border border-orange-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl shadow-2xs text-xs font-semibold hover:bg-orange-50/50 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-card border border-border text-foreground rounded-xl shadow-2xs text-xs font-semibold hover:bg-primary/10 transition-colors disabled:opacity-50 flex items-center gap-1.5"
             >
-              <RefreshCw className={`w-3.5 h-3.5 text-orange-600 ${isRefreshing && !isLiveMode ? "animate-spin" : ""}`} />
+              <RefreshCw className={`w-3.5 h-3.5 text-primary ${isRefreshing && !isLiveMode ? "animate-spin" : ""}`} />
               Refresh
             </button>
 
             <button 
               onClick={handleExport}
-              className="px-3 py-1.5 bg-white/80 dark:bg-slate-900 border border-orange-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl shadow-2xs text-xs font-semibold hover:bg-orange-50/50 transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-card border border-border text-foreground rounded-xl shadow-2xs text-xs font-semibold hover:bg-primary/10 transition-colors flex items-center gap-1.5"
             >
-              <Download className="w-3.5 h-3.5 text-orange-600" />
+              <Download className="w-3.5 h-3.5 text-primary" />
               <span className="hidden sm:inline">Export CSV</span>
             </button>
 

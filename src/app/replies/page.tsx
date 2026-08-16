@@ -248,11 +248,11 @@ export default function RepliesPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* 1. Silaer Warm Header Banner */}
-      <div className="bg-gradient-to-r from-orange-100/70 via-amber-50/60 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/80 border border-orange-200/80 dark:border-orange-950/40 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden">
+      {/* 1. Dynamic Silaer Signature Header */}
+      <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-card border border-primary/20 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden transition-colors duration-300">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-start sm:items-center gap-4">
-            <div className="h-11 w-11 rounded-full bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-200/80 dark:border-orange-800/50 shadow-xs">
+            <div className="h-11 w-11 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 border border-primary/25 shadow-xs">
               <MessageSquareReply className="h-5 w-5" />
             </div>
 
@@ -266,7 +266,7 @@ export default function RepliesPage() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="flex items-center justify-center h-5 w-5 rounded-full bg-orange-100/80 text-orange-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-orange-200 transition-colors cursor-help"
+                        className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors cursor-help"
                       >
                         <Info className="h-3 w-3" />
                       </button>
@@ -294,16 +294,16 @@ export default function RepliesPage() {
               size="sm"
               onClick={loadReplies}
               disabled={loading || scanning}
-              className="gap-1.5 rounded-xl border-orange-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900 text-slate-700 dark:text-slate-300 shadow-2xs hover:bg-orange-50/50"
+              className="gap-1.5 rounded-xl border border-border bg-card/80 text-foreground shadow-2xs hover:bg-primary/10"
             >
-              <RefreshCw className={`h-3.5 w-3.5 text-orange-600 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-3.5 w-3.5 text-primary ${loading ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline text-xs font-medium">Refresh</span>
             </Button>
 
             <Button
               onClick={handleScanReplies}
               disabled={scanning || loading}
-              className="gap-2 bg-orange-600 hover:bg-orange-700 text-white shadow-xs rounded-xl"
+              className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs rounded-xl font-semibold"
             >
               <Sparkles className={`h-4 w-4 ${scanning ? "animate-spin" : ""}`} />
               <span>{scanning ? "Scanning Gmail..." : "Scan Gmail Now"}</span>
@@ -506,7 +506,7 @@ export default function RepliesPage() {
                             {item.prospectName?.charAt(0).toUpperCase() || "P"}
                           </div>
                           <div className="min-w-0">
-                            <div className="font-semibold text-sm text-slate-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors truncate max-w-xs">
+                            <div className="font-semibold text-sm text-slate-900 dark:text-white group-hover:text-primary transition-colors truncate max-w-xs">
                               {item.prospectName}
                             </div>
                             <div className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-xs">
@@ -552,7 +552,7 @@ export default function RepliesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 px-2.5 text-slate-500 group-hover:text-orange-600 text-xs font-semibold"
+                          className="h-8 px-2.5 text-slate-500 group-hover:text-primary text-xs font-semibold"
                         >
                           Review →
                         </Button>
@@ -629,7 +629,7 @@ export default function RepliesPage() {
                         <div className="font-sans">{actualReply || "No message content."}</div>
                         {quotedText && (
                           <details className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 cursor-pointer group">
-                            <summary className="text-[10px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-orange-600 transition-colors">
+                            <summary className="text-[10px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-primary transition-colors">
                               Show Quoted Thread
                             </summary>
                             <div className="mt-2 text-xs text-slate-500 italic pl-3 border-l-2 border-slate-200 dark:border-slate-700">
@@ -659,7 +659,7 @@ export default function RepliesPage() {
                   <Button
                     onClick={handleSendQuickReply}
                     disabled={sendingReply || !quickReplyText.trim()}
-                    className="gap-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs"
+                    className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl text-xs"
                   >
                     {sendingReply ? "Sending..." : "Send Reply"} <Send className="h-3.5 w-3.5 ml-1" />
                   </Button>

@@ -315,11 +315,11 @@ export default function SequencesPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* 1. Signature Warm Header Banner */}
-      <div className="bg-gradient-to-r from-orange-100/70 via-amber-50/60 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/80 border border-orange-200/80 dark:border-orange-950/40 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden">
+      {/* 1. Dynamic Silaer Signature Header */}
+      <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-card border border-primary/20 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden transition-colors duration-300">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-start sm:items-center gap-4">
-            <div className="h-11 w-11 rounded-full bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-200/80 dark:border-orange-800/50 shadow-xs">
+            <div className="h-11 w-11 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 border border-primary/25 shadow-xs">
               <Layers className="h-5 w-5" />
             </div>
 
@@ -333,7 +333,7 @@ export default function SequencesPage() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="flex items-center justify-center h-5 w-5 rounded-full bg-orange-100/80 text-orange-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-orange-200 transition-colors cursor-help"
+                        className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors cursor-help"
                       >
                         <Info className="h-3 w-3" />
                       </button>
@@ -362,13 +362,13 @@ export default function SequencesPage() {
               size="sm"
               onClick={() => loadSequences(true)}
               disabled={isRefreshing}
-              className="gap-1.5 rounded-xl border-orange-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900 text-slate-700 dark:text-slate-300 shadow-2xs hover:bg-orange-50/50"
+              className="gap-1.5 rounded-xl border border-border bg-card/80 text-foreground shadow-2xs hover:bg-primary/10"
             >
-              <RefreshCw className={`h-3.5 w-3.5 text-orange-600 ${isRefreshing ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-3.5 w-3.5 text-primary ${isRefreshing ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline text-xs font-medium">{isRefreshing ? "Syncing..." : "Sync"}</span>
             </Button>
 
-            <Button className="gap-2 bg-orange-600 hover:bg-orange-700 text-white shadow-xs rounded-xl" asChild>
+            <Button className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs rounded-xl font-semibold" asChild>
               <FastLink href="/prospects">
                 <Plus className="h-4 w-4" />
                 <span>Create Sequence</span>
@@ -530,7 +530,7 @@ export default function SequencesPage() {
           <p className="text-slate-500 dark:text-slate-400 text-xs max-w-sm mx-auto mb-5">
             {search ? "Try adjusting your search query." : "Launch automated sequences for your prospects to get started."}
           </p>
-          <Button className="bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs" asChild>
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl text-xs" asChild>
             <FastLink href="/prospects">Create Sequence</FastLink>
           </Button>
         </div>
@@ -587,7 +587,7 @@ export default function SequencesPage() {
                               {prospectName.charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0">
-                              <div className="font-semibold text-sm text-slate-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors truncate max-w-xs">
+                              <div className="font-semibold text-sm text-slate-900 dark:text-white group-hover:text-primary transition-colors truncate max-w-xs">
                                 {firstSubject || `Sequence for ${prospectName}`}
                               </div>
                               <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-xs">

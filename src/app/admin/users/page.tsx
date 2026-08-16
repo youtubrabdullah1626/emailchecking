@@ -98,11 +98,11 @@ function UserManagementContent() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* Signature Silaer Warm Header Banner */}
-      <div className="bg-gradient-to-r from-orange-100/70 via-amber-50/60 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/80 border border-orange-200/80 dark:border-orange-950/40 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden">
+      {/* Signature Silaer Dynamic Header Banner */}
+      <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-card border border-primary/20 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden transition-colors duration-300">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-start sm:items-center gap-4">
-            <div className="h-11 w-11 rounded-full bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-200/80 dark:border-orange-800/50 shadow-xs">
+            <div className="h-11 w-11 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 border border-primary/25 shadow-xs">
               <UserCheck className="h-5 w-5" />
             </div>
 
@@ -116,7 +116,7 @@ function UserManagementContent() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="flex items-center justify-center h-5 w-5 rounded-full bg-orange-100/80 text-orange-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-orange-200 transition-colors cursor-help"
+                        className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors cursor-help"
                       >
                         <Info className="h-3 w-3" />
                       </button>
@@ -143,19 +143,19 @@ function UserManagementContent() {
               variant={needsAttentionOnly ? "destructive" : "outline"}
               size="sm" 
               onClick={() => setNeedsAttentionOnly(!needsAttentionOnly)}
-              className="gap-1.5 rounded-xl border-orange-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900 shadow-2xs text-xs font-semibold"
+              className="gap-1.5 rounded-xl border border-border bg-card/80 shadow-2xs text-xs font-semibold"
             >
               <AlertTriangle className="h-3.5 w-3.5" />
               <span>{needsAttentionOnly ? "Showing Issues" : "Needs Attention"}</span>
             </Button>
 
-            <Button onClick={handleExportCSV} variant="outline" size="sm" className="gap-1.5 rounded-xl border-orange-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900 text-slate-700 dark:text-slate-300 shadow-2xs text-xs font-semibold hover:bg-orange-50/50">
-              <Download className="h-3.5 w-3.5 text-orange-600" />
+            <Button onClick={handleExportCSV} variant="outline" size="sm" className="gap-1.5 rounded-xl border border-border bg-card/80 text-foreground shadow-2xs text-xs font-semibold hover:bg-primary/10">
+              <Download className="h-3.5 w-3.5 text-primary" />
               <span className="hidden sm:inline">Export CSV</span>
             </Button>
 
             {canAssignRoles && (
-              <Button onClick={() => setIsAssignRoleOpen(true)} size="sm" className="gap-2 bg-orange-600 hover:bg-orange-700 text-white shadow-xs rounded-xl text-xs font-semibold">
+              <Button onClick={() => setIsAssignRoleOpen(true)} size="sm" className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs rounded-xl text-xs font-semibold">
                 <ShieldAlert className="h-4 w-4" />
                 <span>Assign Role</span>
               </Button>
@@ -187,8 +187,9 @@ function UserManagementContent() {
           />
           
           {isLoading ? (
-            <div className="h-64 flex items-center justify-center border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900">
-              <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-xs text-slate-500 font-medium">Loading user directory...</p>
             </div>
           ) : (
             <UserDataGrid 

@@ -120,45 +120,13 @@ export default function DashboardPage() {
 
   const bannerState = useSmartExecutiveBannerLogic(stats, recentReplies);
 
-  // Compute specific styling based on priority
-  let style = { glow: 'bg-slate-300/30', bg: 'bg-card', iconBg: 'bg-slate-100 dark:bg-slate-800 text-slate-600' };
-
-  if (bannerState.priority === 1) style = { glow: 'bg-blue-500/30', bg: 'bg-card', iconBg: 'bg-blue-500/15 text-blue-700' };
-  else if (bannerState.priority === 2) style = { glow: 'bg-indigo-500/30', bg: 'bg-card', iconBg: 'bg-indigo-500/15 text-indigo-700' };
-  else if (bannerState.priority === 3) style = { glow: 'bg-emerald-500/30', bg: 'bg-card', iconBg: 'bg-emerald-500/15 text-emerald-700' };
-  else if (bannerState.priority === 4) style = { glow: 'bg-amber-500/30', bg: 'bg-card', iconBg: 'bg-amber-500/15 text-amber-700' };
-  else if (bannerState.priority === 5) style = { glow: 'bg-orange-500/30', bg: 'bg-card', iconBg: 'bg-orange-500/15 text-orange-700' };
-
-  // ── Global Theme Override (from Admin Panel) ──────────────────────────────
-  const theme = (stats as any)?.bannerTheme || "DEFAULT";
-  if (theme === "GREEN") {
-    style = { glow: 'bg-emerald-400/40', bg: 'bg-gradient-to-r from-emerald-50/80 to-card', iconBg: 'bg-emerald-100/50 text-emerald-600' };
-  } else if (theme === "RED") {
-    style = { glow: 'bg-rose-400/40', bg: 'bg-gradient-to-r from-rose-50/80 to-card', iconBg: 'bg-rose-100/50 text-rose-600' };
-  } else if (theme === "BLUE") {
-    style = { glow: 'bg-blue-400/40', bg: 'bg-gradient-to-r from-blue-50/80 to-card', iconBg: 'bg-blue-100/50 text-blue-600' };
-  } else if (theme === "ORANGE") {
-    style = { glow: 'bg-orange-400/40', bg: 'bg-gradient-to-r from-orange-50/80 to-card', iconBg: 'bg-orange-100/50 text-orange-600' };
-  } else if (theme === "PURPLE") {
-    style = { glow: 'bg-purple-400/40', bg: 'bg-gradient-to-r from-purple-50/80 to-card', iconBg: 'bg-purple-100/50 text-purple-600' };
-  }
-
-  // Define global safe colors for the platform capacity widget
-  let pColor = "text-emerald-600";
-  let pBg = "bg-emerald-100/40";
-  let pIndicator = "[&>div]:bg-emerald-500";
-  let pIconBg = "bg-emerald-100/50 text-emerald-600";
-  let pHoverBorder = "hover:border-emerald-200";
-
-  if (theme === "RED") {
-    pColor = "text-rose-600"; pBg = "bg-rose-100/40"; pIndicator = "[&>div]:bg-rose-500"; pIconBg = "bg-rose-100/50 text-rose-600"; pHoverBorder = "hover:border-rose-200";
-  } else if (theme === "BLUE") {
-    pColor = "text-blue-600"; pBg = "bg-blue-100/40"; pIndicator = "[&>div]:bg-blue-500"; pIconBg = "bg-blue-100/50 text-blue-600"; pHoverBorder = "hover:border-blue-200";
-  } else if (theme === "ORANGE") {
-    pColor = "text-orange-600"; pBg = "bg-orange-100/40"; pIndicator = "[&>div]:bg-orange-500"; pIconBg = "bg-orange-100/50 text-orange-600"; pHoverBorder = "hover:border-orange-200";
-  } else if (theme === "PURPLE") {
-    pColor = "text-purple-600"; pBg = "bg-purple-100/40"; pIndicator = "[&>div]:bg-purple-500"; pIconBg = "bg-purple-100/50 text-purple-600"; pHoverBorder = "hover:border-purple-200";
-  }
+  // ── Universal Dynamic Theme Integration (from Platform Config / CSS variables) ──
+  const style = { glow: 'bg-primary/30', bg: 'bg-gradient-to-r from-primary/15 via-primary/5 to-card', iconBg: 'bg-primary/15 text-primary' };
+  const pColor = "text-primary";
+  const pBg = "bg-primary/10";
+  const pIndicator = "[&>div]:bg-primary";
+  const pIconBg = "bg-primary/15 text-primary";
+  const pHoverBorder = "hover:border-primary/30";
 
   if (!mounted) {
     return (

@@ -142,8 +142,12 @@ export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationD
       }
 
       const ok = await updateConfig(item.key, parsedValue, editReason || undefined);
-      if (ok) setSaveSuccess(true);
-      else setSaveError("Save failed. Please try again.");
+      if (ok) {
+        setSaveSuccess(true);
+        if (item.key === "BANNER_THEME") {
+          document.body.setAttribute("data-theme", String(parsedValue));
+        }
+      } else setSaveError("Save failed. Please try again.");
     }
 
     if (isProvider(item)) {

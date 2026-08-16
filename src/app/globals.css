@@ -192,7 +192,8 @@
 }
 
 /* THEME OVERRIDES */
-body[data-theme="ORANGE"], .dark body[data-theme="ORANGE"] {
+:root[data-theme="ORANGE"], body[data-theme="ORANGE"], [data-theme="ORANGE"],
+.dark :root[data-theme="ORANGE"], .dark body[data-theme="ORANGE"], .dark [data-theme="ORANGE"] {
   --primary: 24.6 95% 53.1%;
   --sidebar-primary: 24.6 95% 53.1%;
   --sidebar-ring: 24.6 95% 53.1%;
@@ -202,7 +203,8 @@ body[data-theme="ORANGE"], .dark body[data-theme="ORANGE"] {
   --sidebar-accent-foreground: 24.6 95% 53.1%;
 }
 
-body[data-theme="RED"], .dark body[data-theme="RED"] {
+:root[data-theme="RED"], body[data-theme="RED"], [data-theme="RED"],
+.dark :root[data-theme="RED"], .dark body[data-theme="RED"], .dark [data-theme="RED"] {
   --primary: 346.8 87.2% 43.7%;
   --sidebar-primary: 346.8 87.2% 43.7%;
   --sidebar-ring: 346.8 87.2% 43.7%;
@@ -212,7 +214,8 @@ body[data-theme="RED"], .dark body[data-theme="RED"] {
   --sidebar-accent-foreground: 346.8 87.2% 43.7%;
 }
 
-body[data-theme="BLUE"], .dark body[data-theme="BLUE"] {
+:root[data-theme="BLUE"], body[data-theme="BLUE"], [data-theme="BLUE"],
+.dark :root[data-theme="BLUE"], .dark body[data-theme="BLUE"], .dark [data-theme="BLUE"] {
   --primary: 217.2 91.2% 59.8%;
   --sidebar-primary: 217.2 91.2% 59.8%;
   --sidebar-ring: 217.2 91.2% 59.8%;
@@ -222,7 +225,8 @@ body[data-theme="BLUE"], .dark body[data-theme="BLUE"] {
   --sidebar-accent-foreground: 217.2 91.2% 59.8%;
 }
 
-body[data-theme="PURPLE"], .dark body[data-theme="PURPLE"] {
+:root[data-theme="PURPLE"], body[data-theme="PURPLE"], [data-theme="PURPLE"],
+.dark :root[data-theme="PURPLE"], .dark body[data-theme="PURPLE"], .dark [data-theme="PURPLE"] {
   --primary: 285.8 73.6% 52.5%;
   --sidebar-primary: 285.8 73.6% 52.5%;
   --sidebar-ring: 285.8 73.6% 52.5%;
@@ -230,6 +234,17 @@ body[data-theme="PURPLE"], .dark body[data-theme="PURPLE"] {
   --chart-1: 285.8 73.6% 52.5%;
   --accent-foreground: 285.8 73.6% 52.5%;
   --sidebar-accent-foreground: 285.8 73.6% 52.5%;
+}
+
+:root[data-theme="GREEN"], body[data-theme="GREEN"], [data-theme="GREEN"],
+.dark :root[data-theme="GREEN"], .dark body[data-theme="GREEN"], .dark [data-theme="GREEN"] {
+  --primary: 142 71% 45%;
+  --sidebar-primary: 142 71% 45%;
+  --sidebar-ring: 142 71% 45%;
+  --ring: 142 71% 45%;
+  --chart-1: 142 71% 45%;
+  --accent-foreground: 142 71% 45%;
+  --sidebar-accent-foreground: 142 71% 45%;
 }
 
 .dark {

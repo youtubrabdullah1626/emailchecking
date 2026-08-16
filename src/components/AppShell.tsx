@@ -43,6 +43,13 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
     setIsMobileDrawerOpen(false);
   }, [pathname]);
 
+  // Synchronize global BANNER_THEME dynamically across all pages
+  useEffect(() => {
+    if (stats?.bannerTheme) {
+      document.body.setAttribute('data-theme', stats.bannerTheme);
+    }
+  }, [stats?.bannerTheme]);
+
   // 100% Honest "Last Online" Tracker
   useEffect(() => {
     let lastTracked = 0;
