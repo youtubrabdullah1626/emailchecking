@@ -312,105 +312,130 @@ export default function DashboardPage() {
 
       {/* ── 2. Top-Level Operational KPIs ── */}
       <AnimatedList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Active Sequences */}
         <AnimatedItem>
-          <Card className="border-border hover:border-primary/30 transition-colors shadow-xs bg-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <span className="text-xs font-medium text-muted-foreground">Active Sequences</span>
-              <div className="p-2 rounded-xl bg-primary/15 text-primary">
+          <div className="relative group rounded-2xl border border-border/70 bg-card p-5 shadow-2xs hover:shadow-xs hover:border-violet-500/30 transition-all duration-200 flex flex-col justify-between min-h-[145px]">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Active Sequences
+              </span>
+              <div className="h-8 w-8 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center border border-violet-500/20">
                 <PlayCircle className="h-4 w-4" />
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-baseline justify-between">
-                <div className="text-2xl font-bold tracking-tight text-foreground">
-                  {loading ? "—" : stats?.activeSequences ?? 0}
-                </div>
-                <span className="inline-flex items-center text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200/50">
-                  <TrendingUp className="h-3 w-3 mr-0.5" /> Live
-                </span>
+            </div>
+
+            <div className="my-2 flex items-baseline justify-between">
+              <div className="text-3xl font-extrabold tracking-tight text-foreground">
+                {loading ? "—" : stats?.activeSequences ?? 0}
               </div>
-              <p className="text-xs text-muted-foreground mt-2 flex items-center justify-between">
-                <span>{stats?.totalProspects ?? 0} total prospects</span>
-                <Link href="/sequences" className="text-primary hover:underline font-medium">Manage &rarr;</Link>
-              </p>
-            </CardContent>
-          </Card>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs text-muted-foreground">
+              <span>{stats?.totalProspects ?? 0} total prospects</span>
+              <Link href="/sequences" className="text-primary font-medium hover:underline flex items-center gap-0.5">
+                Manage &rarr;
+              </Link>
+            </div>
+          </div>
         </AnimatedItem>
 
+        {/* Card 2: Emails Sent */}
         <AnimatedItem>
-          <Card className="border-border hover:border-primary/30 transition-colors shadow-xs bg-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <span className="text-xs font-medium text-muted-foreground">Emails Sent ({timeframeLabel})</span>
-              <div className="p-2 rounded-xl bg-primary/15 text-primary">
+          <div className="relative group rounded-2xl border border-border/70 bg-card p-5 shadow-2xs hover:shadow-xs hover:border-blue-500/30 transition-all duration-200 flex flex-col justify-between min-h-[145px]">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Emails Sent ({timeframeLabel})
+              </span>
+              <div className="h-8 w-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20">
                 <Send className="h-4 w-4" />
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-baseline justify-between">
-                <div className="text-2xl font-bold tracking-tight text-foreground">
-                  {loading ? "—" : timeframeStats.sent.toLocaleString()}
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  Cap: {stats?.dailyLimit ?? 50}/day
-                </span>
+            </div>
+
+            <div className="my-2 flex items-baseline justify-between">
+              <div className="text-3xl font-extrabold tracking-tight text-foreground">
+                {loading ? "—" : timeframeStats.sent.toLocaleString()}
               </div>
-              <div className="mt-2.5">
+              <span className="text-xs font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md border border-border/40">
+                Cap: {stats?.dailyLimit ?? 50}/day
+              </span>
+            </div>
+
+            <div className="pt-2 border-t border-border/40 flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex-1 mr-3">
                 <Progress 
                   value={stats ? Math.min(Math.round((stats.emailsSentToday / stats.dailyLimit) * 100), 100) : 0} 
-                  className="h-1.5 bg-primary/10 [&>div]:bg-primary"
+                  className="h-1.5 bg-blue-500/10 [&>div]:bg-blue-500"
                 />
               </div>
-            </CardContent>
-          </Card>
+              <span className="text-[11px] font-medium shrink-0">
+                {stats?.emailsSentToday ?? 0} today
+              </span>
+            </div>
+          </div>
         </AnimatedItem>
 
+        {/* Card 3: Emails Opened */}
         <AnimatedItem>
-          <Card className="border-border hover:border-primary/30 transition-colors shadow-xs bg-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <span className="text-xs font-medium text-muted-foreground">Emails Opened ({timeframeLabel})</span>
-              <div className="p-2 rounded-xl bg-primary/15 text-primary">
+          <div className="relative group rounded-2xl border border-border/70 bg-card p-5 shadow-2xs hover:shadow-xs hover:border-indigo-500/30 transition-all duration-200 flex flex-col justify-between min-h-[145px]">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Emails Opened ({timeframeLabel})
+              </span>
+              <div className="h-8 w-8 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-500/20">
                 <Eye className="h-4 w-4" />
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-baseline justify-between">
-                <div className="text-2xl font-bold tracking-tight text-foreground">
-                  {loading ? "—" : timeframeStats.opened.toLocaleString()}
-                </div>
-                <span className="inline-flex items-center text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
-                  {timeframeStats.openRate}% open rate
-                </span>
+            </div>
+
+            <div className="my-2 flex items-baseline justify-between">
+              <div className="text-3xl font-extrabold tracking-tight text-foreground">
+                {loading ? "—" : timeframeStats.opened.toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                RFC-822 verified opens in {timeframeLabel.toLowerCase()}
-              </p>
-            </CardContent>
-          </Card>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border border-indigo-500/20">
+                {timeframeStats.openRate}% open rate
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs text-muted-foreground">
+              <span>Verified open telemetry</span>
+              <span className="text-muted-foreground/80 text-[11px] font-mono">
+                {timeframeLabel}
+              </span>
+            </div>
+          </div>
         </AnimatedItem>
 
+        {/* Card 4: Replies Received */}
         <AnimatedItem>
-          <Card className="border-border hover:border-primary/30 transition-colors shadow-xs bg-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <span className="text-xs font-medium text-muted-foreground">Replies Received ({timeframeLabel})</span>
-              <div className="p-2 rounded-xl bg-primary/15 text-primary">
+          <div className="relative group rounded-2xl border border-border/70 bg-card p-5 shadow-2xs hover:shadow-xs hover:border-emerald-500/30 transition-all duration-200 flex flex-col justify-between min-h-[145px]">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Replies Received ({timeframeLabel})
+              </span>
+              <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
                 <Reply className="h-4 w-4" />
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-baseline justify-between">
-                <div className="text-2xl font-bold tracking-tight text-foreground">
-                  {loading ? "—" : timeframeStats.replies.toLocaleString()}
-                </div>
-                <span className="inline-flex items-center text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200/50">
-                  {timeframeStats.replyRate}% reply rate
-                </span>
+            </div>
+
+            <div className="my-2 flex items-baseline justify-between">
+              <div className="text-3xl font-extrabold tracking-tight text-foreground">
+                {loading ? "—" : timeframeStats.replies.toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground mt-2 flex items-center justify-between">
-                <span>{stats?.pendingReviews ? `${stats.pendingReviews} review pending` : "All inbox cleared"}</span>
-                <Link href="/replies" className="text-primary hover:underline font-medium">View Inbox &rarr;</Link>
-              </p>
-            </CardContent>
-          </Card>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                {timeframeStats.replyRate}% reply rate
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs text-muted-foreground">
+              <span>{stats?.pendingReviews ? `${stats.pendingReviews} pending review` : "Inbox clear"}</span>
+              <Link href="/replies" className="text-emerald-600 dark:text-emerald-400 font-medium hover:underline flex items-center gap-0.5">
+                View Inbox &rarr;
+              </Link>
+            </div>
+          </div>
         </AnimatedItem>
       </AnimatedList>
 
