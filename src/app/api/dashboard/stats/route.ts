@@ -209,7 +209,15 @@ export async function GET(req: NextRequest) {
     const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
     fourteenDaysAgo.setHours(0, 0, 0, 0);
 
-    const [historicalSentEvents, historicalReplies, topSequencesRaw, totalProspectsCount] = await Promise.all([
+    const [
+      historicalSentEvents, 
+      historicalReplies, 
+      historicalOpens,
+      topSequencesRaw, 
+      totalProspectsCount, 
+      allTimeSentCount,
+      opensTodayCount
+    ] = await Promise.all([
       prisma.emailEvent.findMany({
         where: {
           event_type: "SENT",
@@ -226,6 +234,19 @@ export async function GET(req: NextRequest) {
         },
         select: { classified_at: true }
       }),
+      prisma.trackingEvent.findMany({
+        where: {
+          event_type: "OPEN",
+          occurred_at: { gte: fourteenDaysAgo },
+          tracked_email: {
+            OR: [
+              { user_id: userId },
+              { sender_email: { in: senderEmails.length > 0 ? senderEmails : [userRecord?.email || ""] } }
+            ]
+          }
+        },
+        select: { occurred_at: true }
+      }).catch(() => []),
       prisma.sequence.findMany({
         where: { user_id: userId },
         take: 6,
@@ -238,7 +259,25 @@ export async function GET(req: NextRequest) {
           }
         }
       }),
-      prisma.prospect.count({ where: { user_id: userId } })
+      prisma.prospect.count({ where: { user_id: userId } }),
+      prisma.emailEvent.count({
+        where: {
+          event_type: "SENT",
+          step: { sequence: { user_id: userId } }
+        }
+      }),
+      prisma.trackingEvent.count({
+        where: {
+          event_type: "OPEN",
+          occurred_at: { gte: startOfDay },
+          tracked_email: {
+            OR: [
+              { user_id: userId },
+              { sender_email: { in: senderEmails.length > 0 ? senderEmails : [userRecord?.email || ""] } }
+            ]
+          }
+        }
+      }).catch(() => 0)
     ]);
 
     // Build 14-day daily trends array
@@ -255,8 +294,13 @@ export async function GET(req: NextRequest) {
       const key = evt.occurred_at.toISOString().split("T")[0];
       if (dailyTrendsMap[key]) {
         dailyTrendsMap[key].sent += 1;
-        // Estimate realistic open attribution based on overall rate
-        dailyTrendsMap[key].opened = Math.max(dailyTrendsMap[key].opened, Math.round(dailyTrendsMap[key].sent * 0.45));
+      }
+    }
+
+    for (const op of historicalOpens) {
+      const key = op.occurred_at.toISOString().split("T")[0];
+      if (dailyTrendsMap[key]) {
+        dailyTrendsMap[key].opened += 1;
       }
     }
 
@@ -267,12 +311,12 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Ensure today's sent and replies are reflected accurately
+    // Ensure today's sent, opens, and replies are reflected accurately
     const todayKey = new Date().toISOString().split("T")[0];
     if (dailyTrendsMap[todayKey]) {
       dailyTrendsMap[todayKey].sent = Math.max(dailyTrendsMap[todayKey].sent, sequenceEmailsSentToday + adhocEmailsSentToday);
       dailyTrendsMap[todayKey].replies = Math.max(dailyTrendsMap[todayKey].replies, repliesToday);
-      dailyTrendsMap[todayKey].opened = Math.max(dailyTrendsMap[todayKey].opened, totalOpens > 0 ? Math.min(totalOpens, dailyTrendsMap[todayKey].sent) : 0);
+      dailyTrendsMap[todayKey].opened = Math.max(dailyTrendsMap[todayKey].opened, opensTodayCount);
     }
 
     const dailyTrends = Object.values(dailyTrendsMap);
@@ -423,6 +467,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       activeSequences,
       emailsSentToday,
+      opensToday: opensTodayCount ?? 0,
+      allTimeSent: Math.max(allTimeSentCount ?? 0, totalTrackedSent ?? 0),
       repliesToday,
       totalReplies,
       totalOpens: totalOpens ?? 0,

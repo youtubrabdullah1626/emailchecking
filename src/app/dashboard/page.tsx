@@ -98,6 +98,8 @@ export default function DashboardPage() {
   const stats = statsData ? {
     activeSequences: statsData.activeSequences ?? 0,
     emailsSentToday: statsData.emailsSentToday ?? 0,
+    opensToday: statsData.opensToday ?? 0,
+    allTimeSent: statsData.allTimeSent ?? statsData.emailsSentToday ?? 0,
     totalReplies: statsData.totalReplies ?? statsData.repliesToday ?? 0,
     repliesToday: statsData.repliesToday ?? 0,
     totalOpens: statsData.totalOpens ?? 0,
@@ -151,15 +153,25 @@ export default function DashboardPage() {
     return stats.dailyTrends; // 14-30d
   }, [stats?.dailyTrends, timeframe]);
 
-  // Aggregate metrics based on selected timeframe
+  // Aggregate metrics based on selected timeframe with mathematical accuracy
   const timeframeStats = useMemo(() => {
     if (!stats) return { sent: 0, opened: 0, replies: 0, openRate: 0, replyRate: 0 };
+    
     if (timeframe === "today") {
       const sent = stats.emailsSentToday;
-      const opened = stats.totalOpens;
+      const opened = stats.opensToday;
       const replies = stats.repliesToday;
+      const openRate = sent > 0 ? Math.round((opened / sent) * 100) : 0;
+      const replyRate = sent > 0 ? Math.round((replies / sent) * 100) : 0;
+      return { sent, opened, replies, openRate, replyRate };
+    }
+
+    if (timeframe === "all") {
+      const sent = stats.allTimeSent || (stats.dailyTrends.reduce((acc, d) => acc + d.sent, 0)) || stats.emailsSentToday;
+      const opened = stats.totalOpens;
+      const replies = stats.totalReplies;
       const openRate = sent > 0 ? Math.round((opened / sent) * 100) : (opened > 0 ? 100 : 0);
-      const replyRate = sent > 0 ? Math.round((replies / sent) * 100) : (replies > 0 ? 100 : 0);
+      const replyRate = sent > 0 ? Math.round((replies / sent) * 100) : 0;
       return { sent, opened, replies, openRate, replyRate };
     }
 
@@ -167,20 +179,21 @@ export default function DashboardPage() {
       const sent = displayedTrends.reduce((acc, d) => acc + d.sent, 0);
       const opened = displayedTrends.reduce((acc, d) => acc + d.opened, 0);
       const replies = displayedTrends.reduce((acc, d) => acc + d.replies, 0);
-      const effectiveSent = sent > 0 ? sent : stats.emailsSentToday;
-      const openRate = effectiveSent > 0 ? Math.round((opened / effectiveSent) * 100) : stats.openRate;
-      const replyRate = effectiveSent > 0 ? Math.round((replies / effectiveSent) * 100) : 0;
-      return { sent: effectiveSent, opened, replies, openRate, replyRate };
+      const openRate = sent > 0 ? Math.round((opened / sent) * 100) : (opened > 0 ? 100 : 0);
+      const replyRate = sent > 0 ? Math.round((replies / sent) * 100) : 0;
+      return { sent, opened, replies, openRate, replyRate };
     }
 
     return {
       sent: stats.emailsSentToday,
-      opened: stats.totalOpens,
-      replies: stats.totalReplies,
-      openRate: stats.openRate,
-      replyRate: stats.emailsSentToday > 0 ? Math.round((stats.totalReplies / stats.emailsSentToday) * 100) : 0
+      opened: stats.opensToday,
+      replies: stats.repliesToday,
+      openRate: 0,
+      replyRate: 0
     };
   }, [stats, timeframe, displayedTrends]);
+
+  const timeframeLabel = timeframe === "today" ? "Today" : timeframe === "7d" ? "7 Days" : timeframe === "30d" ? "30 Days" : "All Time";
 
   const bannerState = useSmartExecutiveBannerLogic(stats, recentReplies);
 
@@ -318,7 +331,7 @@ export default function DashboardPage() {
         <AnimatedItem>
           <Card className="border-border hover:border-primary/30 transition-colors shadow-xs bg-card">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <span className="text-xs font-medium text-muted-foreground">Emails Sent ({timeframe.toUpperCase()})</span>
+              <span className="text-xs font-medium text-muted-foreground">Emails Sent ({timeframeLabel})</span>
               <div className="p-2 rounded-xl bg-primary/15 text-primary">
                 <Send className="h-4 w-4" />
               </div>
@@ -345,7 +358,7 @@ export default function DashboardPage() {
         <AnimatedItem>
           <Card className="border-border hover:border-primary/30 transition-colors shadow-xs bg-card">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <span className="text-xs font-medium text-muted-foreground">Emails Opened</span>
+              <span className="text-xs font-medium text-muted-foreground">Emails Opened ({timeframeLabel})</span>
               <div className="p-2 rounded-xl bg-primary/15 text-primary">
                 <Eye className="h-4 w-4" />
               </div>
@@ -360,7 +373,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                RFC-822 tracked telemetry
+                RFC-822 verified opens in {timeframeLabel.toLowerCase()}
               </p>
             </CardContent>
           </Card>
@@ -369,7 +382,7 @@ export default function DashboardPage() {
         <AnimatedItem>
           <Card className="border-border hover:border-primary/30 transition-colors shadow-xs bg-card">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <span className="text-xs font-medium text-muted-foreground">Replies Received</span>
+              <span className="text-xs font-medium text-muted-foreground">Replies Received ({timeframeLabel})</span>
               <div className="p-2 rounded-xl bg-primary/15 text-primary">
                 <Reply className="h-4 w-4" />
               </div>
