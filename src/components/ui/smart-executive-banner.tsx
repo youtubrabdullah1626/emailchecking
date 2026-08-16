@@ -64,17 +64,6 @@ export function useSmartExecutiveBannerLogic(stats: any, recentReplies: any[]): 
       actionTarget: "/prospects",
     };
   }
-  // Priority 3: System Health Attention (Failed Steps)
-  else if (stats.failedSteps > 0) {
-    state = {
-      priority: 3,
-      icon: <AlertCircle className="h-5 w-5 text-amber-500" />,
-      title: `${greeting}, ${name}`,
-      message: `${stats.failedSteps} sequence step${stats.failedSteps > 1 ? 's' : ''} encountered delivery retries.`,
-      actionLabel: "View Health",
-      actionTarget: "/system-health",
-    };
-  }
 
   return state;
 }
