@@ -11,11 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Check, Calendar, Activity, Rocket, Clock, Info, AlertCircle } from "lucide-react";
+import { Check, Calendar, Activity, Rocket, Clock, Info } from "lucide-react";
 import { format } from "date-fns";
-import { Progress } from "@/components/ui/progress";
 
 export function CampaignPlanningWizard() {
   const { summary, startSequenceBuild, setAppendTargetSessionId, appendTargetSessionId } = useImport() as any;
@@ -73,10 +72,6 @@ export function CampaignPlanningWizard() {
   }, [campaignMode, selectedCampaignId, setAppendTargetSessionId]);
 
   const totalLeads = summary?.validRows || 0;
-  const isWarmupActive = config.integrateWarmup && warmupStatus && warmupStatus.status !== "NOT_STARTED";
-  
-  // Calculate if warmup is severely throttling the campaign
-  const isThrottled = forecast?.dailyForecast.some(d => d.warmupLimitApplied) || false;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -236,23 +231,6 @@ export function CampaignPlanningWizard() {
                 />
               </div>
 
-              <div className="flex items-center justify-between pt-2">
-                <div className="space-y-0.5">
-                  <Label>Integrate Warmup Engine</Label>
-                  <p className="text-xs text-muted-foreground">Respect global sending limits automatically</p>
-                </div>
-                <Switch 
-                  checked={config.integrateWarmup}
-                  onCheckedChange={(val) => setConfig({ ...config, integrateWarmup: val })}
-                  disabled={!warmupStatus || warmupStatus.status === "NOT_STARTED"}
-                />
-              </div>
-              
-              {(!warmupStatus || warmupStatus.status === "NOT_STARTED") && (
-                <p className="text-xs text-amber-500 font-medium pt-1">
-                  Warmup is currently disabled or not configured.
-                </p>
-              )}
             </CardContent>
           </Card>
         </div>
@@ -309,45 +287,6 @@ export function CampaignPlanningWizard() {
                   </span>
                 </div>
               </div>
-
-              {isWarmupActive && (
-                <div className="space-y-2 pt-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">Warmup Impact</span>
-                    <span className="text-xs text-muted-foreground">
-                      {isThrottled ? "Throttling active" : "Capacity sufficient"}
-                    </span>
-                  </div>
-                  <Progress value={isThrottled ? 100 : 30} className={`h-2 ${isThrottled ? "bg-amber-100 [&>div]:bg-amber-500" : "bg-emerald-100 [&>div]:bg-emerald-500"}`} />
-                </div>
-              )}
-
-              {isThrottled && (
-                <Alert 
-                  className="bg-amber-50 border-amber-200 shadow-sm mt-4 cursor-pointer hover:bg-amber-100 transition-colors group"
-                  onClick={() => window.open("/scheduler", "_blank")}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex gap-2">
-                      <Info className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                      <div>
-                        <AlertTitle className="text-amber-800 font-semibold text-sm">Warmup Throttling Active</AlertTitle>
-                        <AlertDescription className="text-amber-700/90 text-xs mt-1">
-                          Your selected speed profile exceeds your current Warmup daily limits. The campaign will automatically pace itself to stay within safe bounds.
-                        </AlertDescription>
-                      </div>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="shrink-0 ml-4 h-8 bg-white/50 border-amber-300 text-amber-800 hover:bg-amber-200 hover:text-amber-900 opacity-80 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => { e.stopPropagation(); window.open("/scheduler", "_blank"); }}
-                    >
-                      Edit Warmup
-                    </Button>
-                  </div>
-                </Alert>
-              )}
             </CardContent>
           </Card>
         </div>

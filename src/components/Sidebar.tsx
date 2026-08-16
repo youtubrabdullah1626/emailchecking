@@ -72,7 +72,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
       { name: "Active Users", href: "/admin/users", icon: UserCheck },
       { name: "DB Cleanup", href: "/admin/database-maintenance", icon: Database },
       { name: "System Health", href: "/system-health", icon: Activity },
-      { name: "Scheduler", href: "/scheduler", icon: ServerCog },
+      { name: "Scheduler & Warmup", href: "/admin/scheduler", icon: ServerCog },
     ] : [])
   ];
 

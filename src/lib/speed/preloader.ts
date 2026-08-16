@@ -18,7 +18,7 @@ export const ROUTE_API_PRELOAD_MAP: Record<string, string[]> = {
   "/admin/analytics": ["/api/admin/analytics"],
   "/admin/database-maintenance": ["/api/admin/system/db-maintenance"],
   "/system-health": ["/api/observability/diagnostics"],
-  "/scheduler": ["/api/cron/status"],
+  "/admin/scheduler": ["/api/scheduler/stats"],
 };
 
 // Set to avoid redundant preloads within short intervals
