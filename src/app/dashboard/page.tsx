@@ -3,15 +3,14 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import useSWR from "swr";
-import { apiClient, ApiError } from "@/lib/api-client";
+import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 
 // UI Components
 import { AnimatedPage, AnimatedList, AnimatedItem } from "@/components/ui/animated";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { useSmartExecutiveBannerLogic } from "@/components/ui/smart-executive-banner";
 import { Progress } from "@/components/ui/progress";
 import { 
@@ -24,15 +23,10 @@ import {
   Layers, 
   Eye, 
   CheckCircle2, 
-  AlertCircle, 
   ShieldCheck, 
   FileUp, 
-  ArrowUpRight,
-  Activity,
   Sparkles,
-  BarChart3,
-  Calendar,
-  Users
+  BarChart3
 } from "lucide-react";
 
 interface TopSequenceItem {
@@ -89,13 +83,13 @@ export default function DashboardPage() {
     toast.success("Recent replies cleared from dashboard view");
   };
 
-  const { data: statsData, error: statsError, isLoading: statsLoading } = useSWR(
+  const { data: statsData, isLoading: statsLoading } = useSWR(
     "/api/dashboard/stats", 
     (url: string) => apiClient<any>(url), 
     { refreshInterval: 15000 }
   );
 
-  const { data: repliesData, error: repliesError, isLoading: repliesLoading } = useSWR(
+  const { data: repliesData, isLoading: repliesLoading } = useSWR(
     "/api/replies", 
     (url: string) => apiClient<any>(url).catch(() => ({ replies: [] })), 
     { refreshInterval: 15000 }

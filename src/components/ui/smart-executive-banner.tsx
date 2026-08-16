@@ -28,12 +28,15 @@ export function useSmartExecutiveBannerLogic(stats: any, recentReplies: any[]): 
     }
   }, []);
 
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
+
   // Fallback default
   let state: BannerState = {
     priority: 6,
-    icon: <Sparkles className="h-5 w-5 text-emerald-600" />,
-    title: `Good Morning, ${name}`,
-    message: "Everything is running smoothly.",
+    icon: <Sparkles className="h-5 w-5 text-primary" />,
+    title: `${greeting}, ${name}`,
+    message: "Real-time telemetry and delivery performance across your active outreach pipelines.",
   };
 
   if (!stats) return state; // Loading or no data
@@ -42,9 +45,9 @@ export function useSmartExecutiveBannerLogic(stats: any, recentReplies: any[]): 
   if (stats.pendingReviews > 0) {
     state = {
       priority: 1,
-      icon: <MessageSquare className="h-5 w-5 text-blue-600" />,
-      title: `Good Morning, ${name}`,
-      message: `${stats.pendingReviews} new replies are waiting for your review.`,
+      icon: <MessageSquare className="h-5 w-5 text-primary" />,
+      title: `${greeting}, ${name}`,
+      message: `${stats.pendingReviews} new prospect repl${stats.pendingReviews > 1 ? 'ies are' : 'y is'} waiting for your review.`,
       actionLabel: "View Replies",
       actionTarget: "/replies",
     };
@@ -54,42 +57,22 @@ export function useSmartExecutiveBannerLogic(stats: any, recentReplies: any[]): 
     const interestedCount = recentReplies.filter((r: any) => r.replyType === 'INTERESTED').length;
     state = {
       priority: 2,
-      icon: <Target className="h-5 w-5 text-indigo-600" />,
-      title: `Good Morning, ${name}`,
-      message: `${interestedCount} potential customer${interestedCount > 1 ? 's' : ''} need your attention.`,
+      icon: <Target className="h-5 w-5 text-primary" />,
+      title: `${greeting}, ${name}`,
+      message: `${interestedCount} positive prospect response${interestedCount > 1 ? 's' : ''} received.`,
       actionLabel: "View Prospects",
       actionTarget: "/prospects",
     };
   }
-  // Priority 3: Campaign Finished (Stopped Sequences)
-  else if (stats.stoppedSequences > 0) {
-    state = {
-      priority: 3,
-      icon: <CheckCircle2 className="h-5 w-5 text-emerald-600" />,
-      title: `Good Morning, ${name}`,
-      message: `${stats.stoppedSequences} sequence${stats.stoppedSequences > 1 ? 's' : ''} finished successfully.`,
-      actionLabel: "View Sequences",
-      actionTarget: "/sequences",
-    };
-  }
-  // Priority 4: Campaign Needs Attention (Failed Steps)
+  // Priority 3: System Health Attention (Failed Steps)
   else if (stats.failedSteps > 0) {
     state = {
-      priority: 4,
-      icon: <AlertCircle className="h-5 w-5 text-amber-600" />,
-      title: `Good Morning, ${name}`,
-      message: `${stats.failedSteps} step${stats.failedSteps > 1 ? 's' : ''} failed to send and need attention.`,
-      actionLabel: "View Errors",
+      priority: 3,
+      icon: <AlertCircle className="h-5 w-5 text-amber-500" />,
+      title: `${greeting}, ${name}`,
+      message: `${stats.failedSteps} sequence step${stats.failedSteps > 1 ? 's' : ''} encountered delivery retries.`,
+      actionLabel: "View Health",
       actionTarget: "/system-health",
-    };
-  }
-  // Priority 5: Warmup Limit Reached (Scheduler paused/limit)
-  else if (stats.schedulerStatus === "PAUSED" || stats.schedulerStatus === "LIMIT_REACHED") {
-    state = {
-      priority: 5,
-      icon: <ShieldAlert className="h-5 w-5 text-orange-600" />,
-      title: `Good Morning, ${name}`,
-      message: "Warmup limit reached. Sending resumes tomorrow.",
     };
   }
 
