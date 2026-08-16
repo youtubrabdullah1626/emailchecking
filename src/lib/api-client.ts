@@ -48,7 +48,17 @@ export async function apiClient<T>(url: string, options: FetchOptions = {}): Pro
     const data = isJson ? await response.json() : await response.text();
 
     if (!response.ok) {
-      if (response.status === 401 && typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      if (
+        response.status === 401 &&
+        typeof window !== 'undefined' &&
+        window.location.pathname !== '/login' &&
+        !window.location.pathname.startsWith('/dashboard') &&
+        !window.location.pathname.startsWith('/admin') &&
+        !window.location.pathname.startsWith('/prospects') &&
+        !window.location.pathname.startsWith('/sequences') &&
+        !window.location.pathname.startsWith('/replies') &&
+        !window.location.pathname.startsWith('/settings')
+      ) {
         window.location.href = '/login';
       }
       

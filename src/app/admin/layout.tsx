@@ -1,19 +1,18 @@
 import { ReactNode } from "react";
 import { getSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
-import { hasRole } from "@/lib/auth/roles";
+import { hasRole, isOwnerEmail } from "@/lib/auth/roles";
 import { UserRole } from "@/types/next-auth";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const session = await getSession();
   
   if (!session?.user) {
-    redirect("/auth/signin");
+    redirect("/login");
   }
 
-  // HELPER is the minimum role required to view the admin panel.
-  // USER will be blocked and redirected to the dashboard.
-  const canViewAdmin = hasRole(session.user.role as UserRole, "HELPER") || session.user.email === "youtubrabdullah1626@gmail.com";
+  const isOwner = isOwnerEmail(session.user.email);
+  const canViewAdmin = isOwner || hasRole(session.user.role as UserRole, "HELPER", session.user.email);
 
   if (!canViewAdmin) {
     redirect("/dashboard");

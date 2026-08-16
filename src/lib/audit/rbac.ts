@@ -1,12 +1,5 @@
-/**
- * Enterprise Role-Based Access Control (RBAC)
- *
- * Wire to real NextAuth session — no more mocks.
- * Roles: SUPER_ADMIN > OWNER > ADMIN > USER
- */
-
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/nextauth";
+import { getSession } from "@/lib/auth/session";
+import { isOwnerEmail } from "@/lib/auth/roles";
 
 export type UserRole = "SUPER_ADMIN" | "OWNER" | "ADMIN" | "USER";
 
@@ -19,6 +12,7 @@ export interface SessionUser {
 
 export function requireAdminRole(user: SessionUser | null | undefined): void {
   if (!user) throw new Error("UNAUTHORIZED");
+  if (isOwnerEmail(user.email)) return;
   if (user.role !== "SUPER_ADMIN" && user.role !== "OWNER" && user.role !== "ADMIN") {
     throw new Error("FORBIDDEN");
   }
@@ -26,6 +20,7 @@ export function requireAdminRole(user: SessionUser | null | undefined): void {
 
 export function requireOwnerRole(user: SessionUser | null | undefined): void {
   if (!user) throw new Error("UNAUTHORIZED");
+  if (isOwnerEmail(user.email)) return;
   if (user.role !== "SUPER_ADMIN" && user.role !== "OWNER") {
     throw new Error("FORBIDDEN");
   }
@@ -33,19 +28,19 @@ export function requireOwnerRole(user: SessionUser | null | undefined): void {
 
 /**
  * Get the real session user from NextAuth.
- * Replaces the old hardcoded mock_admin_123.
  */
 export async function getSessionUser(): Promise<SessionUser | null> {
-  const session = await getServerSession(authOptions);
+  const session = await getSession();
   if (!session?.user) return null;
 
-  const user = session.user as any;
-  if (user.isSuspended) return null;
+  const user = session.user;
+  const isOwner = isOwnerEmail(user.email);
+  if (user.isSuspended && !isOwner) return null;
 
   return {
     id: user.id,
     email: user.email || "",
-    role: (user.role as UserRole) || "USER",
-    isSuspended: user.isSuspended || false,
+    role: (isOwner ? "OWNER" : (user.role as UserRole)) || "USER",
+    isSuspended: isOwner ? false : (user.isSuspended || false),
   };
 }

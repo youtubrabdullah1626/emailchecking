@@ -11,8 +11,10 @@ export async function GET(request: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const { isOwnerEmail } = await import("@/lib/auth/roles");
     const role = session.user.role;
-    if (role !== "SUPER_ADMIN" && role !== "OWNER" && role !== "ADMIN") {
+    const isOwner = isOwnerEmail(session.user.email);
+    if (!isOwner && role !== "SUPER_ADMIN" && role !== "OWNER" && role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

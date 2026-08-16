@@ -10,22 +10,21 @@ export const dynamic = "force-dynamic";
  * Protects database performance as the application scales to millions of rows.
  */
 
+import { isOwnerEmail } from "@/lib/auth/roles";
+
 async function requireAdmin() {
-  let user = await getSessionUser();
-  let userId = user?.id;
-  if (!userId || userId === "mock_admin_123") {
-    const firstUser = await prisma.users.findFirst();
-    if (!firstUser) throw new Error("Unauthorized");
-    userId = firstUser.id;
+  const user = await getSessionUser();
+  if (!user) {
+    throw new Error("Unauthorized");
   }
 
-  const userRecord = await prisma.users.findFirst({ where: { id: userId } });
-  const userRole = userRecord?.role?.toUpperCase() || "";
-  const isAdmin = userRole === "ADMIN" || userRole === "OWNER" || userRecord?.email === "youtubrabdullah1626@gmail.com";
+  const isOwner = isOwnerEmail(user.email);
+  const userRole = user.role?.toUpperCase() || "";
+  const isAdmin = isOwner || userRole === "ADMIN" || userRole === "OWNER" || userRole === "SUPER_ADMIN";
   if (!isAdmin) {
     throw new Error("Admin privileges required");
   }
-  return { userId, email: user?.email };
+  return { userId: user.id, email: user.email };
 }
 
 export async function GET(request: NextRequest) {

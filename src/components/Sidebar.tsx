@@ -32,14 +32,17 @@ interface SidebarProps {
   onNavigate?: () => void;
 }
 
+import { isOwnerEmail } from "@/lib/auth/roles";
+
 export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
   
   const user = session?.user as any;
   const normalizedRole = user?.role?.toUpperCase() || "USER";
-  const isFullAdmin = ["ADMIN_VIEWER", "ADMIN", "OWNER"].includes(normalizedRole) || user?.email === "youtubrabdullah1626@gmail.com";
-  const canViewAdmin = ["HELPER", "ADMIN_VIEWER", "ADMIN", "OWNER"].includes(normalizedRole) || user?.email === "youtubrabdullah1626@gmail.com";
+  const isOwner = isOwnerEmail(user?.email);
+  const isFullAdmin = isOwner || ["ADMIN_VIEWER", "ADMIN", "OWNER", "SUPER_ADMIN"].includes(normalizedRole);
+  const canViewAdmin = isOwner || ["HELPER", "ADMIN_VIEWER", "ADMIN", "OWNER", "SUPER_ADMIN"].includes(normalizedRole);
   
   // Use SWR to deduplicate this fetch globally with Header and Dashboard
   const { data: summary } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url));

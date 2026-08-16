@@ -23,11 +23,13 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
+import { isOwnerEmail } from "@/lib/auth/roles";
+
 function UserManagementContent() {
   const { data: session } = useSession();
   const user = session?.user as any;
   const normalizedRole = user?.role?.toUpperCase() || "USER";
-  const canAssignRoles = normalizedRole === "ADMIN" || normalizedRole === "OWNER" || user?.email === "youtubrabdullah1626@gmail.com";
+  const canAssignRoles = isOwnerEmail(user?.email) || normalizedRole === "ADMIN" || normalizedRole === "OWNER" || normalizedRole === "SUPER_ADMIN";
 
   const [isAssignRoleOpen, setIsAssignRoleOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<MockUser | null>(null);

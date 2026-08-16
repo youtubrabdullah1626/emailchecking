@@ -1,5 +1,6 @@
 import { AdminUsersRepository, GetUsersFilters } from "./users.repository";
 import { MockUser } from "@/app/admin/users/types";
+import { isOwnerEmail } from "@/lib/auth/roles";
 
 export class AdminUsersService {
   private repository: AdminUsersRepository;
@@ -46,10 +47,7 @@ export class AdminUsersService {
           ? new Date(account.last_login_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
           : "Never Logged In");
 
-      let userRole = (account as any).users?.role;
-      if (!userRole) {
-        userRole = account.email === 'youtubrabdullah1626@gmail.com' ? "Admin" : "User";
-      }
+      let userRole = isOwnerEmail(account.email) ? "OWNER" : ((account as any).users?.role || "USER");
 
       return {
         id: account.user_id || account.email,

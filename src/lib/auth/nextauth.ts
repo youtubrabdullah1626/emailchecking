@@ -56,16 +56,19 @@ export const authOptions: NextAuthOptions = {
      * Upserts the user into our `users` table. If user is suspended, deny login.
      */
     async signIn({ user, profile }) {
-      const email = user.email;
-      if (!email) return false;
+      const rawEmail = user.email;
+      if (!rawEmail) return false;
+      const email = rawEmail.toLowerCase().trim();
+      const { isOwnerEmail } = await import("@/lib/auth/roles");
+      const isOwner = isOwnerEmail(email);
 
       try {
-        const existing = await prisma.users.findUnique({
-          where: { email },
-          select: { id: true, isSuspended: true },
+        const existing = await prisma.users.findFirst({
+          where: { email: { equals: email, mode: "insensitive" } },
+          select: { id: true, isSuspended: true, role: true },
         });
 
-        if (existing?.isSuspended) {
+        if (existing?.isSuspended && !isOwner) {
           // Suspended users cannot log in — redirect to login with a clear error
           return "/login?error=AccountSuspended";
         }
@@ -77,18 +80,20 @@ export const authOptions: NextAuthOptions = {
               email,
               name: user.name ?? null,
               image: user.image ?? null,
-              role: "USER",
+              role: isOwner ? "OWNER" : "USER",
               emailVerified: new Date(),
               updatedAt: new Date(),
             },
           });
         } else {
-          // Returning user: keep name and avatar in sync with Google
+          // Returning user: keep name and avatar in sync with Google & ensure Owner has OWNER role
           await prisma.users.update({
-            where: { email },
+            where: { id: existing.id },
             data: {
               name: user.name ?? undefined,
               image: user.image ?? undefined,
+              role: isOwner ? "OWNER" : existing.role,
+              isSuspended: isOwner ? false : existing.isSuspended,
             },
           });
         }
@@ -105,19 +110,39 @@ export const authOptions: NextAuthOptions = {
      * Stamps role, id, and isSuspended from the DB into the token.
      */
     async jwt({ token, user, trigger }) {
-      // On first sign-in, or when explicitly refreshed, look up DB user
-      if (user || trigger === "update") {
-        const email = token.email;
+      const { isOwnerEmail } = await import("@/lib/auth/roles");
+      const email = token.email ? token.email.toLowerCase().trim() : undefined;
+      const isOwner = isOwnerEmail(email);
+
+      if (isOwner) {
+        token.role = "OWNER";
+        token.isSuspended = false;
+      }
+
+      // Look up DB user on first sign-in, explicit update, or if token is missing properties
+      if (user || trigger === "update" || !token.id || !token.role) {
         if (email) {
           try {
-            const dbUser = await prisma.users.findUnique({
-              where: { email },
+            const dbUser = await prisma.users.findFirst({
+              where: { email: { equals: email, mode: "insensitive" } },
               select: { id: true, role: true, isSuspended: true },
             });
             if (dbUser) {
               token.id = dbUser.id;
-              token.role = dbUser.role;
-              token.isSuspended = dbUser.isSuspended;
+              token.role = isOwner ? "OWNER" : (dbUser.role || "USER");
+              token.isSuspended = isOwner ? false : (dbUser.isSuspended || false);
+            } else if (isOwner) {
+              const newOwner = await prisma.users.create({
+                data: {
+                  email,
+                  name: (token.name as string) || "Owner",
+                  role: "OWNER",
+                  updatedAt: new Date(),
+                },
+              });
+              token.id = newOwner.id;
+              token.role = "OWNER";
+              token.isSuspended = false;
             }
           } catch (error) {
             console.error("[NextAuth] jwt callback DB lookup error:", error);
@@ -132,10 +157,12 @@ export const authOptions: NextAuthOptions = {
      * Reads from the JWT token (no DB call).
      */
     async session({ session, token }) {
+      const { isOwnerEmail } = await import("@/lib/auth/roles");
       if (session.user) {
-        session.user.id = (token.id as string) ?? "";
-        (session.user as any).role = token.role ?? "USER";
-        (session.user as any).isSuspended = token.isSuspended ?? false;
+        const isOwner = isOwnerEmail(session.user.email);
+        session.user.id = (token.id as string) ?? session.user.id ?? "";
+        (session.user as any).role = isOwner ? "OWNER" : (token.role ?? "USER");
+        (session.user as any).isSuspended = isOwner ? false : (token.isSuspended ?? false);
       }
       return session;
     },
