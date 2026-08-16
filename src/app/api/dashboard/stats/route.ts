@@ -212,7 +212,7 @@ export async function GET(req: NextRequest) {
     const [
       historicalSentEvents, 
       historicalReplies, 
-      historicalOpens,
+      historicalTrackedEmails,
       topSequencesRaw, 
       totalProspectsCount, 
       allTimeSentCount,
@@ -234,18 +234,34 @@ export async function GET(req: NextRequest) {
         },
         select: { classified_at: true }
       }),
-      prisma.trackingEvent.findMany({
+      prisma.trackedEmail.findMany({
         where: {
-          event_type: "OPEN",
-          occurred_at: { gte: fourteenDaysAgo },
-          tracked_email: {
-            OR: [
-              { user_id: userId },
-              { sender_email: { in: senderEmails.length > 0 ? senderEmails : [userRecord?.email || ""] } }
-            ]
-          }
+          AND: [
+            {
+              OR: [
+                { open_count: { gt: 0 } },
+                { status: { in: ['OPENED', 'REPLIED'] } },
+                { last_opened_at: { not: null } },
+                { replied_at: { not: null } }
+              ]
+            },
+            {
+              created_at: { gte: fourteenDaysAgo }
+            },
+            {
+              OR: [
+                { user_id: userId },
+                { sender_email: { in: senderEmails.length > 0 ? senderEmails : [userRecord?.email || ""] } }
+              ]
+            }
+          ]
         },
-        select: { occurred_at: true }
+        select: {
+          created_at: true,
+          last_opened_at: true,
+          open_count: true,
+          status: true
+        }
       }).catch(() => []),
       prisma.sequence.findMany({
         where: { user_id: userId },
@@ -266,16 +282,26 @@ export async function GET(req: NextRequest) {
           step: { sequence: { user_id: userId } }
         }
       }),
-      prisma.trackingEvent.count({
+      prisma.trackedEmail.count({
         where: {
-          event_type: "OPEN",
-          occurred_at: { gte: startOfDay },
-          tracked_email: {
-            OR: [
-              { user_id: userId },
-              { sender_email: { in: senderEmails.length > 0 ? senderEmails : [userRecord?.email || ""] } }
-            ]
-          }
+          AND: [
+            {
+              OR: [
+                { open_count: { gt: 0 } },
+                { status: { in: ['OPENED', 'REPLIED'] } },
+                { last_opened_at: { gte: startOfDay } }
+              ]
+            },
+            {
+              created_at: { gte: startOfDay }
+            },
+            {
+              OR: [
+                { user_id: userId },
+                { sender_email: { in: senderEmails.length > 0 ? senderEmails : [userRecord?.email || ""] } }
+              ]
+            }
+          ]
         }
       }).catch(() => 0)
     ]);
@@ -297,17 +323,18 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    for (const op of historicalOpens) {
-      const key = op.occurred_at.toISOString().split("T")[0];
-      if (dailyTrendsMap[key]) {
-        dailyTrendsMap[key].opened += 1;
-      }
-    }
-
     for (const rep of historicalReplies) {
       const key = rep.classified_at.toISOString().split("T")[0];
       if (dailyTrendsMap[key]) {
         dailyTrendsMap[key].replies += 1;
+      }
+    }
+
+    for (const te of historicalTrackedEmails) {
+      const d = te.last_opened_at || te.created_at;
+      const key = d.toISOString().split("T")[0];
+      if (dailyTrendsMap[key]) {
+        dailyTrendsMap[key].opened += 1;
       }
     }
 
@@ -316,7 +343,17 @@ export async function GET(req: NextRequest) {
     if (dailyTrendsMap[todayKey]) {
       dailyTrendsMap[todayKey].sent = Math.max(dailyTrendsMap[todayKey].sent, sequenceEmailsSentToday + adhocEmailsSentToday);
       dailyTrendsMap[todayKey].replies = Math.max(dailyTrendsMap[todayKey].replies, repliesToday);
-      dailyTrendsMap[todayKey].opened = Math.max(dailyTrendsMap[todayKey].opened, opensTodayCount);
+      dailyTrendsMap[todayKey].opened = Math.max(dailyTrendsMap[todayKey].opened, opensTodayCount, repliesToday);
+    }
+
+    // Mathematical consistency: Every reply implies the email was opened!
+    for (const key of Object.keys(dailyTrendsMap)) {
+      const day = dailyTrendsMap[key];
+      day.opened = Math.max(day.opened, day.replies);
+      // Opens cannot exceed sent if sent > 0
+      if (day.sent > 0) {
+        day.opened = Math.min(day.sent, Math.max(day.opened, day.replies));
+      }
     }
 
     const dailyTrends = Object.values(dailyTrendsMap);

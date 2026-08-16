@@ -159,34 +159,35 @@ export default function DashboardPage() {
     
     if (timeframe === "today") {
       const sent = stats.emailsSentToday;
-      const opened = stats.opensToday;
       const replies = stats.repliesToday;
-      const openRate = sent > 0 ? Math.round((opened / sent) * 100) : 0;
-      const replyRate = sent > 0 ? Math.round((replies / sent) * 100) : 0;
+      const opened = Math.max(stats.opensToday, replies);
+      const openRate = sent > 0 ? Math.min(100, Math.round((opened / sent) * 100)) : (opened > 0 ? 100 : 0);
+      const replyRate = sent > 0 ? Math.min(100, Math.round((replies / sent) * 100)) : (replies > 0 ? 100 : 0);
       return { sent, opened, replies, openRate, replyRate };
     }
 
     if (timeframe === "all") {
       const sent = stats.allTimeSent || (stats.dailyTrends.reduce((acc, d) => acc + d.sent, 0)) || stats.emailsSentToday;
-      const opened = stats.totalOpens;
       const replies = stats.totalReplies;
-      const openRate = sent > 0 ? Math.round((opened / sent) * 100) : (opened > 0 ? 100 : 0);
-      const replyRate = sent > 0 ? Math.round((replies / sent) * 100) : 0;
+      const opened = Math.max(stats.totalOpens, replies);
+      const openRate = sent > 0 ? Math.min(100, Math.round((opened / sent) * 100)) : (opened > 0 ? 100 : 0);
+      const replyRate = sent > 0 ? Math.min(100, Math.round((replies / sent) * 100)) : 0;
       return { sent, opened, replies, openRate, replyRate };
     }
 
     if (displayedTrends.length > 0) {
       const sent = displayedTrends.reduce((acc, d) => acc + d.sent, 0);
-      const opened = displayedTrends.reduce((acc, d) => acc + d.opened, 0);
       const replies = displayedTrends.reduce((acc, d) => acc + d.replies, 0);
-      const openRate = sent > 0 ? Math.round((opened / sent) * 100) : (opened > 0 ? 100 : 0);
-      const replyRate = sent > 0 ? Math.round((replies / sent) * 100) : 0;
+      const rawOpened = displayedTrends.reduce((acc, d) => acc + d.opened, 0);
+      const opened = Math.max(rawOpened, replies);
+      const openRate = sent > 0 ? Math.min(100, Math.round((opened / sent) * 100)) : (opened > 0 ? 100 : 0);
+      const replyRate = sent > 0 ? Math.min(100, Math.round((replies / sent) * 100)) : (replies > 0 ? 100 : 0);
       return { sent, opened, replies, openRate, replyRate };
     }
 
     return {
       sent: stats.emailsSentToday,
-      opened: stats.opensToday,
+      opened: Math.max(stats.opensToday, stats.repliesToday),
       replies: stats.repliesToday,
       openRate: 0,
       replyRate: 0
