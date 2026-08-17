@@ -45,7 +45,11 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
   const [isPending, startTransition] = useTransition();
   const [isComposerOpen, setIsComposerOpen] = useState(false);
 
-  const { data: activityData, error: activityError, isLoading: isActivityLoading, mutate: mutateActivity } = useSWR(`/api/prospects/${prospect.id}/activity`, fetcher);
+  const { data: activityData, error: activityError, isLoading: isActivityLoading, mutate: mutateActivity } = useSWR(
+    `/api/prospects/${prospect.id}/activity`, 
+    fetcher,
+    { refreshInterval: 5000 }
+  );
   
   const activity = activityData?.activity || [];
 
@@ -149,31 +153,37 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
             prospectId={prospect.id}
             isOpen={isComposerOpen}
             onOpenChange={setIsComposerOpen}
-            hasActiveSequence={sequence?.status === "ACTIVE"}
+            hasActiveSequence={!!sequence && sequence.status === "ACTIVE"}
+            onSuccess={() => {
+              mutateActivity();
+              setTimeout(() => mutateActivity(), 1500);
+            }}
           />
           
           <div className="mt-4">
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">{prospect.name}</h1>
-              <StatusBadge status={prospectBadgeStatus as any} dot />
+              <StatusBadge status={prospectBadgeStatus as any} />
             </div>
             
-            <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap gap-4 mt-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1.5">
                 <Building className="h-4 w-4" />
-                {prospect.company || "No company"}
+                {prospect.company || "Unknown Company"}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <Mail className="h-4 w-4" />
-                {prospect.email}
+                <a href={`mailto:${prospect.email}`} className="hover:underline text-foreground">
+                  {prospect.email}
+                </a>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <Globe className="h-4 w-4" />
-                {prospect.timezone || "Unknown TZ"}
+                {prospect.timezone || "UTC"}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <Clock className="h-4 w-4" />
-                Added {prospect.created_at ? formatDistanceToNow(new Date(prospect.created_at), { addSuffix: true }) : "Unknown"}
+                Added {formatDistanceToNow(new Date(prospect.created_at), { addSuffix: true })}
               </div>
             </div>
           </div>
@@ -199,7 +209,9 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
                 ) : activityError ? (
                   <ErrorState title="Failed to load activity" message="An error occurred while loading the timeline." />
                 ) : (() => {
-                  const filteredActivity = activity.filter((e: any) => ["EMAIL_SENT", "REPLY", "FAILED"].includes(e.type));
+                  const filteredActivity = activity.filter((e: any) => 
+                    ["EMAIL_SENT", "SCHEDULED_EMAIL", "REPLY", "FAILED", "SEQUENCE_STARTED"].includes(e.type)
+                  );
                   
                   if (filteredActivity.length === 0) {
                     return (

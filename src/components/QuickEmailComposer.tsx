@@ -23,6 +23,7 @@ interface QuickEmailComposerProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   hasActiveSequence: boolean;
+  onSuccess?: () => void;
 }
 
 export function QuickEmailComposer({
@@ -30,6 +31,7 @@ export function QuickEmailComposer({
   isOpen,
   onOpenChange,
   hasActiveSequence,
+  onSuccess,
 }: QuickEmailComposerProps) {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -114,6 +116,9 @@ export function QuickEmailComposer({
       mutate(`/api/prospects/${prospectId}/activity`);
       if (pauseSequence) {
         mutate(`/api/sequences`);
+      }
+      if (onSuccess) {
+        onSuccess();
       }
     } catch (err: any) {
       toast.error(err.message || "An error occurred");
