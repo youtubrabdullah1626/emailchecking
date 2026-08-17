@@ -1,9 +1,9 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
-import { google } from "googleapis";
 import prisma from "@/lib/prisma";
-import { getOAuthConfig, createOAuth2Client } from "@/lib/gmail/oauth";
-import { buildGmailMessage } from "@/lib/gmail/message";
 import { getSession } from "@/lib/auth/session";
+import { sendSingleAdhocEmail } from "@/lib/gmail/adhoc-sender";
 
 function replaceVariables(text: string, prospect: any) {
   if (!text) return text;
@@ -74,12 +74,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Create AdhocEmail record in DB
-    const isScheduled = scheduledAt && new Date(scheduledAt) > new Date();
+    const parsedScheduledDate = scheduledAt ? new Date(scheduledAt) : null;
+    const isFutureSchedule = parsedScheduledDate ? parsedScheduledDate > new Date() : false;
     
     // Find previous thread ID if requested
     let previousThreadId = undefined;
     if (replyToLastThread) {
-      // Find the last sent email in sequences or previous adhoc emails
       const lastAdhoc = await prisma.adhocEmail.findFirst({
         where: { prospect_id: prospect.id, gmail_thread_id: { not: null } },
         orderBy: { sent_at: 'desc' }
@@ -94,15 +94,15 @@ export async function POST(request: NextRequest) {
         prospect_id: prospect.id,
         subject: finalSubject,
         body: finalBody,
-        status: isScheduled ? "PENDING" : "SENT",
-        scheduled_at: isScheduled ? new Date(scheduledAt) : null,
-        gmail_message_id: null, // Will be updated async
+        status: "PENDING",
+        scheduled_at: parsedScheduledDate,
+        gmail_message_id: null,
         gmail_thread_id: previousThreadId,
       }
     });
 
-    // If it's scheduled for the future, we return immediately and let the scheduler handle it.
-    if (isScheduled) {
+    // If scheduled for the future, return confirmation
+    if (isFutureSchedule) {
       return NextResponse.json({
         ok: true,
         messageId: adhocEmail.id,
@@ -110,54 +110,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 4. Send Email via Gmail API instantly in the background (fire-and-forget)
-    (async () => {
-      try {
-        const config = getOAuthConfig();
-        if (!config) throw new Error("Gmail OAuth config missing");
-        
-        const oauth2Client = createOAuth2Client();
-        const messagePayload = buildGmailMessage({
-          from: config.senderEmail,
-          to: prospect.email,
-          toName: prospect.name,
-          subject: finalSubject,
-          body: finalBody,
-          threadId: previousThreadId
-        });
+    // Dispatch immediately in background
+    sendSingleAdhocEmail(adhocEmail.id).catch((err) => {
+      console.error("[BACKGROUND_ADHOC_SEND_ERROR]", err);
+    });
 
-        const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-        const sendResponse = await gmail.users.messages.send({
-          userId: "me",
-          requestBody: { raw: messagePayload.raw }
-        });
-
-        const gmailMessageId = sendResponse.data.id;
-        const gmailThreadId = sendResponse.data.threadId;
-
-        if (gmailMessageId) {
-          await prisma.adhocEmail.update({
-            where: { id: adhocEmail.id },
-            data: {
-              gmail_message_id: gmailMessageId,
-              gmail_thread_id: gmailThreadId,
-              sent_at: new Date()
-            }
-          });
-        }
-      } catch (error: any) {
-        console.error("[BACKGROUND_GMAIL_SEND_ERROR]", error);
-        await prisma.adhocEmail.update({
-          where: { id: adhocEmail.id },
-          data: {
-            status: "FAILED",
-            error_message: error.message || "Failed to send email"
-          }
-        });
-      }
-    })();
-
-    // Return instantly so the UI feels fast
     return NextResponse.json({
       ok: true,
       messageId: adhocEmail.id,

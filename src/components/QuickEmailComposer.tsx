@@ -86,7 +86,7 @@ export function QuickEmailComposer({
           subject,
           body,
           pauseSequence,
-          scheduledAt: isScheduled ? scheduledAt : null,
+          scheduledAt: isScheduled && scheduledAt ? new Date(scheduledAt).toISOString() : null,
           replyToLastThread,
         }),
       });

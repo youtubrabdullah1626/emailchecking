@@ -94,7 +94,7 @@ export const POST = withObservability(async (request: NextRequest) => {
 
     const result = await runScheduler({ dryRun, maxClaims });
     
-    // Actually send the emails if not a dry run and steps were claimed
+    // Actually send the sequence emails if not a dry run and steps were claimed
     if (!dryRun && result.claimedStepIds.length > 0) {
       const { sendBatch } = await import("@/lib/gmail/sender");
       try {
@@ -102,6 +102,14 @@ export const POST = withObservability(async (request: NextRequest) => {
       } catch (err) {
         logger.error("Failed to send batch after manual scheduler run", { error: err });
       }
+    }
+
+    // Also process any due scheduled adhoc composer emails
+    if (!dryRun) {
+      const { sendDueAdhocEmails } = await import("@/lib/gmail/adhoc-sender");
+      await sendDueAdhocEmails(50).catch(err => {
+        logger.error("Failed to process due adhoc emails during scheduler run", { error: err });
+      });
     }
     
     // Log the run in AuditLog so we have a precise "Last Run" timestamp

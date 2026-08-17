@@ -108,67 +108,9 @@ async function runFullPipeline(request: NextRequest): Promise<NextResponse> {
   // ── Step 2.5: Send scheduled Ad-hoc emails ────────────────────────────────
   let sentAdhocEmails = 0;
   try {
-    const dueAdhocs = await prisma.adhocEmail.findMany({
-      where: {
-        status: "PENDING",
-        scheduled_at: { lte: new Date() }
-      },
-      include: {
-        prospect: true
-      },
-      take: 20
-    });
-
-    if (dueAdhocs.length > 0) {
-      const config = getOAuthConfig();
-      if (config) {
-        const oauth2Client = createOAuth2Client();
-        const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-
-        for (const adhoc of dueAdhocs) {
-          try {
-            const messagePayload = buildGmailMessage({
-              from: config.senderEmail,
-              to: adhoc.prospect.email,
-              toName: adhoc.prospect.name,
-              subject: adhoc.subject,
-              body: adhoc.body,
-              threadId: adhoc.gmail_thread_id ?? undefined
-            });
-
-            const sendResponse = await gmail.users.messages.send({
-              userId: "me",
-              requestBody: { raw: messagePayload.raw }
-            });
-
-            const gmailMessageId = sendResponse.data.id;
-            const gmailThreadId = sendResponse.data.threadId;
-
-            if (gmailMessageId) {
-              await prisma.adhocEmail.update({
-                where: { id: adhoc.id },
-                data: {
-                  status: "SENT",
-                  sent_at: new Date(),
-                  gmail_message_id: gmailMessageId,
-                  gmail_thread_id: gmailThreadId
-                }
-              });
-              sentAdhocEmails++;
-            }
-          } catch (error: any) {
-            await prisma.adhocEmail.update({
-              where: { id: adhoc.id },
-              data: {
-                status: "FAILED",
-                error_message: error.message || "Failed to send scheduled email"
-              }
-            });
-            logger.error("cron_adhoc_send_failed", { detail: error.message, adhocId: adhoc.id });
-          }
-        }
-      }
-    }
+    const { sendDueAdhocEmails } = await import("@/lib/gmail/adhoc-sender");
+    const adhocResult = await sendDueAdhocEmails(50);
+    sentAdhocEmails = adhocResult.sent;
   } catch (err) {
     logger.error("cron_adhoc_processing_failed", { detail: err instanceof Error ? err.message : String(err) });
   }

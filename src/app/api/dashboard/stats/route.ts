@@ -462,6 +462,10 @@ export async function GET(req: NextRequest) {
             await sendBatch(result.claimedStepIds);
           }
         }
+
+        // Also sweep any due scheduled ad-hoc emails
+        const { sendDueAdhocEmails } = await import("@/lib/gmail/adhoc-sender");
+        await sendDueAdhocEmails(20).catch(() => {});
       } catch (err) {
         console.error("Auto-scheduler background execution error:", err);
       }
