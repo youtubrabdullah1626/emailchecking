@@ -26,7 +26,6 @@ import {
   Eye, 
   CheckCircle2, 
   ShieldCheck, 
-  FileUp, 
   Sparkles,
   BarChart3
 } from "lucide-react";
@@ -282,30 +281,21 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Timeframe Filter Switcher & Quick Action */}
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <div className="inline-flex p-1 rounded-xl bg-card border border-border/80 shadow-2xs">
-              {(["today", "7d", "30d", "all"] as TimeframeOption[]).map((tf) => (
-                <button
-                  key={tf}
-                  onClick={() => setTimeframe(tf)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${
-                    timeframe === tf
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  }`}
-                >
-                  {tf === "today" ? "Today" : tf === "7d" ? "7 Days" : tf === "30d" ? "30 Days" : "All Time"}
-                </button>
-              ))}
-            </div>
-
-            <Button asChild size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-xs gap-1.5">
-              <Link href="/smart-import">
-                <FileUp className="h-4 w-4" />
-                Import Prospects
-              </Link>
-            </Button>
+          {/* Timeframe Filter Switcher */}
+          <div className="inline-flex p-1 rounded-xl bg-card border border-border/80 shadow-2xs shrink-0">
+            {(["today", "7d", "30d", "all"] as TimeframeOption[]).map((tf) => (
+              <button
+                key={tf}
+                onClick={() => setTimeframe(tf)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${
+                  timeframe === tf
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
+              >
+                {tf === "today" ? "Today" : tf === "7d" ? "7 Days" : tf === "30d" ? "30 Days" : "All Time"}
+              </button>
+            ))}
           </div>
         </div>
       </div>
