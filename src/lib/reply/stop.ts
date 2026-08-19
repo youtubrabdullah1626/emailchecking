@@ -206,13 +206,13 @@ export async function applyReplyStop(
       };
     }, { timeout: 25000, maxWait: 10000 });
 
-    // ── 5. Ingest REPLIED event to Tracking Engine with fallback to email ──
-    await emailTrackingService.ingestEventByProviderThreadId(
-      classification.gmailThreadId,
-      "REPLIED",
-      undefined,
-      classification.fromEmail
-    ).catch(() => {});
+    // ── 5. Ingest REPLIED event to Tracking Engine ONLY for this exact thread ──
+    if (classification.gmailThreadId) {
+      await emailTrackingService.ingestEventByProviderThreadId(
+        classification.gmailThreadId,
+        "REPLIED"
+      ).catch(() => {});
+    }
 
     // ── 8. Dispatch to CRM Adapter Layer (non-blocking for DB atomicity) ────
     try {

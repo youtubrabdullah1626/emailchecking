@@ -106,31 +106,43 @@ export async function GET(req: NextRequest) {
 
     const stepMap = new Map<string, any>(sequenceSteps.map((s) => [s.id, s]));
 
-    // Query replied prospects and reply classifications for all recipients in view
-    const recipientEmails = Array.from(new Set(trackedEmails.map((t) => t.recipient_email.toLowerCase())));
+    // Query reply classifications strictly for the thread IDs in view
     const threadIds = Array.from(new Set(trackedEmails.map((t) => t.provider_thread_id).filter((id): id is string => Boolean(id))));
 
-    const [repliedProspects, classifications] = await Promise.all([
-      prisma.prospect.findMany({
-        where: {
-          email: { in: recipientEmails, mode: "insensitive" },
-          status: "REPLIED",
-        },
-        select: { email: true, created_at: true },
-      }),
-      threadIds.length > 0
-        ? prisma.replyClassification.findMany({
-            where: {
-              gmail_thread_id: { in: threadIds },
-              reply_type: "REAL_REPLY",
-            },
-            select: { gmail_thread_id: true, classified_at: true },
-          })
-        : [],
-    ]);
+    const classifications = threadIds.length > 0
+      ? await prisma.replyClassification.findMany({
+          where: {
+            gmail_thread_id: { in: threadIds },
+            reply_type: "REAL_REPLY",
+          },
+          select: { gmail_thread_id: true, classified_at: true },
+        })
+      : [];
 
-    const repliedEmailMap = new Map(repliedProspects.map((p) => [p.email.toLowerCase(), p.created_at]));
     const threadReplyMap = new Map(classifications.map((c) => [c.gmail_thread_id, c.classified_at]));
+
+    // Self-healing: Reset false positive replied_at on tracked emails that have no matching reply classification
+    const falsePositiveIds = trackedEmails
+      .filter((t) => (t.status === "REPLIED" || t.replied_at != null) && (!t.provider_thread_id || !threadReplyMap.has(t.provider_thread_id)))
+      .map((t) => t.id);
+
+    if (falsePositiveIds.length > 0) {
+      prisma.trackedEmail.updateMany({
+        where: { id: { in: falsePositiveIds } },
+        data: {
+          status: "SENT",
+          replied_at: null,
+        },
+      }).then(() => {
+        return prisma.trackedEmail.updateMany({
+          where: {
+            id: { in: falsePositiveIds },
+            open_count: { gt: 0 },
+          },
+          data: { status: "OPENED" },
+        });
+      }).catch((e) => console.error("[Timeline Auto-Heal] Error cleaning false positives:", e));
+    }
 
     // 3. Build Normalized Timeline Email Items
     const items: TimelineEmailItem[] = trackedEmails.map((tracked) => {
@@ -144,15 +156,12 @@ export async function GET(req: NextRequest) {
       const lastOpenedAt = tracked.last_opened_at;
       const bouncedAt = tracked.bounced_at;
 
-      const recipientLower = tracked.recipient_email.toLowerCase();
       const threadReplyTime = tracked.provider_thread_id ? threadReplyMap.get(tracked.provider_thread_id) : null;
-      const prospectReplyTime = repliedEmailMap.get(recipientLower);
-
-      const effectiveRepliedAt = tracked.replied_at || threadReplyTime || prospectReplyTime || null;
+      const isReplied = Boolean(threadReplyTime);
+      const effectiveRepliedAt = threadReplyTime || null;
 
       const hasSent = Boolean(sentAt);
       const isOpened = tracked.open_count > 0 || Boolean(firstOpenedAt) || tracked.status === "OPENED";
-      const isReplied = Boolean(effectiveRepliedAt) || tracked.status === "REPLIED" || prospect?.status === "REPLIED";
       const isClicked = tracked.click_count > 0 || tracked.status === "CLICKED";
       const isBounced = Boolean(bouncedAt) || tracked.status === "BOUNCED";
 
