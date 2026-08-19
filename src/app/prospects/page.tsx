@@ -276,16 +276,20 @@ function ProspectsPageContent() {
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
       {/* 1. Dynamic Silaer Signature Header */}
-      <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-card border border-primary/20 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden transition-colors duration-300">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-xs relative overflow-hidden transition-all duration-300">
+        {/* Subtle Ambient Background Glow */}
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-80 h-80 bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-transparent rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-12 w-64 h-64 bg-gradient-to-tr from-primary/5 to-transparent rounded-full blur-xl pointer-events-none" />
+
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 relative z-10">
           <div className="flex items-start sm:items-center gap-4">
-            <div className="h-11 w-11 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 border border-primary/25 shadow-xs">
-              <Users className="h-5 w-5" />
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-orange-500/20">
+              <Users className="h-6 w-6" />
             </div>
 
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                   Prospect Directory
                 </h1>
                 <TooltipProvider>
@@ -293,42 +297,42 @@ function ProspectsPageContent() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors cursor-help"
+                        className="flex items-center justify-center h-5 w-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-help border border-slate-200 dark:border-slate-700"
                       >
                         <Info className="h-3 w-3" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="right" align="center" className="max-w-xs p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl z-50 text-xs">
-                      <p className="font-semibold text-slate-900 dark:text-white mb-1">
+                      <p className="font-bold text-slate-900 dark:text-white mb-1">
                         Prospect Directory
                       </p>
                       <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                        Manage your outreach contacts, track email lifecycle status, and launch sequences.
+                        Manage your outreach contacts, track live email lifecycle status, and launch targeted sequences.
                       </p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
-                Manage your prospects, track active engagement, and launch outreach campaigns.
+              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Manage your prospects, monitor real-time email engagement, and scale outreach campaigns.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
+          <div className="flex items-center gap-2.5 shrink-0 self-start md:self-center">
             <Button
               variant="outline"
               size="sm"
               onClick={handleExportCSV}
-              className="gap-1.5 rounded-xl border border-border bg-card/80 text-foreground shadow-2xs hover:bg-primary/10"
+              className="gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-2xs hover:bg-slate-50 dark:hover:bg-slate-700/60 font-semibold text-xs h-9 px-3.5"
             >
-              <Download className="h-3.5 w-3.5 text-primary" />
-              <span className="hidden sm:inline text-xs font-medium">Export CSV</span>
+              <Download className="h-3.5 w-3.5 text-slate-500" />
+              <span className="hidden sm:inline">Export CSV</span>
             </Button>
 
-            <Button className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs rounded-xl font-semibold" asChild>
+            <Button className="gap-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold shadow-md shadow-orange-500/20 hover:shadow-lg hover:shadow-orange-500/30 rounded-xl text-xs h-9 px-4 transition-all duration-200" asChild>
               <FastLink href="/prospects/new">
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4 w-4 stroke-[2.5]" />
                 <span>Add Prospect</span>
               </FastLink>
             </Button>
@@ -337,70 +341,75 @@ function ProspectsPageContent() {
       </div>
 
       {/* 2. Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* Total Prospects */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 flex items-center justify-between group">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Total Prospects
             </div>
-            <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono mt-1 tracking-tight">
               {stats.total}
             </div>
           </div>
-          <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
-            <Users className="h-4 w-4" />
+          <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200/70 dark:border-slate-700/70 group-hover:scale-105 transition-transform">
+            <Users className="h-5 w-5" />
           </div>
         </div>
 
         {/* In Active Sequences */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-200 flex items-center justify-between group">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Active Outreach
             </div>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                 {stats.active}
               </span>
-              <span className="text-[11px] text-emerald-600 font-semibold">in sequence</span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200/80">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                in sequence
+              </span>
             </div>
           </div>
-          <div className="h-8 w-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-            <PlayCircle className="h-4 w-4" />
+          <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/80 group-hover:scale-105 transition-transform">
+            <PlayCircle className="h-5 w-5" />
           </div>
         </div>
 
         {/* Replied */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-200 flex items-center justify-between group">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Replied
             </div>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                 {stats.replied}
               </span>
-              <span className="text-[11px] text-indigo-600 font-semibold">engaged</span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full border border-indigo-200/80">
+                engaged
+              </span>
             </div>
           </div>
-          <div className="h-8 w-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-            <MessageSquareReply className="h-4 w-4" />
+          <div className="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200/80 group-hover:scale-105 transition-transform">
+            <MessageSquareReply className="h-5 w-5" />
           </div>
         </div>
 
         {/* Not Contacted */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 transition-all duration-200 flex items-center justify-between group">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Ready to Outreach
             </div>
-            <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono mt-1 tracking-tight">
               {stats.notContacted}
             </div>
           </div>
-          <div className="h-8 w-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-            <Send className="h-4 w-4" />
+          <div className="h-10 w-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200/80 group-hover:scale-105 transition-transform">
+            <Send className="h-5 w-5" />
           </div>
         </div>
       </div>
@@ -409,7 +418,7 @@ function ProspectsPageContent() {
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <input
             ref={searchInputRef}
             type="text"
@@ -417,9 +426,9 @@ function ProspectsPageContent() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name, email, or company... (Press / to search)"
-            className="w-full pl-9 pr-12 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-xs"
+            className="w-full pl-10 pr-12 py-2.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-xs h-10"
           />
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {search ? (
               <button
                 onClick={() => setSearch("")}
@@ -428,7 +437,7 @@ function ProspectsPageContent() {
                 <X className="h-3.5 w-3.5" />
               </button>
             ) : (
-              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700">
+              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700">
                 /
               </kbd>
             )}
@@ -436,7 +445,7 @@ function ProspectsPageContent() {
         </div>
 
         {/* Filter Tabs with Live Item Counts */}
-        <div className="inline-flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
+        <div className="inline-flex bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs gap-1">
           {[
             { key: "ALL", label: "All", count: stats.total },
             { key: "ACTIVE", label: "Active", count: stats.active },
@@ -448,18 +457,18 @@ function ProspectsPageContent() {
               <button
                 key={tab.key}
                 onClick={() => setStatusFilter(tab.key as any)}
-                className={`px-3 py-1.5 rounded-lg font-medium text-[11px] flex items-center gap-1.5 transition-all ${
+                className={`px-3 py-1.5 rounded-xl font-bold text-[11px] flex items-center gap-1.5 transition-all ${
                   isActive
-                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-semibold"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
               >
                 <span>{tab.label}</span>
                 <span
-                  className={`text-[10px] px-1 py-0.2 rounded-full ${
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full ${
                     isActive
-                      ? "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold"
-                      : "bg-slate-200/60 dark:bg-slate-800 text-slate-400"
+                      ? "bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900 font-black"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-400"
                   }`}
                 >
                   {tab.count}

@@ -66,23 +66,25 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
         </Link>
       </div>
 
-      <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-        <div className="h-32 bg-gradient-to-r from-primary/20 to-primary/5"></div>
-        <div className="px-8 pb-8 relative">
-          <div className="flex justify-between items-end">
-            <Avatar className="h-24 w-24 border-4 border-card bg-card -mt-12">
-              <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="h-28 bg-gradient-to-r from-orange-500/15 via-amber-500/10 to-transparent relative overflow-hidden">
+          <div className="absolute top-0 right-0 -mr-12 -mt-12 w-64 h-64 bg-gradient-to-br from-orange-500/10 to-transparent rounded-full blur-xl pointer-events-none" />
+        </div>
+        <div className="px-6 sm:px-8 pb-7 relative">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
+            <Avatar className="h-22 w-22 border-4 border-white dark:border-slate-900 bg-white dark:bg-slate-900 -mt-11 shadow-md">
+              <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-500 text-white text-2xl font-black">
                 {prospect.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2.5 items-center">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" className="gap-2">
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 border border-rose-200/60 dark:border-rose-900/60 rounded-xl text-xs font-semibold h-9 px-3">
                     Reset Prospect
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent className="rounded-2xl border border-slate-200 dark:border-slate-800">
                   <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -90,9 +92,9 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
                     <AlertDialogAction 
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      className="bg-rose-600 text-white hover:bg-rose-700 font-bold rounded-xl"
                       onClick={async () => {
                         try {
                           const res = await fetch(`/api/prospects/${prospect.id}/reset`, { method: "DELETE" });
@@ -110,23 +112,23 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs h-9 px-3.5" asChild>
                 <Link prefetch={true} href={`/prospects/${prospect.id}/edit`}>Edit</Link>
               </Button>
               
               <Button 
-                variant="secondary"
+                variant="outline"
                 size="sm" 
-                className="gap-2"
+                className="gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 font-semibold text-xs h-9 px-3.5"
                 onClick={() => setIsComposerOpen(true)}
               >
-                <Mail className="h-4 w-4" />
+                <Mail className="h-3.5 w-3.5 text-slate-500" />
                 Send Email
               </Button>
 
               <Button 
                 size="sm" 
-                className="gap-2 min-w-[150px]" 
+                className="gap-2 min-w-[140px] rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold shadow-md shadow-orange-500/20 text-xs h-9 px-4 transition-all duration-200" 
                 disabled={isPending}
                 onClick={() => {
                   startTransition(() => router.push(`/prospects/${prospect.id}/sequence`));
@@ -135,7 +137,7 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
                 {isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  sequence ? <Play className="h-4 w-4" /> : <Plus className="h-4 w-4" />
+                  sequence ? <Play className="h-3.5 w-3.5 fill-current" /> : <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
                 )}
                 {isPending ? "Loading..." : (sequence ? "View Sequence" : "Add to Sequence")}
               </Button>
@@ -153,9 +155,9 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
             }}
           />
           
-          <div className="mt-4">
+          <div className="mt-5">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-foreground">{prospect.name}</h1>
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">{prospect.name}</h1>
               {isReplied ? (
                 <Badge className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200/60 text-xs font-bold gap-1 px-2.5 py-0.5">
                   <MessageSquare className="h-3 w-3" />
@@ -178,23 +180,23 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
               )}
             </div>
             
-            <div className="flex flex-wrap gap-4 mt-3 text-sm text-muted-foreground">
+            <div className="flex flex-wrap gap-4 mt-3 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               <div className="flex items-center gap-1.5">
-                <Building className="h-4 w-4" />
-                {prospect.company || "Unknown Company"}
+                <Building className="h-4 w-4 text-slate-400" />
+                <span className="font-medium text-slate-700 dark:text-slate-300">{prospect.company || "Unknown Company"}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Mail className="h-4 w-4" />
-                <a href={`mailto:${prospect.email}`} className="hover:underline text-foreground">
+                <Mail className="h-4 w-4 text-slate-400" />
+                <a href={`mailto:${prospect.email}`} className="hover:underline text-slate-700 dark:text-slate-300 font-medium">
                   {prospect.email}
                 </a>
               </div>
               <div className="flex items-center gap-1.5">
-                <Globe className="h-4 w-4" />
-                {prospect.timezone || "UTC"}
+                <Globe className="h-4 w-4 text-slate-400" />
+                <span>{prospect.timezone || "UTC"}</span>
               </div>
               <div className="flex items-center gap-1.5" suppressHydrationWarning>
-                <Clock className="h-4 w-4" />
+                <Clock className="h-4 w-4 text-slate-400" />
                 Added {formatDistanceToNow(new Date(prospect.created_at), { addSuffix: true })}
               </div>
             </div>
@@ -203,10 +205,10 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
       </div>
 
       <Tabs defaultValue="activity" className="w-full">
-        <TabsList className="bg-card border border-border h-12 w-full justify-start rounded-lg px-2 shadow-sm">
-          <TabsTrigger value="activity" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">Activity</TabsTrigger>
-          <TabsTrigger value="sequence">Sequence</TabsTrigger>
-          <TabsTrigger value="profile">Profile Details</TabsTrigger>
+        <TabsList className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 h-12 w-full justify-start rounded-2xl p-1 shadow-xs gap-1">
+          <TabsTrigger value="activity" className="rounded-xl px-4 text-xs font-bold data-[state=active]:bg-slate-900 data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-900 transition-all">Activity</TabsTrigger>
+          <TabsTrigger value="sequence" className="rounded-xl px-4 text-xs font-bold data-[state=active]:bg-slate-900 data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-900 transition-all">Sequence</TabsTrigger>
+          <TabsTrigger value="profile" className="rounded-xl px-4 text-xs font-bold data-[state=active]:bg-slate-900 data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-900 transition-all">Profile Details</TabsTrigger>
         </TabsList>
         
         <TabsContent value="activity" className="mt-6">
