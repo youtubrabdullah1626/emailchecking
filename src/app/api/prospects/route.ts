@@ -142,6 +142,9 @@ export async function GET(request: NextRequest) {
       let computedStatus = p.status;
       if (isReplied) {
         computedStatus = "REPLIED";
+        if (latestSequence && latestSequence.status === "ACTIVE") {
+          latestSequence.status = "STOPPED";
+        }
       } else if (latestSequence?.status === "ACTIVE") {
         computedStatus = "ACTIVE";
       } else if (latestSequence?.status === "COMPLETED") {
@@ -186,6 +189,18 @@ export async function GET(request: NextRequest) {
       const timeB = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : new Date(b.created_at).getTime();
       return timeB - timeA;
     });
+
+    // Auto-heal: Stop active sequences in database for prospects that replied
+    const repliedWithActiveSeqIds = prospects
+      .filter((p) => p.status === "REPLIED" && p.sequences && p.sequences[0]?.status === "ACTIVE")
+      .map((p) => p.sequences[0].id);
+
+    if (repliedWithActiveSeqIds.length > 0) {
+      prisma.sequence.updateMany({
+        where: { id: { in: repliedWithActiveSeqIds } },
+        data: { status: "STOPPED" },
+      }).catch(() => {});
+    }
 
     const totalPages = Math.ceil(total / limit);
     return NextResponse.json({

@@ -519,7 +519,13 @@ function ProspectsPageContent() {
 
                     let sequenceBadge = null;
                     if (prospect.sequence) {
-                      if (prospect.sequence.status === "ACTIVE") {
+                      if (prospect.status === "REPLIED" || prospect.sequence.status === "STOPPED") {
+                        sequenceBadge = (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold text-[10px] border border-slate-200/60">
+                            Stopped
+                          </span>
+                        );
+                      } else if (prospect.sequence.status === "ACTIVE") {
                         sequenceBadge = (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] border border-emerald-200/60">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -532,10 +538,16 @@ function ProspectsPageContent() {
                             Completed
                           </span>
                         );
-                      } else {
+                      } else if (prospect.sequence.status === "PAUSED") {
                         sequenceBadge = (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-semibold text-[10px] border border-amber-200/60">
                             Paused
+                          </span>
+                        );
+                      } else {
+                        sequenceBadge = (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-[10px]">
+                            {prospect.sequence.status}
                           </span>
                         );
                       }
