@@ -14,11 +14,12 @@ import { ImportHistoryWorkspace } from "@/components/smart-import/ImportHistoryW
 import { EnterpriseDiagnosticsPanel } from "@/components/smart-import/EnterpriseDiagnosticsPanel";
 import { LiveExecutionDashboard } from "@/components/smart-import/LiveExecutionDashboard";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Check } from "lucide-react";
+import { Sparkles, Check, FileUp, History } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function WorkspaceShell() {
   const { status, errorMessage, summary, proceedToPlanning, resetImport, closeSession, appendTargetSessionId, fastTrackAppend, lastDeletedItem, undoLastDelete, undo, canUndo, bulkProgress } = useImport() as any; 
+  const [activeTab, setActiveTab] = React.useState<"IMPORT" | "HISTORY">("IMPORT");
 
   // Determine if we should show a back button
   const showBackButton = status !== "IDLE" && status !== "ERROR" && status !== "EXECUTING" && status !== "SCHEDULING" && status !== "BUILDING";
@@ -28,7 +29,7 @@ export function WorkspaceShell() {
   }, []);
 
   return (
-    <div className="space-y-8 pb-20">
+    <div className="space-y-6 pb-20">
       
       {showBackButton && (
         <div className="flex items-center gap-2 -mb-2">
@@ -45,8 +46,6 @@ export function WorkspaceShell() {
         </div>
       )}
       
-      {/* No Undo Toast - deletions are permanent */}
-      
       {/* Error Message Display */}
       {status === "ERROR" && errorMessage && (
         <Alert variant="destructive" className="bg-destructive/5 border-destructive/20 shadow-sm">
@@ -54,16 +53,54 @@ export function WorkspaceShell() {
           <AlertDescription className="mt-2 text-sm">{errorMessage}</AlertDescription>
         </Alert>
       )}
-      
-      {/* Universal Prompt Helper */}
+
+      {/* Top View Toggle (New Import vs Campaign History) */}
       {(status === "IDLE" || status === "ERROR") && (
-        <Alert className="bg-primary/5 border-primary/20 shadow-sm">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <AlertTitle className="text-primary font-semibold">Messy Data?</AlertTitle>
-          <AlertDescription className="text-muted-foreground mt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <span>Use our Universal Formatting Prompt in ChatGPT or Claude to instantly clean your raw leads into our supported format before uploading.</span>
-            <Button variant="outline" size="sm" className="shrink-0 bg-background" onClick={() => {
-              navigator.clipboard.writeText(`You are a professional data normalization engine. Transform the following raw lead data into a production-ready CSV using exactly these headers: Email, First Name, Last Name, Company.
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="inline-flex items-center p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs">
+            <button
+              type="button"
+              onClick={() => setActiveTab("IMPORT")}
+              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold transition-all ${
+                activeTab === "IMPORT"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <FileUp className="h-4 w-4" />
+              New Lead Import
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("HISTORY")}
+              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold transition-all ${
+                activeTab === "HISTORY"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <History className="h-4 w-4" />
+              Campaign History
+            </button>
+          </div>
+
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            {activeTab === "IMPORT" ? "Drop files to begin automated outreach" : "Review and inspect past campaigns"}
+          </div>
+        </div>
+      )}
+
+      {/* View: NEW IMPORT */}
+      {(status === "IDLE" || status === "ERROR") && activeTab === "IMPORT" && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          {/* Universal Prompt Helper */}
+          <Alert className="bg-primary/5 border-primary/20 shadow-sm">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <AlertTitle className="text-primary font-semibold">Messy Data?</AlertTitle>
+            <AlertDescription className="text-muted-foreground mt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <span>Use our Universal Formatting Prompt in ChatGPT or Claude to instantly clean your raw leads into our supported format before uploading.</span>
+              <Button variant="outline" size="sm" className="shrink-0 bg-background" onClick={() => {
+                navigator.clipboard.writeText(`You are a professional data normalization engine. Transform the following raw lead data into a production-ready CSV using exactly these headers: Email, First Name, Last Name, Company.
 Rules:
 Extract only valid lead information.
 Validate email syntax; discard rows with invalid emails.
@@ -74,28 +111,27 @@ Keep company names exactly as provided unless obvious formatting cleanup is need
 Never fabricate missing information; leave missing fields blank.
 Preserve row order whenever possible.
 Return only the CSV content with the required headers. No markdown, explanations, comments, or extra text.`);
-            }}>
-              Copy Formatting Prompt
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+              }}>
+                Copy Formatting Prompt
+              </Button>
+            </AlertDescription>
+          </Alert>
 
-      {/* Main Drop Zone */}
-      {(status === "IDLE" || status === "PARSING" || status === "VALIDATING" || status === "ERROR") && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <ImportDropZone />
-          </div>
-          <div className="lg:col-span-1">
-            <SupportedFormats />
+          {/* Main Drop Zone */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              <ImportDropZone />
+            </div>
+            <div className="lg:col-span-1">
+              <SupportedFormats />
+            </div>
           </div>
         </div>
       )}
 
-      {/* Import History */}
-      {(status === "IDLE" || status === "ERROR") && (
-        <div className="pt-8 mt-8 border-t border-border">
+      {/* View: CAMPAIGN HISTORY */}
+      {(status === "IDLE" || status === "ERROR") && activeTab === "HISTORY" && (
+        <div className="animate-in fade-in duration-300">
           <ImportHistoryWorkspace />
         </div>
       )}
