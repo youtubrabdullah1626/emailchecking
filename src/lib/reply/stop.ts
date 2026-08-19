@@ -144,21 +144,18 @@ export async function applyReplyStop(
         }).catch(() => {});
 
         // ── 3. Record the reply classification ───────────────────────────────
-        await tx.replyClassification.upsert({
-          where: { gmail_message_id: classification.gmailMessageId },
-          create: {
-            prospect_id: resolvedProspectId,
-            gmail_thread_id: classification.gmailThreadId,
-            gmail_message_id: classification.gmailMessageId,
-            reply_type: "REAL_REPLY",
-            raw_snippet: classification.snippet || null,
-            classified_at: now,
-          },
-          update: {
-            reply_type: "REAL_REPLY",
-            raw_snippet: classification.snippet || null,
-          }
-        }).catch(() => {});
+        try {
+          await tx.replyClassification.create({
+            data: {
+              prospect_id: resolvedProspectId,
+              gmail_thread_id: classification.gmailThreadId,
+              gmail_message_id: classification.gmailMessageId,
+              reply_type: "REAL_REPLY",
+              raw_snippet: classification.snippet || null,
+              classified_at: now,
+            },
+          });
+        } catch {}
       }
 
       // ── 4. Record immutable AuditLog event ────────────────────────────────
