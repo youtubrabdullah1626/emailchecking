@@ -2,41 +2,46 @@ import { cn } from "@/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 
 const statusBadgeVariants = cva(
-  "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tracking-tight transition-colors border",
+  "inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold tracking-wide transition-colors border",
   {
     variants: {
       status: {
-        active: "bg-emerald-50 text-emerald-700 border-emerald-200",
-        running: "bg-emerald-50 text-emerald-700 border-emerald-200",
-        healthy: "bg-emerald-50 text-emerald-700 border-emerald-200",
-        positive: "bg-emerald-50 text-emerald-700 border-emerald-200",
-        keep_active: "bg-emerald-50 text-emerald-700 border-emerald-200",
-        completed: "bg-blue-50 text-blue-700 border-blue-200",
-        paused: "bg-amber-50 text-amber-700 border-amber-200",
-        stopped: "bg-amber-50 text-amber-700 border-amber-200",
-        neutral: "bg-gray-100 text-gray-700 border-gray-200",
-        idle: "bg-gray-100 text-gray-700 border-gray-200",
-        none: "bg-gray-100 text-gray-700 border-gray-200",
-        pending: "bg-gray-100 text-gray-700 border-gray-200",
-        uncontacted: "bg-slate-100 text-slate-700 border-slate-200",
-        pending_review: "bg-amber-50 text-amber-700 border-amber-200",
-        bounced: "bg-red-50 text-red-700 border-red-200",
-        unsubscribed: "bg-red-50 text-red-700 border-red-200",
-        failed: "bg-red-50 text-red-700 border-red-200",
-        error: "bg-red-50 text-red-700 border-red-200",
-        unhealthy: "bg-red-50 text-red-700 border-red-200",
-        negative: "bg-red-50 text-red-700 border-red-200",
-        stop_sequence: "bg-red-50 text-red-700 border-red-200",
-        degraded: "bg-amber-50 text-amber-700 border-amber-200",
-        auto_reply: "bg-purple-50 text-purple-700 border-purple-200",
-        ooo: "bg-purple-50 text-purple-700 border-purple-200",
-        spam: "bg-red-50 text-red-700 border-red-200",
-        dismissed: "bg-gray-100 text-gray-700 border-gray-200",
-        auto_processed: "bg-blue-50 text-blue-700 border-blue-200",
-        reviewed: "bg-emerald-50 text-emerald-700 border-emerald-200",
-        unknown: "bg-gray-100 text-gray-700 border-gray-200",
-        sent: "bg-emerald-50 text-emerald-700 border-emerald-200",
-        skipped: "bg-gray-100 text-gray-700 border-gray-200",
+        active: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20",
+        running: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20",
+        healthy: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20",
+        positive: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20",
+        keep_active: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20",
+        sent: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20",
+        reviewed: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20",
+        
+        completed: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20",
+        auto_processed: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20",
+
+        paused: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20",
+        stopped: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20",
+        pending_review: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20",
+        degraded: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20",
+
+        pending: "bg-secondary text-secondary-foreground border-border/80",
+        uncontacted: "bg-secondary text-secondary-foreground border-border/80",
+        neutral: "bg-secondary text-secondary-foreground border-border/80",
+        idle: "bg-secondary text-secondary-foreground border-border/80",
+        none: "bg-secondary text-secondary-foreground border-border/80",
+        dismissed: "bg-secondary text-muted-foreground border-border/80",
+        skipped: "bg-secondary text-muted-foreground border-border/80",
+        unknown: "bg-secondary text-muted-foreground border-border/80",
+
+        bounced: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20",
+        unsubscribed: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20",
+        failed: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20",
+        error: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20",
+        unhealthy: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20",
+        negative: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20",
+        stop_sequence: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20",
+        spam: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20",
+
+        auto_reply: "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20",
+        ooo: "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20",
       },
     },
     defaultVariants: {
@@ -58,10 +63,11 @@ export function StatusBadge({ className, status, label, dot, ...props }: StatusB
       {dot && (
         <span className="mr-1.5 flex h-1.5 w-1.5">
           <span className={cn("relative inline-flex h-1.5 w-1.5 rounded-full", 
-            status?.match(/active|running|healthy|positive/) ? "bg-emerald-500" :
-            status?.match(/error|failed|bounced|unsubscribed|negative|spam|unhealthy/) ? "bg-red-500" :
-            status?.match(/paused|stopped|pending|degraded/) ? "bg-amber-500" :
-            "bg-gray-400"
+            status?.match(/active|running|healthy|positive|sent|reviewed/) ? "bg-emerald-500" :
+            status?.match(/error|failed|bounced|unsubscribed|negative|spam|unhealthy/) ? "bg-rose-500" :
+            status?.match(/paused|stopped|pending|degraded|pending_review/) ? "bg-amber-500" :
+            status?.match(/auto_reply|ooo/) ? "bg-purple-500" :
+            "bg-muted-foreground"
           )} />
         </span>
       )}

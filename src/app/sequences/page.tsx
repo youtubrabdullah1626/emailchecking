@@ -314,18 +314,18 @@ export default function SequencesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* 1. Dynamic Silaer Signature Header */}
-      <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-card border border-primary/20 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden transition-colors duration-300">
+      <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs relative overflow-hidden transition-colors duration-200">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-start sm:items-center gap-4">
-            <div className="h-11 w-11 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 border border-primary/25 shadow-xs">
+            <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
               <Layers className="h-5 w-5" />
             </div>
 
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
                   Outreach Sequences
                 </h1>
                 <TooltipProvider>
@@ -333,44 +333,43 @@ export default function SequencesPage() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors cursor-help"
+                        className="flex items-center justify-center h-5 w-5 rounded-full bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-help border border-border/80"
                       >
                         <Info className="h-3 w-3" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="right" align="center" className="max-w-xs p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl z-50 text-xs">
-                      <p className="font-semibold text-slate-900 dark:text-white mb-1">
+                    <TooltipContent side="right" align="center" className="max-w-xs p-3 bg-popover border border-border shadow-md rounded-lg z-50 text-xs">
+                      <p className="font-semibold text-foreground mb-1">
                         What is an Outreach Sequence?
                       </p>
-                      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                      <p className="text-muted-foreground leading-relaxed">
                         An automated chain of emails. The engine handles follow-ups, timezone optimization, and reply detection automatically.
                       </p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
-                Active outreach campaigns running for your prospects with smart follow-ups.
+              <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
+                Automated multi-step outreach with automated reply detection and timezone delivery.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
-            {/* Quick Refresh Button */}
+          <div className="flex items-center gap-2.5 shrink-0 self-start md:self-center">
             <Button
               variant="outline"
               size="sm"
               onClick={() => loadSequences(true)}
-              disabled={isRefreshing}
-              className="gap-1.5 rounded-xl border border-border bg-card/80 text-foreground shadow-2xs hover:bg-primary/10"
+              disabled={loading}
+              className="gap-1.5 text-xs h-9"
             >
-              <RefreshCw className={`h-3.5 w-3.5 text-primary ${isRefreshing ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline text-xs font-medium">{isRefreshing ? "Syncing..." : "Sync"}</span>
+              <RefreshCw className={`h-3.5 w-3.5 text-muted-foreground ${loading ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
 
-            <Button className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs rounded-xl font-semibold" asChild>
-              <FastLink href="/prospects">
-                <Plus className="h-4 w-4" />
+            <Button size="sm" className="gap-2 text-xs h-9 px-4" asChild>
+              <FastLink href="/sequences/new">
+                <Plus className="h-4 w-4 stroke-[2.5]" />
                 <span>Create Sequence</span>
               </FastLink>
             </Button>
@@ -378,80 +377,69 @@ export default function SequencesPage() {
         </div>
       </div>
 
-      {/* 2. Top Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Total Sequences */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+      {/* 2. Overview Metric Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Total Sequences
             </div>
-            <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
+            <div className="text-2xl font-extrabold text-foreground font-mono mt-1 tracking-tight">
               {stats.total}
             </div>
           </div>
-          <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
-            <Layers className="h-4 w-4" />
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+            <Layers className="h-4 w-4 text-primary" />
           </div>
         </div>
 
-        {/* Active Campaigns */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Active Campaigns
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Active Outbound
             </div>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
-                {stats.active}
-              </span>
-              <span className="text-[11px] text-emerald-600 font-semibold">running</span>
+            <div className="text-2xl font-extrabold text-foreground font-mono mt-1 tracking-tight">
+              {stats.active}
             </div>
           </div>
-          <div className="h-8 w-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-            <PlayCircle className="h-4 w-4" />
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+            <PlayCircle className="h-4 w-4 text-emerald-500" />
           </div>
         </div>
 
-        {/* Completed */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Completed
             </div>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
-                {stats.completed}
-              </span>
-              <span className="text-[11px] text-indigo-600 font-semibold">finished</span>
+            <div className="text-2xl font-extrabold text-foreground font-mono mt-1 tracking-tight">
+              {stats.completed}
             </div>
           </div>
-          <div className="h-8 w-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-            <CheckCircle2 className="h-4 w-4" />
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+            <CheckCircle2 className="h-4 w-4 text-blue-500" />
           </div>
         </div>
 
-        {/* Paused */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs flex items-center justify-between">
+        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Paused / Stopped
             </div>
-            <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
+            <div className="text-2xl font-extrabold text-foreground font-mono mt-1 tracking-tight">
               {stats.paused}
             </div>
           </div>
-          <div className="h-8 w-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-            <PauseCircle className="h-4 w-4" />
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+            <PauseCircle className="h-4 w-4 text-amber-500" />
           </div>
         </div>
       </div>
 
-      {/* 3. Toolbar: Search & Segmented Filter Tabs */}
+      {/* 3. Filter and Search Toolbar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        {/* Search */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <input
             ref={searchInputRef}
             type="text"
@@ -459,26 +447,26 @@ export default function SequencesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search prospect, company, email, or subject... (Press / to search)"
-            className="w-full pl-9 pr-12 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-xs"
+            className="w-full pl-10 pr-12 py-2 bg-card border border-border/80 rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-all shadow-2xs h-9"
           />
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {search ? (
               <button
                 onClick={() => setSearch("")}
-                className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             ) : (
-              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700">
+              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground border border-border/80">
                 /
               </kbd>
             )}
           </div>
         </div>
 
-        {/* Filter Tabs with Live Item Counts */}
-        <div className="inline-flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
+        {/* Filter Tabs */}
+        <div className="inline-flex bg-secondary p-1 rounded-lg border border-border/80 shadow-2xs text-xs gap-1">
           {[
             { key: "ALL", label: "All", count: stats.total },
             { key: "ACTIVE", label: "Active", count: stats.active },
@@ -490,18 +478,18 @@ export default function SequencesPage() {
               <button
                 key={tab.key}
                 onClick={() => setStatusFilter(tab.key as any)}
-                className={`px-3 py-1.5 rounded-lg font-medium text-[11px] flex items-center gap-1.5 transition-all ${
+                className={`px-3 py-1 rounded-md font-semibold text-xs flex items-center gap-1.5 transition-all ${
                   isActive
-                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-semibold"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                    ? "bg-card text-foreground shadow-xs border border-border/60 font-bold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                 }`}
               >
                 <span>{tab.label}</span>
                 <span
-                  className={`text-[10px] px-1 py-0.2 rounded-full ${
+                  className={`text-[10px] px-1.5 py-0.2 rounded-md ${
                     isActive
-                      ? "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold"
-                      : "bg-slate-200/60 dark:bg-slate-800 text-slate-400"
+                      ? "bg-secondary text-foreground font-bold font-mono"
+                      : "bg-background/60 text-muted-foreground font-mono"
                   }`}
                 >
                   {tab.count}
@@ -514,39 +502,39 @@ export default function SequencesPage() {
 
       {/* 4. Sequence Table List */}
       {loading ? (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3">
+        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs space-y-3">
           {Array.from({ length: 5 }).map((_, idx) => (
-            <div key={idx} className="h-16 bg-slate-100 dark:bg-slate-800/60 rounded-xl animate-pulse" />
+            <div key={idx} className="h-14 bg-secondary/60 rounded-lg animate-pulse" />
           ))}
         </div>
       ) : filteredSequences.length === 0 ? (
-        <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="h-12 w-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mx-auto mb-3">
-            <Inbox className="h-6 w-6" />
+        <div className="text-center py-16 bg-card rounded-xl border border-border/80 shadow-xs">
+          <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground mx-auto mb-3 border border-border/60">
+            <Inbox className="h-5 w-5" />
           </div>
-          <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">
+          <h3 className="text-sm font-semibold text-foreground mb-1">
             {search ? `No sequences match "${search}"` : "No sequences found in this view"}
           </h3>
-          <p className="text-slate-500 dark:text-slate-400 text-xs max-w-sm mx-auto mb-5">
+          <p className="text-muted-foreground text-xs max-w-sm mx-auto mb-5">
             {search ? "Try adjusting your search query." : "Launch automated sequences for your prospects to get started."}
           </p>
-          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl text-xs" asChild>
+          <Button size="sm" className="text-xs" asChild>
             <FastLink href="/prospects">Create Sequence</FastLink>
           </Button>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+        <div className="bg-card border border-border/80 rounded-xl shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-slate-50/90 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-[11px] uppercase tracking-wider">
-                <TableRow>
-                  <TableHead className="w-[340px] py-3 px-4">Prospect & Sequence</TableHead>
-                  <TableHead className="w-[220px] py-3 px-3">Status & Schedule</TableHead>
-                  <TableHead className="py-3 px-3">Progress</TableHead>
-                  <TableHead className="text-right w-[100px] py-3 px-4">Actions</TableHead>
+              <TableHeader className="bg-secondary/50 border-b border-border/80 text-muted-foreground font-semibold text-[11px] uppercase tracking-wider">
+                <TableRow className="border-border/80 hover:bg-transparent">
+                  <TableHead className="w-[340px] py-3 px-4 text-muted-foreground">Prospect & Sequence</TableHead>
+                  <TableHead className="w-[220px] py-3 px-3 text-muted-foreground">Status & Schedule</TableHead>
+                  <TableHead className="py-3 px-3 text-muted-foreground">Progress</TableHead>
+                  <TableHead className="text-right w-[100px] py-3 px-4 text-muted-foreground">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+              <TableBody className="divide-y divide-border/60">
                 <AnimatePresence initial={false}>
                   {filteredSequences.map((seq) => {
                     const state = computeSequenceState(seq);
@@ -576,7 +564,7 @@ export default function SequencesPage() {
                             router.push(targetUrl);
                           }
                         }}
-                        className="group cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                        className="group cursor-pointer hover:bg-muted/40 transition-colors"
                       >
                         {/* Prospect & Subject */}
                         <TableCell className="py-3 px-4">

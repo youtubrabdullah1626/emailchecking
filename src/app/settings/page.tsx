@@ -187,18 +187,18 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* Signature Silaer Dynamic Header Banner */}
-      <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-card border border-primary/20 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden transition-colors duration-300">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Signature Silaer Header Banner */}
+      <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs relative overflow-hidden transition-colors duration-200">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-start sm:items-center gap-4">
-            <div className="h-11 w-11 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 border border-primary/25 shadow-xs">
+            <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
               <Zap className="h-5 w-5" />
             </div>
 
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
                   Platform Settings & Inboxes
                 </h1>
                 <TooltipProvider>
@@ -206,23 +206,23 @@ export default function SettingsPage() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors cursor-help"
+                        className="flex items-center justify-center h-5 w-5 rounded-full bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-help border border-border/80"
                       >
                         <Info className="h-3 w-3" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="right" align="center" className="max-w-xs p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl z-50 text-xs">
-                      <p className="font-semibold text-slate-900 dark:text-white mb-1">
+                    <TooltipContent side="right" align="center" className="max-w-xs p-3 bg-popover border border-border shadow-md rounded-lg z-50 text-xs">
+                      <p className="font-semibold text-foreground mb-1">
                         Silaer Fleet & Preferences
                       </p>
-                      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                      <p className="text-muted-foreground leading-relaxed">
                         Configure connected Google Accounts, sending timezone windows, and deliverability limits.
                       </p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+              <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
                 Manage your account, rotating Gmail fleet, and operating timezone preferences.
               </p>
             </div>
@@ -234,8 +234,8 @@ export default function SettingsPage() {
         <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-8">
           <Tabs defaultValue="profile" className="flex flex-col md:flex-row gap-6">
             <TabsList className="flex flex-col h-auto bg-transparent p-0 space-y-1 md:w-48 lg:w-64">
-              <TabsTrigger value="profile" className="w-full justify-start gap-2 px-3 py-2.5 rounded-xl data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20 font-medium text-xs"><User className="h-4 w-4" /> Profile & Timezone</TabsTrigger>
-              <TabsTrigger value="gmail" className="w-full justify-start gap-2 px-3 py-2.5 rounded-xl data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20 font-medium text-xs"><Mail className="h-4 w-4" /> Gmail Integration</TabsTrigger>
+              <TabsTrigger value="profile" className="w-full justify-start gap-2 px-3 py-2.5 rounded-lg data-[state=active]:bg-secondary data-[state=active]:text-foreground border border-transparent data-[state=active]:border-border/80 font-medium text-xs"><User className="h-4 w-4" /> Profile & Timezone</TabsTrigger>
+              <TabsTrigger value="gmail" className="w-full justify-start gap-2 px-3 py-2.5 rounded-lg data-[state=active]:bg-secondary data-[state=active]:text-foreground border border-transparent data-[state=active]:border-border/80 font-medium text-xs"><Mail className="h-4 w-4" /> Gmail Integration</TabsTrigger>
             </TabsList>
 
               <div className="flex-1 max-w-3xl">

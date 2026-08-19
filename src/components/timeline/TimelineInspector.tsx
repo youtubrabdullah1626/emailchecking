@@ -244,102 +244,102 @@ export function TimelineInspector() {
       {/* 1. Harmonious Enterprise Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
         {/* Total Sent */}
-        <div className="bg-gradient-to-br from-blue-50/80 via-white to-white dark:from-blue-950/30 dark:via-slate-900 dark:to-slate-900 border border-blue-200/90 dark:border-blue-900/60 rounded-2xl p-4 sm:p-5 shadow-xs hover:border-blue-400 dark:hover:border-blue-700 hover:shadow-md transition-all duration-200 flex items-center justify-between group">
+        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-blue-700/80 dark:text-blue-400">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Total Sent
             </div>
             <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
+              <span className="text-2xl sm:text-3xl font-extrabold text-foreground font-mono tracking-tight">
                 {stats.totalSent}
               </span>
-              <span className="text-[11px] text-blue-600/70 dark:text-blue-400 font-medium">dispatches</span>
+              <span className="text-[11px] text-muted-foreground font-medium">dispatches</span>
             </div>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25 group-hover:scale-105 transition-transform">
-            <Send className="h-4 w-4" />
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+            <Send className="h-4 w-4 text-primary" />
           </div>
         </div>
 
         {/* Opened */}
-        <div className="bg-gradient-to-br from-purple-50/80 via-white to-white dark:from-purple-950/30 dark:via-slate-900 dark:to-slate-900 border border-purple-200/90 dark:border-purple-900/60 rounded-2xl p-4 sm:p-5 shadow-xs hover:border-purple-400 dark:hover:border-purple-700 hover:shadow-md transition-all duration-200 flex items-center justify-between group">
+        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-purple-700/80 dark:text-purple-400">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Opened
             </div>
             <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
+              <span className="text-2xl sm:text-3xl font-extrabold text-foreground font-mono tracking-tight">
                 {stats.totalOpened}
               </span>
-              <span className="text-[11px] text-purple-700 dark:text-purple-300 font-bold bg-purple-100 dark:bg-purple-950/80 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
+              <span className="text-[11px] text-blue-700 dark:text-blue-300 font-bold bg-blue-500/10 px-1.5 py-0.5 rounded-md border border-blue-500/20 font-mono">
                 {stats.openRate}%
               </span>
             </div>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-md shadow-purple-500/25 group-hover:scale-105 transition-transform">
-            <Eye className="h-4 w-4" />
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+            <Eye className="h-4 w-4 text-blue-500" />
           </div>
         </div>
 
         {/* Replied */}
-        <div className="bg-gradient-to-br from-emerald-50/80 via-white to-white dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-900 border border-emerald-200/90 dark:border-emerald-900/60 rounded-2xl p-4 sm:p-5 shadow-xs hover:border-emerald-400 dark:hover:border-emerald-700 hover:shadow-md transition-all duration-200 flex items-center justify-between group">
+        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-700/80 dark:text-emerald-400">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Replied
             </div>
             <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
+              <span className="text-2xl sm:text-3xl font-extrabold text-foreground font-mono tracking-tight">
                 {stats.totalReplied}
               </span>
-              <span className="text-[11px] text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+              <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/20 font-mono">
                 {stats.replyRate}%
               </span>
             </div>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 group-hover:scale-105 transition-transform">
-            <MessageSquareReply className="h-4 w-4" />
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+            <MessageSquareReply className="h-4 w-4 text-emerald-500" />
           </div>
         </div>
 
         {/* Failed */}
-        <div className="bg-gradient-to-br from-rose-50/80 via-white to-white dark:from-rose-950/30 dark:via-slate-900 dark:to-slate-900 border border-rose-200/90 dark:border-rose-900/60 rounded-2xl p-4 sm:p-5 shadow-xs hover:border-rose-400 dark:hover:border-rose-700 hover:shadow-md transition-all duration-200 flex items-center justify-between group">
+        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-rose-700/80 dark:text-rose-400">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Failed
             </div>
             <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
+              <span className="text-2xl sm:text-3xl font-extrabold text-foreground font-mono tracking-tight">
                 {stats.totalFailed}
               </span>
-              <span className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">bounces</span>
+              <span className="text-[11px] text-destructive font-medium">bounces</span>
             </div>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-md shadow-rose-500/25 group-hover:scale-105 transition-transform">
-            <AlertCircle className="h-4 w-4" />
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+            <AlertCircle className="h-4 w-4 text-destructive" />
           </div>
         </div>
 
         {/* Avg Delivery Speed */}
-        <div className="bg-gradient-to-br from-amber-50/80 via-white to-white dark:from-amber-950/30 dark:via-slate-900 dark:to-slate-900 border border-amber-200/90 dark:border-amber-900/60 rounded-2xl p-4 sm:p-5 shadow-xs hover:border-amber-400 dark:hover:border-amber-700 hover:shadow-md transition-all duration-200 flex items-center justify-between col-span-2 lg:col-span-1 group">
+        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center justify-between col-span-2 lg:col-span-1">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-amber-700/80 dark:text-amber-400">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Avg Delivery Speed
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-amber-900 dark:text-amber-300 font-mono mt-1 tracking-tight">
+            <div className="text-2xl sm:text-3xl font-extrabold text-foreground font-mono mt-1 tracking-tight">
               {stats.avgLatencyMs < 1000 ? `+${stats.avgLatencyMs}ms` : `+${(stats.avgLatencyMs / 1000).toFixed(1)}s`}
             </div>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/25 group-hover:scale-105 transition-transform">
-            <Zap className="h-4 w-4" />
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+            <Zap className="h-4 w-4 text-amber-500" />
           </div>
         </div>
       </div>
 
-      {/* 2. Sleek Controls & Category Counter Tabs */}
+      {/* 2. Controls & Filter Tabs */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Instant Search Bar */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <input
             ref={searchInputRef}
             type="text"
@@ -351,19 +351,19 @@ export function TimelineInspector() {
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
             placeholder="Search email, name, subject, or message ID... (Press / to search)"
-            className="w-full pl-10 pr-14 py-2.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 dark:focus:border-orange-400 transition-all shadow-xs h-10"
+            className="w-full pl-10 pr-12 py-2 bg-card border border-border/80 rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-all shadow-2xs h-9"
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {localSearch ? (
               <button
                 onClick={() => setLocalSearch("")}
-                className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground"
                 title="Clear search"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             ) : (
-              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700">
+              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground border border-border/80">
                 /
               </kbd>
             )}
@@ -372,7 +372,7 @@ export function TimelineInspector() {
 
         {/* Status Category Tabs with Dynamic Item Counters */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="inline-flex bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs gap-1">
+          <div className="inline-flex bg-secondary p-1 rounded-lg border border-border/80 shadow-2xs text-xs gap-1">
             {(["ALL", "OPENED", "REPLIED", "SENT", "FAILED"] as const).map((tab) => {
               const count = categoryCounts[tab];
               const isActive = statusFilter === tab;
@@ -380,18 +380,18 @@ export function TimelineInspector() {
                 <button
                   key={tab}
                   onClick={() => setStatusFilter(tab)}
-                  className={`px-3 py-1.5 rounded-xl font-bold text-[11px] flex items-center gap-1.5 transition-all ${
+                  className={`px-3 py-1 rounded-md font-semibold text-xs flex items-center gap-1.5 transition-all ${
                     isActive
-                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs"
-                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      ? "bg-card text-foreground shadow-xs border border-border/60 font-bold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                   }`}
                 >
                   <span>{tab === "ALL" ? "All" : tab.charAt(0) + tab.slice(1).toLowerCase()}</span>
                   <span
-                    className={`text-[10px] px-1 py-0.2 rounded-full ${
+                    className={`text-[10px] px-1.5 py-0.2 rounded-md ${
                       isActive
-                        ? "bg-slate-700 text-white dark:bg-slate-200 dark:text-slate-900"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                        ? "bg-secondary text-foreground font-bold font-mono"
+                        : "bg-background/60 text-muted-foreground font-mono"
                     }`}
                   >
                     {count}
@@ -405,7 +405,7 @@ export function TimelineInspector() {
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value)}
-            className="px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-300 focus:outline-none shadow-xs cursor-pointer"
+            className="px-2.5 py-1.5 bg-card border border-border/80 rounded-lg text-xs text-foreground focus:outline-none shadow-2xs cursor-pointer h-9"
           >
             <option value="all">All Time</option>
             <option value="today">Today</option>
@@ -416,13 +416,13 @@ export function TimelineInspector() {
           {/* Live Sync Status */}
           <button
             onClick={toggleLiveSync}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border shadow-xs transition-all ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border shadow-2xs transition-all h-9 ${
               isLiveSync
-                ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white"
-                : "bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-800"
+                ? "bg-card text-foreground border-border/80 font-bold"
+                : "bg-secondary text-muted-foreground border-border/60"
             }`}
           >
-            <span className={`h-1.5 w-1.5 rounded-full ${isLiveSync ? "bg-emerald-400 animate-pulse" : "bg-slate-400"}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${isLiveSync ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"}`} />
             <span className="text-[11px]">{isLiveSync ? "Live" : "Paused"}</span>
           </button>
 
@@ -430,28 +430,28 @@ export function TimelineInspector() {
           <button
             onClick={refreshNow}
             disabled={isValidating}
-            className="p-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white shadow-xs transition-all disabled:opacity-50"
+            className="p-2 rounded-lg bg-card border border-border/80 text-muted-foreground hover:text-foreground shadow-2xs transition-all disabled:opacity-50 h-9 w-9 flex items-center justify-center"
             title="Refresh stream"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isValidating ? "animate-spin text-orange-500" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isValidating ? "animate-spin text-primary" : ""}`} />
           </button>
 
           {/* CSV Export */}
           <button
             onClick={exportToCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 shadow-xs transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-border/80 text-foreground text-xs font-semibold hover:bg-secondary shadow-2xs transition-all h-9"
           >
             <Download className="h-3 w-3" />
-            <span className="text-[11px] font-semibold">Export CSV</span>
+            <span className="text-[11px]">Export CSV</span>
           </button>
         </div>
       </div>
 
       {/* 3. Professional Spreadsheet Table with Sticky Header */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+      <div className="bg-card border border-border/80 rounded-xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto max-h-[640px] overflow-y-auto">
           <table className="w-full text-left border-collapse text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-xs border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-[11px] uppercase tracking-wider">
+            <thead className="sticky top-0 z-10 bg-secondary/80 backdrop-blur-xs border-b border-border/80 text-muted-foreground font-semibold text-[11px] uppercase tracking-wider">
               <tr>
                 <th className="py-3 px-4 font-semibold">Recipient</th>
                 <th className="py-3 px-3 font-semibold">Sender Account</th>
@@ -469,54 +469,53 @@ export function TimelineInspector() {
                 <th className="py-3 px-4 font-semibold text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+            <tbody className="divide-y divide-border/60">
               {isLoading ? (
-                // 5 Beautiful Skeleton Rows
                 Array.from({ length: 6 }).map((_, idx) => (
                   <tr key={idx} className="animate-pulse">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2.5">
-                        <div className="h-6 w-6 rounded-md bg-slate-200 dark:bg-slate-800" />
+                        <div className="h-6 w-6 rounded-md bg-secondary/80" />
                         <div className="space-y-1.5 flex-1">
-                          <div className="h-3 w-36 bg-slate-200 dark:bg-slate-800 rounded" />
-                          <div className="h-2 w-20 bg-slate-100 dark:bg-slate-800/60 rounded" />
+                          <div className="h-3 w-36 bg-secondary/80 rounded" />
+                          <div className="h-2 w-20 bg-secondary/50 rounded" />
                         </div>
                       </div>
                     </td>
                     <td className="py-3 px-3">
-                      <div className="h-3 w-28 bg-slate-200 dark:bg-slate-800 rounded" />
+                      <div className="h-3 w-28 bg-secondary/80 rounded" />
                     </td>
                     <td className="py-3 px-3">
-                      <div className="h-3 w-40 bg-slate-200 dark:bg-slate-800 rounded" />
+                      <div className="h-3 w-40 bg-secondary/80 rounded" />
                     </td>
                     <td className="py-3 px-3 text-center">
-                      <div className="h-3 w-16 bg-slate-100 dark:bg-slate-800 rounded mx-auto" />
+                      <div className="h-3 w-16 bg-secondary/50 rounded mx-auto" />
                     </td>
                     <td className="py-3 px-3 text-center">
-                      <div className="h-5 w-16 bg-slate-100 dark:bg-slate-800 rounded-md mx-auto" />
+                      <div className="h-5 w-16 bg-secondary/50 rounded-md mx-auto" />
                     </td>
                     <td className="py-3 px-3 text-center">
-                      <div className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded mx-auto" />
+                      <div className="h-4 w-12 bg-secondary/50 rounded mx-auto" />
                     </td>
                     <td className="py-3 px-3 text-center">
-                      <div className="h-4 w-10 bg-slate-100 dark:bg-slate-800 rounded mx-auto" />
+                      <div className="h-4 w-10 bg-secondary/50 rounded mx-auto" />
                     </td>
                     <td className="py-3 px-3 text-center">
-                      <div className="h-4 w-10 bg-slate-100 dark:bg-slate-800 rounded mx-auto" />
+                      <div className="h-4 w-10 bg-secondary/50 rounded mx-auto" />
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <div className="h-4 w-12 bg-slate-200 dark:bg-slate-800 rounded ml-auto" />
+                      <div className="h-4 w-12 bg-secondary/80 rounded ml-auto" />
                     </td>
                   </tr>
                 ))
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-16 text-center text-slate-400">
-                    <Inbox className="h-8 w-8 mx-auto text-slate-300 dark:text-slate-700 mb-2" />
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  <td colSpan={9} className="py-16 text-center text-muted-foreground">
+                    <Inbox className="h-8 w-8 mx-auto text-muted-foreground/60 mb-2" />
+                    <p className="text-sm font-semibold text-foreground">
                       {localSearch ? `No matches found for "${localSearch}"` : "No email records in this view"}
                     </p>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {localSearch ? "Try adjusting your search terms or filter criteria." : "Dispatched sequence emails will appear here live."}
                     </p>
                   </td>
@@ -535,7 +534,7 @@ export function TimelineInspector() {
                     <tr
                       key={item.id}
                       onClick={() => handleRowClick(item)}
-                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 cursor-pointer transition-colors group"
+                      className="hover:bg-muted/40 cursor-pointer transition-colors group"
                     >
                       {/* Recipient */}
                       <td className="py-2.5 px-4">
@@ -548,11 +547,11 @@ export function TimelineInspector() {
                               : item.recipientEmail.charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <span className="font-semibold text-slate-900 dark:text-white truncate block">
+                            <span className="font-semibold text-foreground truncate block">
                               <HighlightMatch text={item.recipientEmail} query={localSearch} />
                             </span>
                             {item.recipientName && (
-                              <span className="text-[10px] text-slate-400 block truncate">
+                              <span className="text-[10px] text-muted-foreground block truncate">
                                 <HighlightMatch text={item.recipientName} query={localSearch} />
                               </span>
                             )}
@@ -561,40 +560,40 @@ export function TimelineInspector() {
                       </td>
 
                       {/* Sender Inbox */}
-                      <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600 dark:text-slate-400 truncate max-w-[160px]">
+                      <td className="py-2.5 px-3 font-mono text-[11px] text-muted-foreground truncate max-w-[160px]">
                         <HighlightMatch text={item.senderEmail} query={localSearch} />
                       </td>
 
                       {/* Step & Subject */}
                       <td className="py-2.5 px-3 max-w-xs">
                         <div className="flex items-center gap-1.5 truncate">
-                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 shrink-0 border border-slate-200/50 dark:border-slate-700/50">
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground shrink-0 border border-border/80 font-mono">
                             Step {item.stepNumber}
                           </span>
-                          <span className="text-slate-800 dark:text-slate-200 truncate" title={item.subject}>
+                          <span className="text-foreground truncate font-medium" title={item.subject}>
                             <HighlightMatch text={item.subject} query={localSearch} />
                           </span>
                         </div>
                       </td>
 
                       {/* Scheduled */}
-                      <td className="py-2.5 px-3 text-center text-slate-500 dark:text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-center text-muted-foreground font-mono text-[11px] whitespace-nowrap">
                         {formatCleanDate(item.lifecycle.scheduled.at)}
                       </td>
 
                       {/* Sent */}
                       <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         {isSent ? (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono text-[11px] border border-slate-200/60 dark:border-slate-700/60 shadow-2xs">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-secondary text-foreground font-mono text-[11px] border border-border/80 shadow-2xs">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                             <span>{formatCleanTime(item.lifecycle.sent.at)}</span>
                           </span>
                         ) : isFailed ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-medium text-[11px] border border-rose-200/60 dark:border-rose-900/60">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-destructive/10 text-destructive font-medium text-[11px] border border-destructive/20">
                             Failed
                           </span>
                         ) : (
-                          <span className="text-slate-300 dark:text-slate-600 font-bold">—</span>
+                          <span className="text-muted-foreground font-bold">—</span>
                         )}
                       </td>
 

@@ -109,7 +109,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   });
 
   return (
-    <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-8 flex-shrink-0">
+    <header className="h-16 border-b border-border bg-card/95 backdrop-blur-xs flex items-center justify-between px-4 md:px-8 flex-shrink-0 z-30">
       <div className="flex items-center flex-1 gap-4 md:gap-6">
         <Button 
           variant="ghost" 
@@ -119,54 +119,59 @@ export function Header({ onMenuClick }: HeaderProps) {
         >
           <Menu className="h-5 w-5" />
         </Button>
-        <div className="hidden lg:flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-primary/5 backdrop-blur-sm px-3 py-1.5 rounded-full border border-primary/20 shadow-sm transition-colors hover:bg-primary/10">
-            <div className="flex -space-x-2 mr-1">
-              <span className="h-6 w-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground shadow-sm ring-2 ring-background">
-                <Zap className="h-3 w-3 fill-current" />
-              </span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[11px] font-bold text-foreground leading-none tracking-wide uppercase flex items-center gap-1">
-                Outreach Flow
-              </span>
-              <span className="text-[10px] text-muted-foreground font-medium leading-none mt-0.5 flex items-center gap-1">
-                <TrendingUp className="h-3 w-3 text-primary" />
-                {mounted && globalStats ? `${globalStats.emailsSentToday || 0} Sent Today • ${globalStats.repliesToday || 0} Replies Today` : 'Calculating metrics...'}
+        <div className="hidden lg:flex items-center gap-3">
+          <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/80 bg-secondary/50 shadow-2xs">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="font-semibold text-foreground tracking-tight">System Live</span>
+              <span className="text-muted-foreground">•</span>
+              <span className="text-muted-foreground font-medium font-mono text-[11px]">
+                {mounted && globalStats ? `${globalStats.emailsSentToday || 0} Sent • ${globalStats.repliesToday || 0} Replies Today` : 'Syncing state...'}
               </span>
             </div>
           </div>
         </div>
       </div>
       
-      <div className="flex items-center gap-2 md:gap-4">
-        <div className="hidden md:flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">
-            {accountStats?.inboxCount && accountStats.inboxCount > 1 ? "Active Fleet:" : "Sending Email:"}
+      <div className="flex items-center gap-2 md:gap-3">
+        <div className="hidden md:flex items-center gap-2 text-xs">
+          <span className="text-muted-foreground font-medium">
+            {accountStats?.inboxCount && accountStats.inboxCount > 1 ? "Active Fleet:" : "Sending Account:"}
           </span>
-          <span className="font-medium">
+          <div>
             {!mounted || accountStats === undefined ? (
-              <span className="animate-pulse bg-slate-200 text-transparent rounded px-1">Loading...</span>
+              <span className="animate-pulse bg-muted text-transparent rounded px-2 py-0.5 text-xs font-mono">loading...</span>
             ) : accountStats?.inboxCount && accountStats.inboxCount > 1 ? (
               <FastLink 
                 href="/settings" 
-                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
               >
                 <Sparkles className="h-3 w-3" /> {accountStats.connectedGmail}
               </FastLink>
             ) : accountStats?.connectedGmail ? (
-              accountStats.connectionStatus === 'CONNECTED' 
-                ? accountStats.connectedGmail 
-                : <span className="text-destructive">{accountStats.connectedGmail} (Disconnected)</span>
+              accountStats.connectionStatus === 'CONNECTED' ? (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-mono text-xs bg-secondary border border-border/80 text-foreground font-medium">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  {accountStats.connectedGmail}
+                </span>
+              ) : (
+                <FastLink href="/settings" className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-mono text-xs bg-destructive/10 border border-destructive/20 text-destructive hover:bg-destructive/15">
+                  <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
+                  {accountStats.connectedGmail} (Disconnected) &rarr;
+                </FastLink>
+              )
             ) : (
               <FastLink href="/settings" className="text-primary hover:underline font-semibold flex items-center gap-1">
-                Connect Account
+                + Connect Account
               </FastLink>
             )}
-          </span>
+          </div>
         </div>
         
-        <div className="h-4 w-px bg-border hidden md:block mx-2" />
+        <div className="h-4 w-px bg-border hidden md:block mx-1" />
         
         <TooltipProvider>
           <Tooltip>

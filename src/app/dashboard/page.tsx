@@ -251,22 +251,20 @@ export default function DashboardPage() {
     <AnimatedPage className="space-y-8 max-w-7xl mx-auto pb-12">
       
       {/* ── 1. Signature Executive Header Banner ── */}
-      <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-card border border-primary/20 rounded-2xl p-6 md:p-7 shadow-xs relative overflow-hidden transition-colors duration-300">
-        <div className="absolute -left-16 -top-16 h-48 w-48 rounded-full blur-[60px] opacity-70 pointer-events-none bg-primary/30" />
-        
+      <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs relative overflow-hidden transition-colors duration-200">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10">
           <div className="flex items-start sm:items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 border border-primary/25 shadow-xs">
+            <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
               {bannerState.icon}
             </div>
 
             <div>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+                <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
                   {bannerState.title}
                 </h1>
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-primary/25 bg-primary/15 text-primary">
-                  <Sparkles className="h-3 w-3" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border border-primary/20 bg-primary/10 text-primary">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                   Live Operational
                 </span>
               </div>
@@ -282,15 +280,15 @@ export default function DashboardPage() {
           </div>
 
           {/* Timeframe Filter Switcher */}
-          <div className="inline-flex p-1 rounded-xl bg-card border border-border/80 shadow-2xs shrink-0">
+          <div className="inline-flex p-1 rounded-lg bg-secondary border border-border/80 shadow-2xs shrink-0">
             {(["today", "7d", "30d", "all"] as TimeframeOption[]).map((tf) => (
               <button
                 key={tf}
                 onClick={() => setTimeframe(tf)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${
+                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all capitalize ${
                   timeframe === tf
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    ? "bg-card text-foreground shadow-xs border border-border/60"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {tf === "today" ? "Today" : tf === "7d" ? "7 Days" : tf === "30d" ? "30 Days" : "All Time"}
@@ -304,13 +302,13 @@ export default function DashboardPage() {
       <AnimatedList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Active Sequences */}
         <AnimatedItem>
-          <div className="relative group rounded-2xl border border-border/70 bg-card p-5 shadow-2xs hover:shadow-xs hover:border-violet-500/30 transition-all duration-200 flex flex-col justify-between min-h-[145px]">
+          <div className="relative group rounded-xl border border-border/80 bg-card p-5 shadow-xs hover:border-border transition-all duration-150 flex flex-col justify-between min-h-[140px]">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Active Sequences
               </span>
-              <div className="h-8 w-8 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center border border-violet-500/20">
-                <PlayCircle className="h-4 w-4" />
+              <div className="h-8 w-8 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+                <PlayCircle className="h-4 w-4 text-primary" />
               </div>
             </div>
 
@@ -318,7 +316,7 @@ export default function DashboardPage() {
               <div className="text-3xl font-extrabold tracking-tight text-foreground">
                 {loading ? "—" : stats?.activeSequences ?? 0}
               </div>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Live
               </span>
@@ -335,13 +333,13 @@ export default function DashboardPage() {
 
         {/* Card 2: Emails Sent */}
         <AnimatedItem>
-          <div className="relative group rounded-2xl border border-border/70 bg-card p-5 shadow-2xs hover:shadow-xs hover:border-blue-500/30 transition-all duration-200 flex flex-col justify-between min-h-[145px]">
+          <div className="relative group rounded-xl border border-border/80 bg-card p-5 shadow-xs hover:border-border transition-all duration-150 flex flex-col justify-between min-h-[140px]">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Emails Sent ({timeframeLabel})
               </span>
-              <div className="h-8 w-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20">
-                <Send className="h-4 w-4" />
+              <div className="h-8 w-8 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+                <Send className="h-4 w-4 text-primary" />
               </div>
             </div>
 
@@ -349,7 +347,7 @@ export default function DashboardPage() {
               <div className="text-3xl font-extrabold tracking-tight text-foreground">
                 {loading ? "—" : timeframeStats.sent.toLocaleString()}
               </div>
-              <span className="text-xs font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md border border-border/40">
+              <span className="text-xs font-mono font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-md border border-border/60">
                 Cap: {stats?.dailyLimit ?? 50}/day
               </span>
             </div>
@@ -358,10 +356,10 @@ export default function DashboardPage() {
               <div className="flex-1 mr-3">
                 <Progress 
                   value={stats ? Math.min(Math.round((stats.emailsSentToday / stats.dailyLimit) * 100), 100) : 0} 
-                  className="h-1.5 bg-blue-500/10 [&>div]:bg-blue-500"
+                  className="h-1.5 bg-secondary [&>div]:bg-primary"
                 />
               </div>
-              <span className="text-[11px] font-medium shrink-0">
+              <span className="text-[11px] font-mono font-medium shrink-0">
                 {stats?.emailsSentToday ?? 0} today
               </span>
             </div>
@@ -370,13 +368,13 @@ export default function DashboardPage() {
 
         {/* Card 3: Emails Opened */}
         <AnimatedItem>
-          <div className="relative group rounded-2xl border border-border/70 bg-card p-5 shadow-2xs hover:shadow-xs hover:border-indigo-500/30 transition-all duration-200 flex flex-col justify-between min-h-[145px]">
+          <div className="relative group rounded-xl border border-border/80 bg-card p-5 shadow-xs hover:border-border transition-all duration-150 flex flex-col justify-between min-h-[140px]">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Emails Opened ({timeframeLabel})
               </span>
-              <div className="h-8 w-8 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-500/20">
-                <Eye className="h-4 w-4" />
+              <div className="h-8 w-8 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+                <Eye className="h-4 w-4 text-blue-500" />
               </div>
             </div>
 
@@ -384,7 +382,7 @@ export default function DashboardPage() {
               <div className="text-3xl font-extrabold tracking-tight text-foreground">
                 {loading ? "—" : timeframeStats.opened.toLocaleString()}
               </div>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border border-indigo-500/20">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20">
                 {timeframeStats.openRate}% open rate
               </span>
             </div>
@@ -400,13 +398,13 @@ export default function DashboardPage() {
 
         {/* Card 4: Replies Received */}
         <AnimatedItem>
-          <div className="relative group rounded-2xl border border-border/70 bg-card p-5 shadow-2xs hover:shadow-xs hover:border-emerald-500/30 transition-all duration-200 flex flex-col justify-between min-h-[145px]">
+          <div className="relative group rounded-xl border border-border/80 bg-card p-5 shadow-xs hover:border-border transition-all duration-150 flex flex-col justify-between min-h-[140px]">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Replies Received ({timeframeLabel})
               </span>
-              <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-                <Reply className="h-4 w-4" />
+              <div className="h-8 w-8 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+                <Reply className="h-4 w-4 text-emerald-500" />
               </div>
             </div>
 
@@ -414,7 +412,7 @@ export default function DashboardPage() {
               <div className="text-3xl font-extrabold tracking-tight text-foreground">
                 {loading ? "—" : timeframeStats.replies.toLocaleString()}
               </div>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
                 {timeframeStats.replyRate}% reply rate
               </span>
             </div>
@@ -442,28 +440,28 @@ export default function DashboardPage() {
             </CardDescription>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-4 text-xs font-medium mr-2">
-              <button 
-                onClick={() => setActiveMetricTab(activeMetricTab === "sent" ? "all" : "sent")}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors ${activeMetricTab === "sent" || activeMetricTab === "all" ? "text-primary bg-primary/10 font-bold" : "text-muted-foreground"}`}
-              >
-                <span className="h-2 w-2 rounded-full bg-primary" /> Sent
-              </button>
-              <button 
-                onClick={() => setActiveMetricTab(activeMetricTab === "opened" ? "all" : "opened")}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors ${activeMetricTab === "opened" || activeMetricTab === "all" ? "text-blue-600 bg-blue-50 dark:bg-blue-950 font-bold" : "text-muted-foreground"}`}
-              >
-                <span className="h-2 w-2 rounded-full bg-blue-500" /> Opens
-              </button>
-              <button 
-                onClick={() => setActiveMetricTab(activeMetricTab === "replies" ? "all" : "replies")}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors ${activeMetricTab === "replies" || activeMetricTab === "all" ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950 font-bold" : "text-muted-foreground"}`}
-              >
-                <span className="h-2 w-2 rounded-full bg-emerald-500" /> Replies
-              </button>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 text-xs font-medium mr-2">
+                <button 
+                  onClick={() => setActiveMetricTab(activeMetricTab === "sent" ? "all" : "sent")}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all text-xs ${activeMetricTab === "sent" || activeMetricTab === "all" ? "text-primary bg-primary/10 border border-primary/20 font-bold" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <span className="h-2 w-2 rounded-full bg-primary" /> Sent
+                </button>
+                <button 
+                  onClick={() => setActiveMetricTab(activeMetricTab === "opened" ? "all" : "opened")}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all text-xs ${activeMetricTab === "opened" || activeMetricTab === "all" ? "text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20 font-bold" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <span className="h-2 w-2 rounded-full bg-blue-500" /> Opens
+                </button>
+                <button 
+                  onClick={() => setActiveMetricTab(activeMetricTab === "replies" ? "all" : "replies")}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all text-xs ${activeMetricTab === "replies" || activeMetricTab === "all" ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 font-bold" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" /> Replies
+                </button>
+              </div>
             </div>
-          </div>
         </CardHeader>
 
         <CardContent className="pt-6">
@@ -811,12 +809,12 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider ${
                         seq.status === "ACTIVE" 
-                          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60"
+                          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20"
                           : seq.status === "COMPLETED"
-                          ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                          ? "bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20"
+                          : "bg-secondary text-muted-foreground border border-border/80"
                       }`}>
                         {seq.status}
                       </span>
@@ -883,7 +881,7 @@ export default function DashboardPage() {
                       className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 border border-border/40 hover:border-primary/30 transition-all cursor-pointer group"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs border border-primary/20 shrink-0">
+                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs border border-primary/20 shrink-0">
                           {reply.prospectName.charAt(0).toUpperCase() || "P"}
                         </div>
                         <div className="min-w-0">
@@ -895,10 +893,10 @@ export default function DashboardPage() {
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
                           reply.replyType === "REAL_REPLY"
-                            ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60"
-                            : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/60"
+                            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20"
+                            : "bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20"
                         }`}>
                           {reply.replyType === "REAL_REPLY" ? "Real Reply" : "Review"}
                         </span>

@@ -247,18 +247,18 @@ export default function RepliesPage() {
   }, [replies, activeTab, search]);
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* 1. Dynamic Silaer Signature Header */}
-      <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-card border border-primary/20 rounded-2xl p-5 md:p-6 shadow-xs relative overflow-hidden transition-colors duration-300">
+      <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs relative overflow-hidden transition-colors duration-200">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-start sm:items-center gap-4">
-            <div className="h-11 w-11 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 border border-primary/25 shadow-xs">
+            <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
               <MessageSquareReply className="h-5 w-5" />
             </div>
 
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
                   Inbox & Sentiment Center
                 </h1>
                 <TooltipProvider>
@@ -266,46 +266,47 @@ export default function RepliesPage() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors cursor-help"
+                        className="flex items-center justify-center h-5 w-5 rounded-full bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-help border border-border/80"
                       >
                         <Info className="h-3 w-3" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="right" align="center" className="max-w-xs p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl z-50 text-xs">
-                      <p className="font-semibold text-slate-900 dark:text-white mb-1">
+                    <TooltipContent side="right" align="center" className="max-w-xs p-3 bg-popover border border-border shadow-md rounded-lg z-50 text-xs">
+                      <p className="font-semibold text-foreground mb-1">
                         AI Reply Intelligence
                       </p>
-                      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                      <p className="text-muted-foreground leading-relaxed">
                         Classifies prospect replies as real opportunities or auto-replies, and automatically halts future sequence follow-ups.
                       </p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+              <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
                 Review incoming prospect responses, sentiment tags, and auto-sequence stops.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
+          <div className="flex items-center gap-2.5 shrink-0 self-start md:self-center">
             <Button
               variant="outline"
               size="sm"
               onClick={loadReplies}
               disabled={loading || scanning}
-              className="gap-1.5 rounded-xl border border-border bg-card/80 text-foreground shadow-2xs hover:bg-primary/10"
+              className="gap-1.5 text-xs h-9"
             >
-              <RefreshCw className={`h-3.5 w-3.5 text-primary ${loading ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline text-xs font-medium">Refresh</span>
+              <RefreshCw className={`h-3.5 w-3.5 text-muted-foreground ${loading ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
 
             <Button
+              size="sm"
               onClick={handleScanReplies}
               disabled={scanning || loading}
-              className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs rounded-xl font-semibold"
+              className="gap-2 text-xs h-9 px-4"
             >
-              <Sparkles className={`h-4 w-4 ${scanning ? "animate-spin" : ""}`} />
+              <Sparkles className={`h-3.5 w-3.5 ${scanning ? "animate-spin" : ""}`} />
               <span>{scanning ? "Scanning Gmail..." : "Scan Gmail Now"}</span>
             </Button>
           </div>
@@ -313,79 +314,79 @@ export default function RepliesPage() {
       </div>
 
       {/* 2. Top Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
         {/* Real Replies */}
         <div
           onClick={() => setActiveTab("REAL_REPLY")}
-          className={`bg-white dark:bg-slate-900 border rounded-xl p-4 shadow-xs flex items-center justify-between cursor-pointer transition-all ${
+          className={`bg-card border rounded-xl p-4 shadow-xs flex items-center justify-between cursor-pointer transition-all duration-150 ${
             activeTab === "REAL_REPLY"
-              ? "border-emerald-500 ring-2 ring-emerald-500/10"
-              : "border-slate-200 dark:border-slate-800 hover:border-emerald-300"
+              ? "border-emerald-500 ring-2 ring-emerald-500/10 bg-emerald-500/5"
+              : "border-border/80 hover:border-border"
           }`}
         >
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Confirmed Real Replies
             </div>
-            <div className="text-2xl font-bold text-emerald-600 font-mono mt-0.5">
+            <div className="text-2xl font-extrabold text-foreground font-mono mt-0.5 tracking-tight">
               {realCount}
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5">
+            <div className="text-[11px] text-muted-foreground mt-0.5">
               Sequences stopped automatically
             </div>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-            <CheckCircle2 className="h-5 w-5" />
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           </div>
         </div>
 
         {/* Pending Reviews */}
         <div
           onClick={() => setActiveTab("NEEDS_REVIEW")}
-          className={`bg-white dark:bg-slate-900 border rounded-xl p-4 shadow-xs flex items-center justify-between cursor-pointer transition-all ${
+          className={`bg-card border rounded-xl p-4 shadow-xs flex items-center justify-between cursor-pointer transition-all duration-150 ${
             activeTab === "NEEDS_REVIEW"
-              ? "border-amber-500 ring-2 ring-amber-500/10"
-              : "border-slate-200 dark:border-slate-800 hover:border-amber-300"
+              ? "border-amber-500 ring-2 ring-amber-500/10 bg-amber-500/5"
+              : "border-border/80 hover:border-border"
           }`}
         >
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Pending Reviews
             </div>
-            <div className="text-2xl font-bold text-amber-600 font-mono mt-0.5">
+            <div className="text-2xl font-extrabold text-foreground font-mono mt-0.5 tracking-tight">
               {needsReviewCount}
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5">
+            <div className="text-[11px] text-muted-foreground mt-0.5">
               Ambiguous replies checked
             </div>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-            <AlertCircle className="h-5 w-5" />
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+            <AlertCircle className="h-4 w-4 text-amber-500" />
           </div>
         </div>
 
         {/* Auto-Replies */}
         <div
           onClick={() => setActiveTab("AUTO_REPLY")}
-          className={`bg-white dark:bg-slate-900 border rounded-xl p-4 shadow-xs flex items-center justify-between cursor-pointer transition-all ${
+          className={`bg-card border rounded-xl p-4 shadow-xs flex items-center justify-between cursor-pointer transition-all duration-150 ${
             activeTab === "AUTO_REPLY"
-              ? "border-indigo-500 ring-2 ring-indigo-500/10"
-              : "border-slate-200 dark:border-slate-800 hover:border-indigo-300"
+              ? "border-primary ring-2 ring-primary/10 bg-primary/5"
+              : "border-border/80 hover:border-border"
           }`}
         >
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Auto-Replies / OOO
             </div>
-            <div className="text-2xl font-bold text-slate-700 dark:text-slate-300 font-mono mt-0.5">
+            <div className="text-2xl font-extrabold text-foreground font-mono mt-0.5 tracking-tight">
               {autoCount}
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5">
+            <div className="text-[11px] text-muted-foreground mt-0.5">
               Automated responses filtered
             </div>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center">
-            <Reply className="h-5 w-5" />
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+            <Reply className="h-4 w-4 text-primary" />
           </div>
         </div>
       </div>
@@ -394,7 +395,7 @@ export default function RepliesPage() {
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <input
             ref={searchInputRef}
             type="text"
@@ -402,18 +403,18 @@ export default function RepliesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search reply by lead, email, company, or subject... (Press / to search)"
-            className="w-full pl-9 pr-12 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-xs"
+            className="w-full pl-10 pr-12 py-2 bg-card border border-border/80 rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-all shadow-2xs h-9"
           />
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {search ? (
               <button
                 onClick={() => setSearch("")}
-                className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             ) : (
-              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700">
+              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground border border-border/80">
                 /
               </kbd>
             )}
@@ -421,7 +422,7 @@ export default function RepliesPage() {
         </div>
 
         {/* Filter Tabs with Live Item Counts */}
-        <div className="inline-flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
+        <div className="inline-flex bg-secondary p-1 rounded-lg border border-border/80 shadow-2xs text-xs gap-1">
           {[
             { key: "ALL", label: "All", count: replies.length },
             { key: "REAL_REPLY", label: "Real Replies", count: realCount },
@@ -433,18 +434,18 @@ export default function RepliesPage() {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key as any)}
-                className={`px-3 py-1.5 rounded-lg font-medium text-[11px] flex items-center gap-1.5 transition-all ${
+                className={`px-3 py-1 rounded-md font-semibold text-xs flex items-center gap-1.5 transition-all ${
                   isActive
-                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-semibold"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                    ? "bg-card text-foreground shadow-xs border border-border/60 font-bold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                 }`}
               >
                 <span>{tab.label}</span>
                 <span
-                  className={`text-[10px] px-1 py-0.2 rounded-full ${
+                  className={`text-[10px] px-1.5 py-0.2 rounded-md ${
                     isActive
-                      ? "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold"
-                      : "bg-slate-200/60 dark:bg-slate-800 text-slate-400"
+                      ? "bg-secondary text-foreground font-bold font-mono"
+                      : "bg-background/60 text-muted-foreground font-mono"
                   }`}
                 >
                   {tab.count}
@@ -456,33 +457,33 @@ export default function RepliesPage() {
       </div>
 
       {/* 4. Table */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+      <div className="bg-card border border-border/80 rounded-xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-slate-50/90 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-[11px] uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
-              <TableRow>
-                <TableHead className="w-[300px] py-3 px-4">Prospect</TableHead>
-                <TableHead className="w-[180px] py-3 px-3">Replied After</TableHead>
-                <TableHead className="w-[160px] py-3 px-3">Sentiment & Status</TableHead>
-                <TableHead className="w-[160px] py-3 px-3">Received</TableHead>
-                <TableHead className="text-right w-[80px] py-3 px-4">Action</TableHead>
+            <TableHeader className="bg-secondary/50 border-b border-border/80 text-muted-foreground font-semibold text-[11px] uppercase tracking-wider sticky top-0 z-10">
+              <TableRow className="border-border/80 hover:bg-transparent">
+                <TableHead className="w-[300px] py-3 px-4 text-muted-foreground">Prospect</TableHead>
+                <TableHead className="w-[180px] py-3 px-3 text-muted-foreground">Replied After</TableHead>
+                <TableHead className="w-[160px] py-3 px-3 text-muted-foreground">Sentiment & Status</TableHead>
+                <TableHead className="w-[160px] py-3 px-3 text-muted-foreground">Received</TableHead>
+                <TableHead className="text-right w-[80px] py-3 px-4 text-muted-foreground">Action</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+            <TableBody className="divide-y divide-border/60">
               {loading ? (
                 Array.from({ length: 5 }).map((_, idx) => (
                   <TableRow key={idx}>
-                    <TableCell><div className="h-10 w-48 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="h-4 w-32 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="h-6 w-24 bg-slate-100 dark:bg-slate-800 rounded-full animate-pulse" /></TableCell>
-                    <TableCell><div className="h-4 w-24 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" /></TableCell>
+                    <TableCell><div className="h-10 w-48 bg-secondary/60 rounded animate-pulse" /></TableCell>
+                    <TableCell><div className="h-4 w-32 bg-secondary/60 rounded animate-pulse" /></TableCell>
+                    <TableCell><div className="h-6 w-24 bg-secondary/60 rounded-md animate-pulse" /></TableCell>
+                    <TableCell><div className="h-4 w-24 bg-secondary/60 rounded animate-pulse" /></TableCell>
                     <TableCell></TableCell>
                   </TableRow>
                 ))
               ) : filteredReplies.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center text-slate-400 text-xs">
-                    {search ? `No replies match "${search}"` : "No replies found in this view."}
+                  <TableCell colSpan={5} className="h-32 text-center text-muted-foreground text-xs">
+                    {search ? `No replies match "${search}"` : "No replies in inbox view."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -494,8 +495,8 @@ export default function RepliesPage() {
                     <TableRow
                       key={item.id}
                       onClick={() => setSelectedReply(item)}
-                      className={`group cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors ${
-                        isPendingReview ? "bg-amber-50/30" : ""
+                      className={`group cursor-pointer hover:bg-muted/40 transition-colors ${
+                        isPendingReview ? "bg-amber-500/5" : ""
                       }`}
                     >
                       <TableCell className="py-3 px-4">
