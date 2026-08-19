@@ -26,6 +26,18 @@ function getInfoText(key: string): string | undefined {
       return "Example: If disabled, the system will stop listening to incoming Gmail replies. Sequences will not pause automatically when a prospect replies.";
     case "MAINTENANCE_MODE":
       return "Example: If enabled, all regular users will be locked out and see a 'Down for maintenance' screen. Background jobs will be suspended.";
+    case "PAGE_LOCK_SEQUENCES":
+      return "When locked, regular users see a maintenance screen when visiting /sequences. Supreme Owner & Admins can still access and manage sequences in Admin Preview mode.";
+    case "PAGE_LOCK_SMART_IMPORT":
+      return "When locked, regular users cannot access the CSV lead importer. Admins retain full access.";
+    case "PAGE_LOCK_PROSPECTS":
+      return "When locked, regular users cannot view or edit prospects directory. Admins retain full access.";
+    case "PAGE_LOCK_TIMELINE":
+      return "When locked, regular users cannot access the visual schedule timeline. Admins retain full access.";
+    case "PAGE_LOCK_REPLIES":
+      return "When locked, regular users cannot access the inbox. Admins retain full access.";
+    case "PAGE_LOCK_ANALYTICS":
+      return "When locked, regular users cannot view platform performance reports. Admins retain full access.";
     default:
       return undefined;
   }
@@ -114,11 +126,19 @@ export function FeatureFlagsTab({ onSelect }: FeatureFlagsTabProps) {
                   infoText={getInfoText(flag.key)}
                   onClick={() => onSelect(flag)}
                   statusNode={
-                    <StatusBadge
-                      status={flag.enabled ? "active" : "neutral"}
-                      label={flag.enabled ? "Enabled" : "Disabled"}
-                      dot
-                    />
+                    flag.key.startsWith("PAGE_LOCK_") ? (
+                      <StatusBadge
+                        status={flag.enabled ? "error" : "completed"}
+                        label={flag.enabled ? "🔒 Locked (Admin Only)" : "🌐 Public (Unlocked)"}
+                        dot
+                      />
+                    ) : (
+                      <StatusBadge
+                        status={flag.enabled ? "active" : "neutral"}
+                        label={flag.enabled ? "Enabled" : "Disabled"}
+                        dot
+                      />
+                    )
                   }
                   metadataNode={
                     <div className="flex items-center gap-4">

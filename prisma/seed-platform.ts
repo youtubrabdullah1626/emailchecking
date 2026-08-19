@@ -55,6 +55,48 @@ async function seedPlatformConfig() {
       is_safe_runtime: true, requires_reason: true,
       rollout_strategy: "GLOBAL" as const, depends_on: [] as string[], environment: ENV,
     },
+    {
+      key: "PAGE_LOCK_SEQUENCES", name: "Lock Sequences Page",
+      description: "Lock sequence management and campaign builders for regular users.",
+      category: "SECURITY" as const, enabled: false, risk_level: "WARNING" as const,
+      is_safe_runtime: true, requires_reason: false,
+      rollout_strategy: "GLOBAL" as const, depends_on: [] as string[], environment: ENV,
+    },
+    {
+      key: "PAGE_LOCK_SMART_IMPORT", name: "Lock Smart Import Page",
+      description: "Lock CSV/Excel spreadsheet upload and mapping tools for regular users.",
+      category: "SECURITY" as const, enabled: false, risk_level: "WARNING" as const,
+      is_safe_runtime: true, requires_reason: false,
+      rollout_strategy: "GLOBAL" as const, depends_on: [] as string[], environment: ENV,
+    },
+    {
+      key: "PAGE_LOCK_PROSPECTS", name: "Lock Prospects Page",
+      description: "Lock direct prospect view, editing, and ad-hoc composer for regular users.",
+      category: "SECURITY" as const, enabled: false, risk_level: "WARNING" as const,
+      is_safe_runtime: true, requires_reason: false,
+      rollout_strategy: "GLOBAL" as const, depends_on: [] as string[], environment: ENV,
+    },
+    {
+      key: "PAGE_LOCK_TIMELINE", name: "Lock Timeline Inspector",
+      description: "Lock visual campaign timeline and live scheduling visualizer for regular users.",
+      category: "SECURITY" as const, enabled: false, risk_level: "WARNING" as const,
+      is_safe_runtime: true, requires_reason: false,
+      rollout_strategy: "GLOBAL" as const, depends_on: [] as string[], environment: ENV,
+    },
+    {
+      key: "PAGE_LOCK_REPLIES", name: "Lock Replies Inbox",
+      description: "Lock prospect reply inbox and AI intent categorization for regular users.",
+      category: "SECURITY" as const, enabled: false, risk_level: "WARNING" as const,
+      is_safe_runtime: true, requires_reason: false,
+      rollout_strategy: "GLOBAL" as const, depends_on: [] as string[], environment: ENV,
+    },
+    {
+      key: "PAGE_LOCK_ANALYTICS", name: "Lock Analytics Page",
+      description: "Lock platform analytics and delivery metric charts for regular users.",
+      category: "SECURITY" as const, enabled: false, risk_level: "WARNING" as const,
+      is_safe_runtime: true, requires_reason: false,
+      rollout_strategy: "GLOBAL" as const, depends_on: [] as string[], environment: ENV,
+    },
   ];
 
   for (const flag of featureFlags) {
