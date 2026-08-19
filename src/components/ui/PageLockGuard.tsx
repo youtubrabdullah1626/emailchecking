@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Lock, Home, ShieldAlert, ArrowRight } from "lucide-react";
+import { Lock, Home, Rocket, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { evaluatePageAccess } from "@/lib/platform/page-lock";
 
@@ -47,44 +47,43 @@ export async function PageLockGuard({
     );
   }
 
-  // If locked and user is NOT admin: render sleek Maintenance Screen
+  // If locked and user is NOT admin: render sleek, exciting "Coming Soon" screen
   return (
-    <div className="min-h-[75vh] flex flex-col items-center justify-center p-6 text-center max-w-2xl mx-auto animate-in fade-in zoom-in-95 duration-300">
+    <div className="min-h-[75vh] flex flex-col items-center justify-center p-6 text-center max-w-xl mx-auto animate-in fade-in zoom-in-95 duration-300">
       <div className="bg-card border border-border/80 rounded-3xl p-8 md:p-12 shadow-sm space-y-6 w-full relative overflow-hidden">
-        {/* Subtle decorative background gradient */}
-        <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-primary/10 via-primary/5 to-transparent pointer-events-none" />
+        {/* Subtle decorative background glow */}
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-64 h-32 bg-primary/15 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="relative">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shadow-xs mb-2">
-            <Lock className="w-8 h-8" />
+        <div className="relative space-y-4">
+          {/* Visual Icon Badge */}
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 text-primary flex items-center justify-center border border-primary/25 shadow-xs">
+            <Rocket className="w-8 h-8 -rotate-12 animate-pulse" />
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold mb-3">
-            <ShieldAlert className="w-3.5 h-3.5" />
-            Temporary Maintenance
+          {/* Status Pill */}
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
+            <Sparkles className="w-3.5 h-3.5" />
+            Launching Soon
           </div>
 
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-            {access.moduleName || moduleName || "This Module"} is Temporarily Locked
+          {/* Heading */}
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground">
+            We will launch this page shortly with a boom! 💥
           </h1>
 
-          <p className="text-sm md:text-base text-muted-foreground mt-3 leading-relaxed max-w-lg mx-auto">
+          {/* Description */}
+          <p className="text-sm md:text-base text-muted-foreground leading-relaxed max-w-md mx-auto">
             {customMessage ||
-              `We are currently optimizing the ${access.moduleName || moduleName || "feature"} with performance upgrades and new capabilities. Access will resume shortly.`}
+              `We are crafting powerful new capabilities and optimizations for ${access.moduleName || moduleName || "this section"}. Stay tuned!`}
           </p>
         </div>
 
-        <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Button asChild className="gap-2 font-semibold px-6 shadow-xs w-full sm:w-auto">
+        {/* Action Button */}
+        <div className="pt-2 flex items-center justify-center">
+          <Button asChild className="gap-2 font-semibold px-8 py-2.5 h-11 rounded-xl shadow-xs">
             <Link href="/dashboard">
               <Home className="w-4 h-4" />
               Return to Dashboard
-            </Link>
-          </Button>
-          <Button variant="outline" asChild className="gap-2 font-semibold px-6 w-full sm:w-auto">
-            <Link href="/dashboard">
-              View Dashboard
-              <ArrowRight className="w-4 h-4" />
             </Link>
           </Button>
         </div>
