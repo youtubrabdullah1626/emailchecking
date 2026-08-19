@@ -209,108 +209,113 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
           <TabsTrigger value="profile">Profile Details</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="activity" className="mt-6 space-y-4">
-          {/* Header Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 shadow-xs flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
-                <Clock className="h-4 w-4" />
+        <TabsContent value="activity" className="mt-6">
+          {/* Unified Executive Activity Card */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+            {/* Integrated Card Header */}
+            <div className="p-4 sm:px-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/40 dark:bg-slate-900/40">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-500/20">
+                  <Clock className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Activity & Outreach History
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Chronological history of sent emails, replies, and sequence touches
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  Activity & Outreach History
-                  <span className="text-[11px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                    {activity.length} {activity.length === 1 ? "event" : "events"}
-                  </span>
-                </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Chronological history of emails, replies, and campaign touches
-                </p>
-              </div>
+
+              <Badge variant="outline" className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-2xs">
+                {activity.length} {activity.length === 1 ? "Event" : "Events"}
+              </Badge>
             </div>
-          </div>
 
-          {/* Minimalist List Container (YouTube / Smart Import Style) */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/80">
-            {isActivityLoading ? (
-              <div className="p-8 text-center text-xs text-slate-400 animate-pulse">Loading timeline...</div>
-            ) : activityError ? (
-              <div className="p-8 text-center text-xs text-red-500">Failed to load activity timeline.</div>
-            ) : (() => {
-              const filteredActivity = activity.filter((e: any) => 
-                ["EMAIL_SENT", "SCHEDULED_EMAIL", "REPLY", "FAILED", "SEQUENCE_STARTED", "ADDED"].includes(e.type)
-              );
-              
-              if (filteredActivity.length === 0) {
-                return (
-                  <div className="p-10 text-center text-xs text-slate-400">
-                    No outreach emails or activity recorded yet for this prospect.
-                  </div>
+            {/* Seamless List Items */}
+            <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+              {isActivityLoading ? (
+                <div className="p-10 text-center text-xs text-slate-400 animate-pulse">Loading activity history...</div>
+              ) : activityError ? (
+                <div className="p-10 text-center text-xs text-red-500">Failed to load activity timeline.</div>
+              ) : (() => {
+                const filteredActivity = activity.filter((e: any) => 
+                  ["EMAIL_SENT", "SCHEDULED_EMAIL", "REPLY", "FAILED", "SEQUENCE_STARTED", "ADDED"].includes(e.type)
                 );
-              }
+                
+                if (filteredActivity.length === 0) {
+                  return (
+                    <div className="p-12 text-center text-xs text-slate-400">
+                      No emails or outreach activity recorded yet for this prospect.
+                    </div>
+                  );
+                }
 
-              return filteredActivity.map((event: any) => {
-                const isReply = event.type === "REPLY";
-                const isEmail = event.type === "EMAIL_SENT";
-                const isScheduled = event.type === "SCHEDULED_EMAIL";
-                const isSequence = event.type === "SEQUENCE_STARTED";
-                const isAdded = event.type === "ADDED";
+                return filteredActivity.map((event: any) => {
+                  const isReply = event.type === "REPLY";
+                  const isEmail = event.type === "EMAIL_SENT";
+                  const isScheduled = event.type === "SCHEDULED_EMAIL";
+                  const isSequence = event.type === "SEQUENCE_STARTED";
 
-                return (
-                  <div
-                    key={event.id}
-                    className="p-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
-                  >
-                    {/* Left: Icon & Details */}
-                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 border ${
-                        isReply ? "bg-indigo-50 text-indigo-600 border-indigo-200/60" :
-                        isEmail ? "bg-blue-50 text-blue-600 border-blue-200/60" :
-                        isScheduled ? "bg-purple-50 text-purple-600 border-purple-200/60" :
-                        isSequence ? "bg-emerald-50 text-emerald-600 border-emerald-200/60" :
-                        "bg-slate-100 text-slate-500 border-slate-200/60"
-                      }`}>
-                        {isReply ? <MessageSquare className="h-3.5 w-3.5" /> :
-                         isEmail ? <Mail className="h-3.5 w-3.5" /> :
-                         isScheduled ? <Clock className="h-3.5 w-3.5" /> :
-                         isSequence ? <Play className="h-3.5 w-3.5 fill-current" /> :
-                         <Check className="h-3.5 w-3.5" />}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
-                            {event.title || event.description}
-                          </span>
-                          <Badge variant="outline" className={`text-[9px] px-1.5 py-0 rounded-full font-bold shrink-0 ${
-                            isReply ? "bg-indigo-50 text-indigo-700 border-indigo-200/60" :
-                            isEmail ? "bg-blue-50 text-blue-700 border-blue-200/60" :
-                            isScheduled ? "bg-purple-50 text-purple-700 border-purple-200/60" :
-                            isSequence ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" :
-                            "bg-slate-100 text-slate-600 border-slate-200/60"
-                          }`}>
-                            {isReply ? "REPLY" : isEmail ? (event.isManual ? "MANUAL EMAIL" : "EMAIL SENT") : isScheduled ? "SCHEDULED" : isSequence ? "SEQUENCE" : "CREATED"}
-                          </Badge>
+                  return (
+                    <div
+                      key={event.id}
+                      className="p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                    >
+                      {/* Left: Avatar + Details */}
+                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                        <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs ${
+                          isReply ? "bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 border-indigo-200/70" :
+                          isEmail ? "bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 border-blue-200/70" :
+                          isScheduled ? "bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400 border-purple-200/70" :
+                          isSequence ? "bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 border-emerald-200/70" :
+                          "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200/70"
+                        }`}>
+                          {isReply ? <MessageSquare className="h-4 w-4" /> :
+                           isEmail ? <Mail className="h-4 w-4" /> :
+                           isScheduled ? <Clock className="h-4 w-4" /> :
+                           isSequence ? <Play className="h-4 w-4 fill-current" /> :
+                           <Check className="h-4 w-4" />}
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400 mt-0.5 truncate">
-                          <span suppressHydrationWarning>{formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}</span>
-                          <span>•</span>
-                          <span className="truncate max-w-md text-slate-500 dark:text-slate-400">
-                            {event.bodyPreview ? `"${event.bodyPreview.replace(/\n/g, " ").trim()}"` : event.description}
-                          </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
+                              {event.title || event.description}
+                            </span>
+                            <Badge variant="outline" className={`text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 ${
+                              isReply ? "bg-indigo-50 text-indigo-700 border-indigo-200/80 font-bold" :
+                              isEmail ? "bg-blue-50 text-blue-700 border-blue-200/80" :
+                              isScheduled ? "bg-purple-50 text-purple-700 border-purple-200/80" :
+                              isSequence ? "bg-emerald-50 text-emerald-700 border-emerald-200/80" :
+                              "bg-slate-100 text-slate-600 border-slate-200/80"
+                            }`}>
+                              {isReply ? "REPLY" : isEmail ? (event.isManual ? "Manual Email" : "Outreach Email") : isScheduled ? "Scheduled" : isSequence ? "Sequence" : "Created"}
+                            </Badge>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-x-2 text-xs text-slate-400 mt-1 truncate">
+                            <span suppressHydrationWarning className="font-medium text-slate-500 dark:text-slate-400">
+                              {formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}
+                            </span>
+                            <span className="text-slate-300 dark:text-slate-600">•</span>
+                            <span className="truncate max-w-lg text-slate-500 dark:text-slate-400 italic">
+                              {event.bodyPreview ? `"${event.bodyPreview.replace(/\n/g, " ").trim()}"` : event.description}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Right: Exact Timestamp */}
-                    <div className="text-[11px] text-slate-400 shrink-0 self-end sm:self-center" suppressHydrationWarning>
-                      {format(new Date(event.createdAt), "MMM d, yyyy, h:mm a")}
+                      {/* Right: Clean Date Format */}
+                      <div className="text-xs font-medium text-slate-400 dark:text-slate-500 shrink-0 self-start sm:self-center" suppressHydrationWarning>
+                        {format(new Date(event.createdAt), "MMM d, yyyy • h:mm a")}
+                      </div>
                     </div>
-                  </div>
-                );
-              })
-            })()}
+                  );
+                })
+              })()}
+            </div>
           </div>
         </TabsContent>
         
