@@ -56,8 +56,26 @@ interface RecentReply {
   id: string;
   prospectName: string;
   company: string;
+  email?: string;
   replyType: string;
   replyTime: string;
+}
+
+function getAvatarColor(str: string) {
+  const colors = [
+    "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+    "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+    "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+    "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+    "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+    "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+  ];
+  let hash = 0;
+  const safeStr = str || "prospect";
+  for (let i = 0; i < safeStr.length; i++) {
+    hash = safeStr.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
 }
 
 type TimeframeOption = "today" | "7d" | "30d" | "all";
@@ -745,10 +763,10 @@ export default function DashboardPage() {
       </div>
 
       {/* ── 5. Active Sequences Leaderboard & Recent Replies Feed ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Top Active Sequences Leaderboard */}
-        <Card className="lg:col-span-2 shadow-xs border border-border bg-card">
+        <Card className="lg:col-span-2 shadow-xs border border-border bg-card overflow-hidden flex flex-col justify-between">
           <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border">
             <div>
               <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
@@ -764,70 +782,78 @@ export default function DashboardPage() {
             </Button>
           </CardHeader>
 
-          <CardContent className="pt-4">
+          <CardContent className="p-0 flex-1 flex flex-col justify-center">
             {loading ? (
-              <div className="space-y-3 py-4">
-                {[1, 2, 3].map(i => <div key={i} className="h-12 bg-secondary/60 rounded-xl animate-pulse" />)}
+              <div className="space-y-2 p-4">
+                {[1, 2, 3].map(i => <div key={i} className="h-14 bg-secondary/60 rounded-lg animate-pulse" />)}
               </div>
             ) : !stats?.topSequences || stats.topSequences.length === 0 ? (
-              <div className="py-12 text-center text-muted-foreground text-sm">
+              <div className="py-12 text-center text-muted-foreground text-sm p-4">
                 <Layers className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                <p>No active sequences yet.</p>
-                <Button asChild size="sm" variant="outline" className="mt-3">
+                <p className="font-semibold text-foreground">No active campaigns</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Dispatched sequence pipelines will track here automatically.</p>
+                <Button asChild size="sm" variant="outline" className="mt-3 text-xs">
                   <Link href="/smart-import">Launch New Campaign</Link>
                 </Button>
               </div>
             ) : (
-              <div className="space-y-2">
-                {stats.topSequences.map((seq) => (
-                  <Link
-                    key={seq.id}
-                    href="/sequences"
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl hover:bg-secondary/60 border border-border hover:border-primary/50 transition-all gap-3 group cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-xs border border-primary/20 shrink-0">
-                        {seq.prospectName.charAt(0).toUpperCase() || "P"}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors truncate">
-                          {seq.prospectName} <span className="text-xs text-muted-foreground font-normal">• {seq.company}</span>
-                        </div>
-                        <div className="text-xs text-muted-foreground truncate max-w-sm mt-0.5">
-                          {seq.firstSubject}
-                        </div>
-                      </div>
-                    </div>
+              <div className="divide-y divide-border">
+                {stats.topSequences.map((seq) => {
+                  const avatarColor = getAvatarColor(seq.email || seq.prospectName || seq.id);
+                  const cleanCompany = seq.company && seq.company.toLowerCase() !== "unknown" && seq.company.toLowerCase() !== "null"
+                    ? seq.company 
+                    : "";
 
-                    <div className="flex items-center gap-4 shrink-0 justify-between sm:justify-end">
-                      <div className="text-right">
-                        <div className="text-xs font-semibold text-foreground font-mono">
-                          Step {seq.completedSteps} of {seq.totalSteps || 1}
+                  return (
+                    <Link
+                      key={seq.id}
+                      href="/sequences"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors gap-3 group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border ${avatarColor}`}>
+                          {seq.prospectName.charAt(0).toUpperCase() || "P"}
                         </div>
-                        <div className="w-24 mt-1">
-                          <Progress value={seq.progressPct} className="h-1 bg-secondary [&>div]:bg-primary" />
+                        <div className="min-w-0">
+                          <div className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors truncate">
+                            {seq.prospectName} {cleanCompany ? <span className="text-muted-foreground font-normal">• {cleanCompany}</span> : null}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground truncate max-w-sm mt-0.5">
+                            {seq.firstSubject || "Cold Outreach Sequence"}
+                          </div>
                         </div>
                       </div>
-                      
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider ${
-                        seq.status === "ACTIVE" 
-                          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20"
-                          : seq.status === "COMPLETED"
-                          ? "bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20"
-                          : "bg-secondary text-muted-foreground border border-border"
-                      }`}>
-                        {seq.status}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
+
+                      <div className="flex items-center gap-4 shrink-0 justify-between sm:justify-end">
+                        <div className="text-right">
+                          <div className="text-[11px] font-semibold text-foreground font-mono">
+                            Step {seq.completedSteps} of {seq.totalSteps || 1}
+                          </div>
+                          <div className="w-24 mt-1">
+                            <Progress value={seq.progressPct} className="h-1 bg-secondary [&>div]:bg-primary" />
+                          </div>
+                        </div>
+                        
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
+                          seq.status === "ACTIVE" 
+                            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20"
+                            : seq.status === "COMPLETED"
+                            ? "bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20"
+                            : "bg-secondary text-muted-foreground border border-border"
+                        }`}>
+                          {seq.status}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Priority Inbox Feed */}
-        <Card className="shadow-xs border border-border bg-card">
+        <Card className="shadow-xs border border-border bg-card overflow-hidden flex flex-col justify-between">
           <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border">
             <div>
               <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
@@ -838,20 +864,20 @@ export default function DashboardPage() {
                 Responses requiring attention
               </CardDescription>
             </div>
-            <div className="flex gap-1.5">
+            <div className="flex items-center gap-1.5">
               <Button variant="outline" size="sm" onClick={handleClearReplies} className="h-7 text-xs px-2.5">
                 Clear
               </Button>
-              <Button variant="ghost" size="sm" asChild className="h-7 text-xs px-2.5">
-                <Link href="/replies">View all</Link>
+              <Button variant="ghost" size="sm" asChild className="h-7 text-xs px-2.5 text-primary hover:text-primary font-semibold">
+                <Link href="/replies">View all &rarr;</Link>
               </Button>
             </div>
           </CardHeader>
 
-          <CardContent className="pt-4">
+          <CardContent className="p-0 flex-1 flex flex-col justify-center">
             {loading ? (
-              <div className="space-y-3 py-4">
-                {[1, 2, 3].map(i => <div key={i} className="h-12 bg-secondary/60 rounded-xl animate-pulse" />)}
+              <div className="space-y-2 p-4">
+                {[1, 2, 3].map(i => <div key={i} className="h-14 bg-secondary/60 rounded-lg animate-pulse" />)}
               </div>
             ) : (() => {
               const visibleReplies = recentReplies.filter(r => {
@@ -863,49 +889,65 @@ export default function DashboardPage() {
               
               if (visibleReplies.length === 0) {
                 return (
-                  <div className="py-12 text-center text-muted-foreground text-sm">
-                    <CheckCircle2 className="h-7 w-7 text-emerald-500 mx-auto mb-2 opacity-80" />
-                    <p className="font-medium text-foreground">Inbox Zero</p>
-                    <p className="text-xs mt-0.5">No unprocessed prospect replies today.</p>
+                  <div className="py-12 text-center text-muted-foreground text-sm p-4">
+                    <CheckCircle2 className="h-7 w-7 text-emerald-500 mx-auto mb-2 opacity-85" />
+                    <p className="font-semibold text-foreground text-sm">Inbox Zero</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">No unprocessed prospect replies today.</p>
                   </div>
                 );
               }
               
               return (
-                <div className="space-y-2">
-                  {visibleReplies.map(reply => (
-                    <Link
-                      prefetch={true} 
-                      key={reply.id} 
-                      href={`/replies?id=${reply.id}`}
-                      className="flex items-center justify-between p-3 rounded-xl hover:bg-secondary/60 border border-border hover:border-primary/50 transition-all cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs border border-primary/20 shrink-0">
+                <div className="divide-y divide-border">
+                  {visibleReplies.map(reply => {
+                    const avatarColor = getAvatarColor(reply.email || reply.prospectName || reply.id);
+                    const isRealReply = reply.replyType === "REAL_REPLY";
+                    const cleanCompany = reply.company && reply.company.toLowerCase() !== "unknown" && reply.company.toLowerCase() !== "null"
+                      ? reply.company 
+                      : (reply.email ? reply.email : "Lead");
+
+                    return (
+                      <Link
+                        prefetch={true} 
+                        key={reply.id} 
+                        href={`/replies?id=${reply.id}`}
+                        className="flex items-start gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors group cursor-pointer"
+                      >
+                        {/* Distinct Avatar */}
+                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border mt-0.5 ${avatarColor}`}>
                           {reply.prospectName.charAt(0).toUpperCase() || "P"}
                         </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors truncate">
-                            {reply.prospectName}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground truncate">{reply.company || "Enterprise"}</p>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
-                          reply.replyType === "REAL_REPLY"
-                            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20"
-                            : "bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20"
-                        }`}>
-                          {reply.replyType === "REAL_REPLY" ? "Real Reply" : "Review"}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground font-mono">
-                          {formatDistanceToNow(new Date(reply.replyTime), { addSuffix: true })}
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
+                        {/* 2-line Content that never cramps */}
+                        <div className="flex-1 min-w-0">
+                          {/* Row 1: Name and Time */}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors truncate">
+                              {reply.prospectName}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                              {formatDistanceToNow(new Date(reply.replyTime), { addSuffix: true })}
+                            </span>
+                          </div>
+
+                          {/* Row 2: Company and Status Pill */}
+                          <div className="flex items-center justify-between gap-2 mt-1">
+                            <span className="text-[11px] text-muted-foreground truncate">
+                              {cleanCompany}
+                            </span>
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0 ${
+                              isRealReply
+                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                                : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                            }`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${isRealReply ? "bg-emerald-500" : "bg-amber-500"}`} />
+                              {isRealReply ? "Real Reply" : "Review"}
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               );
             })()}
