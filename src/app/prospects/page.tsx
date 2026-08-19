@@ -274,7 +274,7 @@ function ProspectsPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
       {/* 1. Dynamic Silaer Signature Header */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-xs relative overflow-hidden transition-all duration-300">
         {/* Subtle Ambient Background Glow */}
@@ -343,72 +343,72 @@ function ProspectsPageContent() {
       {/* 2. Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* Total Prospects */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 flex items-center justify-between group">
+        <div className="bg-gradient-to-br from-blue-50/80 via-white to-white dark:from-blue-950/30 dark:via-slate-900 dark:to-slate-900 border border-blue-200/90 dark:border-blue-900/60 rounded-2xl p-4 sm:p-5 shadow-xs hover:border-blue-400 dark:hover:border-blue-700 hover:shadow-md transition-all duration-200 flex items-center justify-between group">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-blue-700/80 dark:text-blue-400">
               Total Prospects
             </div>
             <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono mt-1 tracking-tight">
               {stats.total}
             </div>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200/70 dark:border-slate-700/70 group-hover:scale-105 transition-transform">
+          <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25 group-hover:scale-105 transition-transform">
             <Users className="h-5 w-5" />
           </div>
         </div>
 
         {/* In Active Sequences */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-200 flex items-center justify-between group">
+        <div className="bg-gradient-to-br from-emerald-50/80 via-white to-white dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-900 border border-emerald-200/90 dark:border-emerald-900/60 rounded-2xl p-4 sm:p-5 shadow-xs hover:border-emerald-400 dark:hover:border-emerald-700 hover:shadow-md transition-all duration-200 flex items-center justify-between group">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-700/80 dark:text-emerald-400">
               Active Outreach
             </div>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                 {stats.active}
               </span>
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200/80">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 in sequence
               </span>
             </div>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/80 group-hover:scale-105 transition-transform">
+          <div className="h-10 w-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 group-hover:scale-105 transition-transform">
             <PlayCircle className="h-5 w-5" />
           </div>
         </div>
 
         {/* Replied */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-200 flex items-center justify-between group">
+        <div className="bg-gradient-to-br from-indigo-50/80 via-white to-white dark:from-indigo-950/30 dark:via-slate-900 dark:to-slate-900 border border-indigo-200/90 dark:border-indigo-900/60 rounded-2xl p-4 sm:p-5 shadow-xs hover:border-indigo-400 dark:hover:border-indigo-700 hover:shadow-md transition-all duration-200 flex items-center justify-between group">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-700/80 dark:text-indigo-400">
               Replied
             </div>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                 {stats.replied}
               </span>
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full border border-indigo-200/80">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-800 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-950/80 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
                 engaged
               </span>
             </div>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200/80 group-hover:scale-105 transition-transform">
+          <div className="h-10 w-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/25 group-hover:scale-105 transition-transform">
             <MessageSquareReply className="h-5 w-5" />
           </div>
         </div>
 
-        {/* Not Contacted */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 transition-all duration-200 flex items-center justify-between group">
+        {/* Ready to Outreach */}
+        <div className="bg-gradient-to-br from-amber-50/80 via-white to-white dark:from-amber-950/30 dark:via-slate-900 dark:to-slate-900 border border-amber-200/90 dark:border-amber-900/60 rounded-2xl p-4 sm:p-5 shadow-xs hover:border-amber-400 dark:hover:border-amber-700 hover:shadow-md transition-all duration-200 flex items-center justify-between group">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-amber-700/80 dark:text-amber-400">
               Ready to Outreach
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono mt-1 tracking-tight">
+            <div className="text-2xl sm:text-3xl font-black text-amber-900 dark:text-amber-300 font-mono mt-1 tracking-tight">
               {stats.notContacted}
             </div>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200/80 group-hover:scale-105 transition-transform">
+          <div className="h-10 w-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/25 group-hover:scale-105 transition-transform">
             <Send className="h-5 w-5" />
           </div>
         </div>

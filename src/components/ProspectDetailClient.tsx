@@ -59,7 +59,7 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
   const isActive = Boolean(sequence && sequence.status === "ACTIVE" && !isReplied);
 
   return (
-    <AnimatedPage className="space-y-6">
+    <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
         <Link prefetch={true} href="/prospects" className="hover:text-foreground flex items-center gap-1">
           <ArrowLeft className="h-3 w-3" /> Back to prospects
@@ -360,7 +360,7 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
           </Card>
         </TabsContent>
       </Tabs>
-    </AnimatedPage>
+    </div>
   );
 }
 
