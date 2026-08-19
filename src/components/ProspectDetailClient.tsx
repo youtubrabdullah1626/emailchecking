@@ -32,7 +32,7 @@ import ProspectForm from "@/components/ProspectForm";
 import { QuickEmailComposer } from "@/components/QuickEmailComposer";
 import useSWR from "swr";
 import { LegacyLoadingState as LoadingState, LegacyErrorState as ErrorState } from "@/components/ui/legacy-adapters";
-import { Check, X, Play, MessageSquare } from "lucide-react";
+import { Check, X, Play, MessageSquare, Send } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -54,17 +54,9 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
   
   const activity = activityData?.activity || [];
 
-  let prospectBadgeStatus = 'none';
-  if (prospect.status === "ACTIVE") {
-    if (!sequence && activity.filter((a: any) => a.type.includes("EMAIL")).length === 0) {
-      prospectBadgeStatus = 'uncontacted';
-    } else {
-      prospectBadgeStatus = 'active';
-    }
-  }
-  else if (prospect.status === "REPLIED") prospectBadgeStatus = 'completed'; // Replied maps to completed style usually or replied if defined
-  else if (prospect.status === "STOPPED") prospectBadgeStatus = 'error';
-  else if (prospect.status === "COMPLETED") prospectBadgeStatus = 'completed';
+  const isReplied = prospect.status === "REPLIED" || activity.some((a: any) => a.type === "REPLY");
+  const isSent = activity.some((a: any) => a.type === "EMAIL_SENT") || prospect.status === "COMPLETED";
+  const isActive = Boolean(sequence && sequence.status === "ACTIVE" && !isReplied);
 
   return (
     <AnimatedPage className="space-y-6">
@@ -164,7 +156,26 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
           <div className="mt-4">
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">{prospect.name}</h1>
-              <StatusBadge status={prospectBadgeStatus as any} />
+              {isReplied ? (
+                <Badge className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200/60 text-xs font-bold gap-1 px-2.5 py-0.5">
+                  <MessageSquare className="h-3 w-3" />
+                  Replied
+                </Badge>
+              ) : isActive ? (
+                <Badge className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 text-xs font-bold gap-1 px-2.5 py-0.5">
+                  <Play className="h-3 w-3 fill-current animate-pulse" />
+                  Active Outreach
+                </Badge>
+              ) : isSent ? (
+                <Badge className="bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200/60 text-xs font-bold gap-1 px-2.5 py-0.5">
+                  <Send className="h-3 w-3" />
+                  Sent
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-slate-500 border-slate-200 text-xs font-medium px-2.5 py-0.5">
+                  Not Started
+                </Badge>
+              )}
             </div>
             
             <div className="flex flex-wrap gap-4 mt-3 text-sm text-muted-foreground">
