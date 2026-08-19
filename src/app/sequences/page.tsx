@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback, useDeferredValue } from "react";
 import { FastLink } from "@/components/ui/fast-link";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -276,6 +275,8 @@ export default function SequencesPage() {
     };
   }, [sequences]);
 
+  const deferredSearch = useDeferredValue(search);
+
   // Filtered List
   const filteredSequences = useMemo(() => {
     return sequences.filter((seq) => {
@@ -285,8 +286,8 @@ export default function SequencesPage() {
       if (statusFilter === "COMPLETED" && !state.isCompleted) return false;
       if (statusFilter === "PAUSED" && !state.isPaused) return false;
 
-      if (search && search.trim()) {
-        const q = search.toLowerCase().trim();
+      if (deferredSearch && deferredSearch.trim()) {
+        const q = deferredSearch.toLowerCase().trim();
         const matchName = seq.prospect?.name?.toLowerCase().includes(q);
         const matchEmail = seq.prospect?.email?.toLowerCase().includes(q);
         const matchCompany = seq.prospect?.company?.toLowerCase().includes(q);
@@ -298,7 +299,7 @@ export default function SequencesPage() {
 
       return true;
     });
-  }, [sequences, statusFilter, search]);
+  }, [sequences, statusFilter, deferredSearch]);
 
   if (error) {
     return (
@@ -535,180 +536,173 @@ export default function SequencesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-border">
-                <AnimatePresence initial={false}>
-                  {filteredSequences.map((seq) => {
-                    const state = computeSequenceState(seq);
-                    const firstSubject = seq.steps?.[0]?.subject;
-                    const prospectName = seq.prospect?.name || seq.prospect?.email || "Unknown Lead";
-                    const avatarStyle = getAvatarColor(seq.prospect?.email || seq.id);
-                    const targetUrl = seq.prospect ? `/prospects/${seq.prospect.id}/sequence` : "#";
+                {filteredSequences.map((seq) => {
+                  const state = computeSequenceState(seq);
+                  const firstSubject = seq.steps?.[0]?.subject;
+                  const prospectName = seq.prospect?.name || seq.prospect?.email || "Unknown Lead";
+                  const avatarStyle = getAvatarColor(seq.prospect?.email || seq.id);
+                  const targetUrl = seq.prospect ? `/prospects/${seq.prospect.id}/sequence` : "#";
 
-                    // Clean company name (ignore "Unknown", "null", etc.)
-                    const cleanCompany =
-                      seq.prospect?.company &&
-                      seq.prospect.company.toLowerCase() !== "unknown" &&
-                      seq.prospect.company.toLowerCase() !== "null"
-                        ? seq.prospect.company
-                        : null;
+                  // Clean company name (ignore "Unknown", "null", etc.)
+                  const cleanCompany =
+                    seq.prospect?.company &&
+                    seq.prospect.company.toLowerCase() !== "unknown" &&
+                    seq.prospect.company.toLowerCase() !== "null"
+                      ? seq.prospect.company
+                      : null;
 
-                    return (
-                      <motion.tr
-                        key={seq.id}
-                        layout
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.98 }}
-                        transition={{ duration: 0.15 }}
-                        onClick={() => {
-                          if (seq.prospect) {
-                            router.push(targetUrl);
-                          }
-                        }}
-                        className="group cursor-pointer hover:bg-muted/40 transition-colors"
-                      >
-                        {/* Prospect & Subject */}
-                        <TableCell className="py-3 px-4">
-                          <div className="flex items-start gap-3">
-                            <div
-                              className={`h-9 w-9 rounded-xl font-bold text-xs flex items-center justify-center shrink-0 border mt-0.5 shadow-2xs ${avatarStyle}`}
-                            >
-                              {prospectName.charAt(0).toUpperCase()}
+                  return (
+                    <TableRow
+                      key={seq.id}
+                      onClick={() => {
+                        if (seq.prospect) {
+                          router.push(targetUrl);
+                        }
+                      }}
+                      className="group cursor-pointer hover:bg-secondary/60 transition-colors"
+                    >
+                      {/* Prospect & Subject */}
+                      <TableCell className="py-3 px-4">
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`h-9 w-9 rounded-xl font-bold text-xs flex items-center justify-center shrink-0 border mt-0.5 shadow-2xs ${avatarStyle}`}
+                          >
+                            {prospectName.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors truncate max-w-xs">
+                              {firstSubject || `Sequence for ${prospectName}`}
                             </div>
-                            <div className="min-w-0">
-                              <div className="font-semibold text-sm text-slate-900 dark:text-white group-hover:text-primary transition-colors truncate max-w-xs">
-                                {firstSubject || `Sequence for ${prospectName}`}
-                              </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-xs">
-                                to <span className="font-medium text-slate-700 dark:text-slate-300">{prospectName}</span>
-                                {cleanCompany && <span className="text-slate-400"> at {cleanCompany}</span>}
-                              </div>
+                            <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-xs">
+                              to <span className="font-medium text-foreground">{prospectName}</span>
+                              {cleanCompany && <span className="text-muted-foreground"> at {cleanCompany}</span>}
                             </div>
                           </div>
-                        </TableCell>
+                        </div>
+                      </TableCell>
 
-                        {/* Status & Schedule (Accurate & Non-Redundant) */}
-                        <TableCell className="py-3 px-3">
-                          <div className="flex flex-col items-start gap-1">
+                      {/* Status & Schedule (Accurate & Non-Redundant) */}
+                      <TableCell className="py-3 px-3">
+                        <div className="flex flex-col items-start gap-1">
+                          {state.isCompleted ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold text-[11px] border border-emerald-500/20 shadow-2xs">
+                              <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                              <span>Completed</span>
+                            </span>
+                          ) : state.isPaused ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 font-semibold text-[11px] border border-amber-500/20 shadow-2xs">
+                              <PauseCircle className="h-3 w-3 text-amber-600" />
+                              <span>Paused</span>
+                            </span>
+                          ) : state.isDraft ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-secondary text-muted-foreground font-medium text-[11px] border border-border">
+                              <span>Draft</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold text-[11px] border border-emerald-500/20 shadow-2xs">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              <span>Active</span>
+                            </span>
+                          )}
+
+                          {/* Subtext description */}
+                          <div className="text-[11px] text-muted-foreground">
                             {state.isCompleted ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold text-[11px] border border-emerald-200/60 dark:border-emerald-900/60 shadow-2xs">
-                                <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                                <span>Completed</span>
+                              <span className="text-muted-foreground">
+                                All {state.totalSteps} {state.totalSteps === 1 ? "step" : "steps"} finished
+                              </span>
+                            ) : state.nextSendAt && state.isActive ? (
+                              <span className="text-foreground font-medium flex items-center gap-1">
+                                <Clock className="h-3 w-3 text-amber-500" />
+                                Next: {formatDistanceToNow(new Date(state.nextSendAt), { addSuffix: true })}
                               </span>
                             ) : state.isPaused ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-semibold text-[11px] border border-amber-200/60 dark:border-amber-900/60 shadow-2xs">
-                                <PauseCircle className="h-3 w-3 text-amber-600" />
-                                <span>Paused</span>
-                              </span>
-                            ) : state.isDraft ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium text-[11px] border border-slate-200/60 dark:border-slate-700/60">
-                                <span>Draft</span>
+                              <span className="text-muted-foreground">
+                                {state.sentSteps} of {state.totalSteps} steps sent
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold text-[11px] border border-emerald-200/60 dark:border-emerald-900/60 shadow-2xs">
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span>Active</span>
-                              </span>
+                              <span className="text-muted-foreground">No pending follow-ups</span>
                             )}
-
-                            {/* Subtext description */}
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                              {state.isCompleted ? (
-                                <span className="text-slate-400">
-                                  All {state.totalSteps} {state.totalSteps === 1 ? "step" : "steps"} finished
-                                </span>
-                              ) : state.nextSendAt && state.isActive ? (
-                                <span className="text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1">
-                                  <Clock className="h-3 w-3 text-orange-500" />
-                                  Next: {formatDistanceToNow(new Date(state.nextSendAt), { addSuffix: true })}
-                                </span>
-                              ) : state.isPaused ? (
-                                <span className="text-slate-400">
-                                  {state.sentSteps} of {state.totalSteps} steps sent
-                                </span>
-                              ) : (
-                                <span className="text-slate-400">No pending follow-ups</span>
-                              )}
-                            </div>
                           </div>
-                        </TableCell>
+                        </div>
+                      </TableCell>
 
-                        {/* Progress Bar */}
-                        <TableCell className="py-3 px-3">
-                          <div className="flex flex-col gap-1.5 w-full pr-6">
-                            <div className="flex justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                              <span>
-                                {state.isCompleted
-                                  ? `${state.totalSteps} of ${state.totalSteps} steps completed`
-                                  : `Step ${state.currentStepNum} of ${state.totalSteps}`}
-                              </span>
-                              <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
-                                {state.completionPercent}%
-                              </span>
-                            </div>
-                            <Progress
-                              value={state.completionPercent}
-                              className={`h-1.5 ${state.isCompleted ? "bg-emerald-100 [&>div]:bg-emerald-600" : ""}`}
-                            />
+                      {/* Progress Bar */}
+                      <TableCell className="py-3 px-3">
+                        <div className="flex flex-col gap-1.5 w-full pr-6">
+                          <div className="flex justify-between text-[11px] font-medium text-muted-foreground">
+                            <span>
+                              {state.isCompleted
+                                ? `${state.totalSteps} of ${state.totalSteps} steps completed`
+                                : `Step ${state.currentStepNum} of ${state.totalSteps}`}
+                            </span>
+                            <span className="font-semibold text-foreground font-mono">
+                              {state.completionPercent}%
+                            </span>
                           </div>
-                        </TableCell>
+                          <Progress
+                            value={state.completionPercent}
+                            className={`h-1.5 ${state.isCompleted ? "bg-emerald-100 [&>div]:bg-emerald-600" : ""}`}
+                          />
+                        </div>
+                      </TableCell>
 
-                        {/* Actions */}
-                        <TableCell className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1">
-                            {seq.prospect && (
+                      {/* Actions */}
+                      <TableCell className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
+                          {seq.prospect && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-muted-foreground hover:text-foreground text-xs font-medium"
+                              asChild
+                            >
+                              <FastLink href={targetUrl}>
+                                <span className="hidden sm:inline mr-1">Inspect</span>
+                                <ArrowUpRight className="h-3.5 w-3.5" />
+                              </FastLink>
+                            </Button>
+                          )}
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
-                                size="sm"
-                                className="h-8 px-2 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 text-xs font-medium"
-                                asChild
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
                               >
-                                <FastLink href={targetUrl}>
-                                  <span className="hidden sm:inline mr-1">Inspect</span>
-                                  <ArrowUpRight className="h-3.5 w-3.5" />
-                                </FastLink>
+                                <MoreHorizontal className="h-4 w-4" />
                               </Button>
-                            )}
-
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-lg">
-                                {seq.prospect && (
-                                  <DropdownMenuItem asChild>
-                                    <FastLink href={targetUrl} className="cursor-pointer">
-                                      <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                                      View Details
-                                    </FastLink>
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    setSequenceToDelete({
-                                      id: seq.id,
-                                      name: seq.prospect?.name ? `Sequence for ${seq.prospect.name}` : "Sequence",
-                                    })
-                                  }
-                                  className="text-rose-600 focus:bg-rose-50 focus:text-rose-700 cursor-pointer"
-                                >
-                                  <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                  Delete Sequence
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-lg border border-border bg-popover">
+                              {seq.prospect && (
+                                <DropdownMenuItem asChild>
+                                  <FastLink href={targetUrl} className="cursor-pointer">
+                                    <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                                    View Details
+                                  </FastLink>
                                 </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </motion.tr>
-                    );
-                  })}
-                </AnimatePresence>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setSequenceToDelete({
+                                    id: seq.id,
+                                    name: seq.prospect?.name ? `Sequence for ${seq.prospect.name}` : "Sequence",
+                                  })
+                                }
+                                className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
+                              >
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                Delete Sequence
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

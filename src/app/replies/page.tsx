@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef, useDeferredValue } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -221,6 +221,8 @@ export default function RepliesPage() {
   const needsReviewCount = replies.filter((r) => r.replyType === "NEEDS_REVIEW" && r.reviewStatus === "PENDING").length;
   const autoCount = replies.filter((r) => r.replyType === "AUTO_REPLY" || r.replyType === "SPAM").length;
 
+  const deferredSearch = useDeferredValue(search);
+
   const filteredReplies = useMemo(() => {
     return replies.filter((r) => {
       if (activeTab === "NEEDS_REVIEW") {
@@ -231,8 +233,8 @@ export default function RepliesPage() {
         if (r.replyType !== "AUTO_REPLY" && r.replyType !== "SPAM") return false;
       }
 
-      if (search && search.trim()) {
-        const q = search.toLowerCase().trim();
+      if (deferredSearch && deferredSearch.trim()) {
+        const q = deferredSearch.toLowerCase().trim();
         const matchName = r.prospectName?.toLowerCase().includes(q);
         const matchEmail = r.email?.toLowerCase().includes(q);
         const matchSubject = r.subject?.toLowerCase().includes(q);
@@ -244,7 +246,7 @@ export default function RepliesPage() {
 
       return true;
     });
-  }, [replies, activeTab, search]);
+  }, [replies, activeTab, deferredSearch]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">

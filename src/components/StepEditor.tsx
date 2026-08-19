@@ -1,5 +1,6 @@
 "use client";
 
+import React, { memo } from "react";
 import { TIMEZONE_GROUPS } from "@/lib/timezones";
 import { Card, CardContent } from "@/components/ui";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,7 @@ const STEP_LABELS = [
   "Follow-up #3",
 ];
 
-export default function StepEditor({
+function StepEditorComponent({
   step,
   index,
   errors,
@@ -272,3 +273,5 @@ export default function StepEditor({
     </div>
   );
 }
+
+export default memo(StepEditorComponent);

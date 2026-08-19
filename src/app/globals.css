@@ -471,3 +471,15 @@ a, button, [role="button"], input, select, textarea, .cursor-pointer {
   color: #6366f1 !important;
 }
 
+/* Zero-lag hardware composition for smooth navigation and instant keystroke response */
+html {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+input, textarea, select {
+  touch-action: manipulation;
+}
+
+

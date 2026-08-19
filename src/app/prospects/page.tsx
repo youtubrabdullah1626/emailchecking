@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useDeferredValue } from "react";
 import { FastLink } from "@/components/ui/fast-link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import { format, formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -198,6 +197,8 @@ function ProspectsPageContent() {
     };
   }, [prospects]);
 
+  const deferredSearch = useDeferredValue(search);
+
   // Client-side filtering with 0ms instant response
   const filteredProspects = useMemo(() => {
     return prospects.filter((p) => {
@@ -205,8 +206,8 @@ function ProspectsPageContent() {
       if (statusFilter === "REPLIED" && p.status !== "REPLIED") return false;
       if (statusFilter === "NOT_CONTACTED" && (p.isContacted || p.status === "REPLIED")) return false;
 
-      if (search && search.trim()) {
-        const q = search.toLowerCase().trim();
+      if (deferredSearch && deferredSearch.trim()) {
+        const q = deferredSearch.toLowerCase().trim();
         const matchName = p.name?.toLowerCase().includes(q);
         const matchEmail = p.email?.toLowerCase().includes(q);
         const matchCompany = p.company?.toLowerCase().includes(q);
@@ -217,7 +218,7 @@ function ProspectsPageContent() {
 
       return true;
     });
-  }, [prospects, statusFilter, search]);
+  }, [prospects, statusFilter, deferredSearch]);
 
   // Export to CSV
   const handleExportCSV = () => {
@@ -512,202 +513,195 @@ function ProspectsPageContent() {
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-border">
-                <AnimatePresence initial={false}>
-                  {filteredProspects.map((prospect) => {
-                    const avatarStyle = getAvatarColor(prospect.email || prospect.id);
-                    const cleanCompany =
-                      prospect.company &&
-                      prospect.company.toLowerCase() !== "unknown" &&
-                      prospect.company.toLowerCase() !== "null"
-                        ? prospect.company
-                        : "—";
+                {filteredProspects.map((prospect) => {
+                  const avatarStyle = getAvatarColor(prospect.email || prospect.id);
+                  const cleanCompany =
+                    prospect.company &&
+                    prospect.company.toLowerCase() !== "unknown" &&
+                    prospect.company.toLowerCase() !== "null"
+                      ? prospect.company
+                      : "—";
 
-                    let sequenceBadge = null;
-                    if (prospect.sequence) {
-                      const allStepsSent = Boolean(prospect.sequence.steps && prospect.sequence.steps.length > 0 && prospect.sequence.steps.every((s) => s.status === "SENT"));
-                      if (prospect.status === "REPLIED" || prospect.sequence.status === "STOPPED") {
-                        sequenceBadge = (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary text-muted-foreground font-semibold text-[10px] border border-border/80">
-                            Stopped
+                  let sequenceBadge = null;
+                  if (prospect.sequence) {
+                    const allStepsSent = Boolean(prospect.sequence.steps && prospect.sequence.steps.length > 0 && prospect.sequence.steps.every((s) => s.status === "SENT"));
+                    if (prospect.status === "REPLIED" || prospect.sequence.status === "STOPPED") {
+                      sequenceBadge = (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary text-muted-foreground font-semibold text-[10px] border border-border">
+                          Stopped
+                        </span>
+                      );
+                    } else if (prospect.sequence.status === "COMPLETED" || allStepsSent) {
+                      sequenceBadge = (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-700 dark:text-blue-300 font-semibold text-[10px] border border-blue-500/20">
+                          Completed
+                        </span>
+                      );
+                    } else if (prospect.sequence.status === "ACTIVE") {
+                      sequenceBadge = (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] border border-emerald-500/20">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          Active
+                        </span>
+                      );
+                    } else if (prospect.sequence.status === "PAUSED") {
+                      sequenceBadge = (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 font-semibold text-[10px] border border-amber-500/20">
+                          Paused
+                        </span>
+                      );
+                    } else {
+                      sequenceBadge = (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary text-muted-foreground font-medium text-[10px]">
+                          {prospect.sequence.status}
+                        </span>
+                      );
+                    }
+                  } else {
+                    sequenceBadge = (
+                      <span className="text-[11px] text-muted-foreground font-mono">None</span>
+                    );
+                  }
+
+                  const lastActivity = prospect.lastActivityAt || prospect.created_at;
+
+                  return (
+                    <TableRow
+                      key={prospect.id}
+                      onClick={() => router.push(`/prospects/${prospect.id}`)}
+                      className="group cursor-pointer hover:bg-secondary/60 transition-colors"
+                    >
+                      {/* Prospect Name & Email */}
+                      <TableCell className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`h-9 w-9 rounded-xl font-bold text-xs flex items-center justify-center shrink-0 border shadow-2xs ${avatarStyle}`}
+                          >
+                            {prospect.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .substring(0, 2)
+                              .toUpperCase() || "P"}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors truncate max-w-xs">
+                              <HighlightMatch text={prospect.name} query={search} />
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate max-w-xs">
+                              <HighlightMatch text={prospect.email} query={search} />
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      {/* Company */}
+                      <TableCell className="py-3 px-3 text-xs text-muted-foreground">
+                        <HighlightMatch text={cleanCompany} query={search} />
+                      </TableCell>
+
+                      {/* Status */}
+                      <TableCell className="py-3 px-3">
+                        {prospect.status === "REPLIED" ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-semibold text-[10px] border border-indigo-500/20">
+                            <MessageSquareReply className="h-3 w-3 text-indigo-600" />
+                            Replied
                           </span>
-                        );
-                      } else if (prospect.sequence.status === "COMPLETED" || allStepsSent) {
-                        sequenceBadge = (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-700 dark:text-blue-300 font-semibold text-[10px] border border-blue-500/20">
-                            Completed
-                          </span>
-                        );
-                      } else if (prospect.sequence.status === "ACTIVE") {
-                        sequenceBadge = (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] border border-emerald-500/20">
+                        ) : prospect.sequence?.status === "ACTIVE" ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] border border-emerald-500/20">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             Active
                           </span>
-                        );
-                      } else if (prospect.sequence.status === "PAUSED") {
-                        sequenceBadge = (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 font-semibold text-[10px] border border-amber-500/20">
-                            Paused
+                        ) : (prospect.isContacted || prospect.sequence?.status === "COMPLETED" || prospect.status === "COMPLETED") ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-700 dark:text-blue-300 font-semibold text-[10px] border border-blue-500/20">
+                            <Send className="h-2.5 w-2.5 text-blue-600" />
+                            Sent
                           </span>
-                        );
-                      } else {
-                        sequenceBadge = (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary text-muted-foreground font-medium text-[10px]">
-                            {prospect.sequence.status}
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary text-muted-foreground font-medium text-[10px] border border-border">
+                            Not Started
                           </span>
-                        );
-                      }
-                    } else {
-                      sequenceBadge = (
-                        <span className="text-[11px] text-muted-foreground font-mono">None</span>
-                      );
-                    }
+                        )}
+                      </TableCell>
 
-                    const lastActivity = prospect.lastActivityAt || prospect.created_at;
+                      {/* Sequence */}
+                      <TableCell className="py-3 px-3">
+                        {sequenceBadge}
+                      </TableCell>
 
-                    return (
-                      <motion.tr
-                        key={prospect.id}
-                        layout
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.98 }}
-                        transition={{ duration: 0.15 }}
-                        onClick={() => router.push(`/prospects/${prospect.id}`)}
-                        className="group cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
-                      >
-                        {/* Prospect Name & Email */}
-                        <TableCell className="py-3 px-4">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`h-9 w-9 rounded-xl font-bold text-xs flex items-center justify-center shrink-0 border shadow-2xs ${avatarStyle}`}
-                            >
-                              {prospect.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")
-                                .substring(0, 2)
-                                .toUpperCase() || "P"}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="font-semibold text-sm text-slate-900 dark:text-white group-hover:text-primary transition-colors truncate max-w-xs">
-                                <HighlightMatch text={prospect.name} query={search} />
-                              </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-xs">
-                                <HighlightMatch text={prospect.email} query={search} />
-                              </div>
-                            </div>
+                      {/* Last Activity */}
+                      <TableCell className="py-3 px-3">
+                        {lastActivity ? (
+                          <div className="flex flex-col">
+                            <span className="text-xs font-medium text-foreground">
+                              {format(new Date(lastActivity), "MMM d, yyyy")}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              {formatDistanceToNow(new Date(lastActivity), { addSuffix: true })}
+                            </span>
                           </div>
-                        </TableCell>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Never</span>
+                        )}
+                      </TableCell>
 
-                        {/* Company */}
-                        <TableCell className="py-3 px-3 text-xs text-slate-600 dark:text-slate-300">
-                          <HighlightMatch text={cleanCompany} query={search} />
-                        </TableCell>
+                      {/* Actions */}
+                      <TableCell className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-muted-foreground hover:text-foreground text-xs font-medium"
+                            asChild
+                          >
+                            <FastLink href={`/prospects/${prospect.id}`}>
+                              <ArrowUpRight className="h-3.5 w-3.5" />
+                            </FastLink>
+                          </Button>
 
-                        {/* Status */}
-                        <TableCell className="py-3 px-3">
-                          {prospect.status === "REPLIED" ? (
-                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold text-[10px] border border-indigo-200/60">
-                              <MessageSquareReply className="h-3 w-3 text-indigo-600" />
-                              Replied
-                            </span>
-                          ) : prospect.sequence?.status === "ACTIVE" ? (
-                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] border border-emerald-200/60">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                              Active
-                            </span>
-                          ) : (prospect.isContacted || prospect.sequence?.status === "COMPLETED" || prospect.status === "COMPLETED") ? (
-                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold text-[10px] border border-blue-200/60">
-                              <Send className="h-2.5 w-2.5 text-blue-600" />
-                              Sent
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-[10px]">
-                              Not Started
-                            </span>
-                          )}
-                        </TableCell>
-
-                        {/* Sequence */}
-                        <TableCell className="py-3 px-3">
-                          {sequenceBadge}
-                        </TableCell>
-
-                        {/* Last Activity */}
-                        <TableCell className="py-3 px-3">
-                          {lastActivity ? (
-                            <div className="flex flex-col">
-                              <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
-                                {format(new Date(lastActivity), "MMM d, yyyy")}
-                              </span>
-                              <span className="text-[10px] text-slate-400">
-                                {formatDistanceToNow(new Date(lastActivity), { addSuffix: true })}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-slate-400">Never</span>
-                          )}
-                        </TableCell>
-
-                        {/* Actions */}
-                        <TableCell className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 px-2 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 text-xs font-medium"
-                              asChild
-                            >
-                              <FastLink href={`/prospects/${prospect.id}`}>
-                                <ArrowUpRight className="h-3.5 w-3.5" />
-                              </FastLink>
-                            </Button>
-
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-lg">
-                                <DropdownMenuItem asChild>
-                                  <FastLink href={`/prospects/${prospect.id}`} className="cursor-pointer">
-                                    <User className="mr-2 h-3.5 w-3.5" />
-                                    View Profile
-                                  </FastLink>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                  <FastLink href={`/prospects/${prospect.id}/sequence`} className="cursor-pointer">
-                                    <PlayCircle className="mr-2 h-3.5 w-3.5" />
-                                    Manage Sequence
-                                  </FastLink>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    setProspectToDelete({
-                                      id: prospect.id,
-                                      name: prospect.name || "Prospect",
-                                    })
-                                  }
-                                  className="text-rose-600 focus:bg-rose-50 focus:text-rose-700 cursor-pointer"
-                                >
-                                  <Trash className="mr-2 h-3.5 w-3.5" />
-                                  Delete Prospect
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </motion.tr>
-                    );
-                  })}
-                </AnimatePresence>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-lg border border-border bg-popover">
+                              <DropdownMenuItem asChild>
+                                <FastLink href={`/prospects/${prospect.id}`} className="cursor-pointer">
+                                  <User className="mr-2 h-3.5 w-3.5" />
+                                  View Profile
+                                </FastLink>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <FastLink href={`/prospects/${prospect.id}/sequence`} className="cursor-pointer">
+                                  <PlayCircle className="mr-2 h-3.5 w-3.5" />
+                                  Manage Sequence
+                                </FastLink>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setProspectToDelete({
+                                    id: prospect.id,
+                                    name: prospect.name || "Prospect",
+                                  })
+                                }
+                                className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
+                              >
+                                <Trash className="mr-2 h-3.5 w-3.5" />
+                                Delete Prospect
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

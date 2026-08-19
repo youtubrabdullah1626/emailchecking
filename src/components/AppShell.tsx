@@ -50,7 +50,7 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
     }
   }, [stats?.bannerTheme]);
 
-  // 100% Honest "Last Online" Tracker
+  // 100% Honest "Last Online" Tracker (Ultra-lightweight, 0 CPU overhead)
   useEffect(() => {
     let lastTracked = 0;
     const TRACKING_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -62,23 +62,23 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
         fetch("/api/track-activity", { 
           method: "POST", 
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}) // Empty body, backend resolves primary account
+          body: JSON.stringify({})
         }).catch(() => {});
       }
     };
 
-    // Track on initial load
     trackActivity();
 
-    // Track on user interactions (debounced by the if statement above)
-    window.addEventListener("click", trackActivity, { passive: true });
-    window.addEventListener("scroll", trackActivity, { passive: true });
-    window.addEventListener("mousemove", trackActivity, { passive: true });
+    // Throttled lightweight listeners without CPU-heavy mousemove or continuous scroll
+    window.addEventListener("pointerdown", trackActivity, { passive: true });
+    window.addEventListener("keydown", trackActivity, { passive: true });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") trackActivity();
+    }, { passive: true });
 
     return () => {
-      window.removeEventListener("click", trackActivity);
-      window.removeEventListener("scroll", trackActivity);
-      window.removeEventListener("mousemove", trackActivity);
+      window.removeEventListener("pointerdown", trackActivity);
+      window.removeEventListener("keydown", trackActivity);
     };
   }, []);
 
