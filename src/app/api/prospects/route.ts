@@ -135,8 +135,13 @@ export async function GET(request: NextRequest) {
       // Check if sent/contacted
       const hasSentAdhoc = adhocList.some((a) => a.status === "SENT" || a.sent_at != null);
       const hasSentStep = latestSequence?.steps.some((s) => s.status === "SENT" || s.sent_at != null);
+      const allStepsSent = Boolean(latestSequence?.steps && latestSequence.steps.length > 0 && latestSequence.steps.every((s) => s.status === "SENT"));
       const hasTracked = trackedList.length > 0;
       const isContacted = hasSentAdhoc || hasSentStep || hasTracked;
+
+      if (allStepsSent && latestSequence && latestSequence.status !== "STOPPED") {
+        latestSequence.status = "COMPLETED";
+      }
 
       // Compute status
       let computedStatus = p.status;
@@ -147,7 +152,7 @@ export async function GET(request: NextRequest) {
         }
       } else if (latestSequence?.status === "ACTIVE") {
         computedStatus = "ACTIVE";
-      } else if (latestSequence?.status === "COMPLETED") {
+      } else if (latestSequence?.status === "COMPLETED" || allStepsSent) {
         computedStatus = "COMPLETED";
       } else if (latestSequence?.status === "STOPPED") {
         computedStatus = "STOPPED";

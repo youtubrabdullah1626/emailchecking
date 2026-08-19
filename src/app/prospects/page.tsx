@@ -519,10 +519,17 @@ function ProspectsPageContent() {
 
                     let sequenceBadge = null;
                     if (prospect.sequence) {
+                      const allStepsSent = Boolean(prospect.sequence.steps && prospect.sequence.steps.length > 0 && prospect.sequence.steps.every((s) => s.status === "SENT"));
                       if (prospect.status === "REPLIED" || prospect.sequence.status === "STOPPED") {
                         sequenceBadge = (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold text-[10px] border border-slate-200/60">
                             Stopped
+                          </span>
+                        );
+                      } else if (prospect.sequence.status === "COMPLETED" || allStepsSent) {
+                        sequenceBadge = (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold text-[10px] border border-indigo-200/60">
+                            Completed
                           </span>
                         );
                       } else if (prospect.sequence.status === "ACTIVE") {
@@ -530,12 +537,6 @@ function ProspectsPageContent() {
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] border border-emerald-200/60">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             Active
-                          </span>
-                        );
-                      } else if (prospect.sequence.status === "COMPLETED") {
-                        sequenceBadge = (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold text-[10px] border border-indigo-200/60">
-                            Completed
                           </span>
                         );
                       } else if (prospect.sequence.status === "PAUSED") {
@@ -614,7 +615,7 @@ function ProspectsPageContent() {
                           ) : (prospect.isContacted || prospect.sequence?.status === "COMPLETED" || prospect.status === "COMPLETED") ? (
                             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold text-[10px] border border-blue-200/60">
                               <Send className="h-2.5 w-2.5 text-blue-600" />
-                              Contacted
+                              Sent
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-[10px]">
