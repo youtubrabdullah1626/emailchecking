@@ -209,133 +209,109 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
           <TabsTrigger value="profile">Profile Details</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="activity" className="mt-6 space-y-6">
-          <Card className="border border-border/80 shadow-xs rounded-2xl overflow-hidden">
-            <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-border/60 py-4 px-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base font-bold text-slate-900 dark:text-white">
-                    Activity & Outreach Timeline
-                  </CardTitle>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Chronological history of emails, responses, and sequence events for this contact
-                  </p>
-                </div>
-                <Badge variant="outline" className="text-xs font-semibold px-2.5 py-0.5 rounded-full">
-                  {activity.length} {activity.length === 1 ? "Event" : "Events"}
-                </Badge>
+        <TabsContent value="activity" className="mt-6 space-y-4">
+          {/* Header Card */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 shadow-xs flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
+                <Clock className="h-4 w-4" />
               </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4 relative before:absolute before:inset-0 before:left-4.5 before:h-full before:w-[2px] before:bg-slate-200 dark:before:bg-slate-800">
-                {isActivityLoading ? (
-                  <LoadingState message="Loading activity timeline..." />
-                ) : activityError ? (
-                  <ErrorState title="Failed to load activity" message="An error occurred while loading the timeline." />
-                ) : (() => {
-                  const filteredActivity = activity.filter((e: any) => 
-                    ["EMAIL_SENT", "SCHEDULED_EMAIL", "REPLY", "FAILED", "SEQUENCE_STARTED", "ADDED"].includes(e.type)
-                  );
-                  
-                  if (filteredActivity.length === 0) {
-                    return (
-                      <div className="text-center py-12 text-muted-foreground text-xs relative z-10 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 max-w-sm mx-auto p-6">
-                        No activity recorded yet for this prospect.
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  Activity & Outreach History
+                  <span className="text-[11px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                    {activity.length} {activity.length === 1 ? "event" : "events"}
+                  </span>
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Chronological history of emails, replies, and campaign touches
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Minimalist List Container (YouTube / Smart Import Style) */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/80">
+            {isActivityLoading ? (
+              <div className="p-8 text-center text-xs text-slate-400 animate-pulse">Loading timeline...</div>
+            ) : activityError ? (
+              <div className="p-8 text-center text-xs text-red-500">Failed to load activity timeline.</div>
+            ) : (() => {
+              const filteredActivity = activity.filter((e: any) => 
+                ["EMAIL_SENT", "SCHEDULED_EMAIL", "REPLY", "FAILED", "SEQUENCE_STARTED", "ADDED"].includes(e.type)
+              );
+              
+              if (filteredActivity.length === 0) {
+                return (
+                  <div className="p-10 text-center text-xs text-slate-400">
+                    No outreach emails or activity recorded yet for this prospect.
+                  </div>
+                );
+              }
+
+              return filteredActivity.map((event: any) => {
+                const isReply = event.type === "REPLY";
+                const isEmail = event.type === "EMAIL_SENT";
+                const isScheduled = event.type === "SCHEDULED_EMAIL";
+                const isSequence = event.type === "SEQUENCE_STARTED";
+                const isAdded = event.type === "ADDED";
+
+                return (
+                  <div
+                    key={event.id}
+                    className="p-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                  >
+                    {/* Left: Icon & Details */}
+                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                        isReply ? "bg-indigo-50 text-indigo-600 border-indigo-200/60" :
+                        isEmail ? "bg-blue-50 text-blue-600 border-blue-200/60" :
+                        isScheduled ? "bg-purple-50 text-purple-600 border-purple-200/60" :
+                        isSequence ? "bg-emerald-50 text-emerald-600 border-emerald-200/60" :
+                        "bg-slate-100 text-slate-500 border-slate-200/60"
+                      }`}>
+                        {isReply ? <MessageSquare className="h-3.5 w-3.5" /> :
+                         isEmail ? <Mail className="h-3.5 w-3.5" /> :
+                         isScheduled ? <Clock className="h-3.5 w-3.5" /> :
+                         isSequence ? <Play className="h-3.5 w-3.5 fill-current" /> :
+                         <Check className="h-3.5 w-3.5" />}
                       </div>
-                    );
-                  }
 
-                  return filteredActivity.map((event: any) => {
-                    const isReply = event.type === "REPLY";
-                    const isEmail = event.type === "EMAIL_SENT";
-                    const isScheduled = event.type === "SCHEDULED_EMAIL";
-                    const isSequence = event.type === "SEQUENCE_STARTED";
-                    const isAdded = event.type === "ADDED";
-
-                    let iconBg = "bg-slate-100 text-slate-600 border-slate-200";
-                    let badgeLabel = "Event";
-                    let badgeClass = "bg-slate-100 text-slate-700 border-slate-200";
-
-                    if (isReply) {
-                      iconBg = "bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 border-indigo-200/80";
-                      badgeLabel = "Reply Received";
-                      badgeClass = "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200/60 font-bold";
-                    } else if (isEmail) {
-                      iconBg = "bg-blue-50 dark:bg-blue-950/80 text-blue-600 border-blue-200/80";
-                      badgeLabel = event.isManual ? "Manual Email" : (event.subtitle || "Email Sent");
-                      badgeClass = "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200/60";
-                    } else if (isScheduled) {
-                      iconBg = "bg-purple-50 dark:bg-purple-950/80 text-purple-600 border-purple-200/80";
-                      badgeLabel = "Scheduled Follow-up";
-                      badgeClass = "bg-purple-50 text-purple-700 border-purple-200";
-                    } else if (isSequence) {
-                      iconBg = "bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 border-emerald-200/80";
-                      badgeLabel = "Sequence Enrolled";
-                      badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                    } else if (isAdded) {
-                      iconBg = "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200";
-                      badgeLabel = "Lead Created";
-                      badgeClass = "bg-slate-100 text-slate-600 border-slate-200";
-                    }
-
-                    return (
-                      <div key={event.id} className="relative flex items-start gap-4 group">
-                        {/* Clean Node Icon */}
-                        <div className={`flex items-center justify-center w-9 h-9 rounded-xl border shrink-0 z-10 shadow-xs ${iconBg}`}>
-                          {isReply ? (
-                            <MessageSquare className="h-4 w-4" />
-                          ) : isEmail ? (
-                            <Mail className="h-4 w-4" />
-                          ) : isScheduled ? (
-                            <Clock className="h-4 w-4" />
-                          ) : isSequence ? (
-                            <Play className="h-4 w-4 fill-current" />
-                          ) : (
-                            <Check className="h-4 w-4" />
-                          )}
-                        </div>
-
-                        {/* Clean Content Card */}
-                        <div className="flex-1 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <Badge variant="outline" className={`text-[10px] px-2 py-0.5 rounded-full ${badgeClass}`}>
-                                {badgeLabel}
-                              </Badge>
-                              {event.isManual && !isEmail && (
-                                <span className="text-[10px] font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                                  Manual
-                                </span>
-                              )}
-                            </div>
-                            
-                            <div className="flex items-center text-[11px] text-slate-400 gap-1.5" suppressHydrationWarning>
-                              <span className="font-medium text-slate-500 dark:text-slate-400">
-                                {formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}
-                              </span>
-                              <span>•</span>
-                              <span>{format(new Date(event.createdAt), "MMM d, yyyy, h:mm a")}</span>
-                            </div>
-                          </div>
-
-                          {/* Subject / Title */}
-                          <div className="text-xs font-semibold text-slate-900 dark:text-white">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
                             {event.title || event.description}
-                          </div>
+                          </span>
+                          <Badge variant="outline" className={`text-[9px] px-1.5 py-0 rounded-full font-bold shrink-0 ${
+                            isReply ? "bg-indigo-50 text-indigo-700 border-indigo-200/60" :
+                            isEmail ? "bg-blue-50 text-blue-700 border-blue-200/60" :
+                            isScheduled ? "bg-purple-50 text-purple-700 border-purple-200/60" :
+                            isSequence ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" :
+                            "bg-slate-100 text-slate-600 border-slate-200/60"
+                          }`}>
+                            {isReply ? "REPLY" : isEmail ? (event.isManual ? "MANUAL EMAIL" : "EMAIL SENT") : isScheduled ? "SCHEDULED" : isSequence ? "SEQUENCE" : "CREATED"}
+                          </Badge>
+                        </div>
 
-                          {/* Body preview */}
-                          {event.bodyPreview && (
-                            <div className="mt-2 text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200/60 dark:border-slate-800/80 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-wrap">
-                              {event.bodyPreview}
-                            </div>
-                          )}
+                        <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400 mt-0.5 truncate">
+                          <span suppressHydrationWarning>{formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}</span>
+                          <span>•</span>
+                          <span className="truncate max-w-md text-slate-500 dark:text-slate-400">
+                            {event.bodyPreview ? `"${event.bodyPreview.replace(/\n/g, " ").trim()}"` : event.description}
+                          </span>
                         </div>
                       </div>
-                    );
-                  })})()}
-              </div>
-            </CardContent>
-          </Card>
+                    </div>
+
+                    {/* Right: Exact Timestamp */}
+                    <div className="text-[11px] text-slate-400 shrink-0 self-end sm:self-center" suppressHydrationWarning>
+                      {format(new Date(event.createdAt), "MMM d, yyyy, h:mm a")}
+                    </div>
+                  </div>
+                );
+              })
+            })()}
+          </div>
         </TabsContent>
         
         <TabsContent value="sequence" className="mt-6">
