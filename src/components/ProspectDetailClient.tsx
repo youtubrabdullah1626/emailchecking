@@ -23,6 +23,7 @@ import { ArrowLeft, Mail, Building, Globe, Clock, Plus, Loader2 } from "lucide-r
 
 import { AnimatedPage } from "@/components/ui/animated";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -198,118 +199,129 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
         </TabsList>
         
         <TabsContent value="activity" className="mt-6 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Recent Activity</CardTitle>
+          <Card className="border border-border/80 shadow-xs rounded-2xl overflow-hidden">
+            <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-border/60 py-4 px-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base font-bold text-slate-900 dark:text-white">
+                    Activity & Outreach Timeline
+                  </CardTitle>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Chronological history of emails, responses, and sequence events for this contact
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                  {activity.length} {activity.length === 1 ? "Event" : "Events"}
+                </Badge>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
+            <CardContent className="p-6">
+              <div className="space-y-4 relative before:absolute before:inset-0 before:left-4.5 before:h-full before:w-[2px] before:bg-slate-200 dark:before:bg-slate-800">
                 {isActivityLoading ? (
                   <LoadingState message="Loading activity timeline..." />
                 ) : activityError ? (
                   <ErrorState title="Failed to load activity" message="An error occurred while loading the timeline." />
                 ) : (() => {
                   const filteredActivity = activity.filter((e: any) => 
-                    ["EMAIL_SENT", "SCHEDULED_EMAIL", "REPLY", "FAILED", "SEQUENCE_STARTED"].includes(e.type)
+                    ["EMAIL_SENT", "SCHEDULED_EMAIL", "REPLY", "FAILED", "SEQUENCE_STARTED", "ADDED"].includes(e.type)
                   );
                   
                   if (filteredActivity.length === 0) {
                     return (
-                      <div className="text-center py-8 text-muted-foreground text-sm relative z-10 bg-card rounded-xl border border-border shadow-sm max-w-sm mx-auto">
-                        No emails sent yet
+                      <div className="text-center py-12 text-muted-foreground text-xs relative z-10 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 max-w-sm mx-auto p-6">
+                        No activity recorded yet for this prospect.
                       </div>
                     );
                   }
 
-                  return filteredActivity.map((event: any, index: number) => {
-                    let Icon = Plus;
-                  let iconColor = "text-primary";
-                  let badgeStatus = "none";
-                  let bgVariant = "bg-primary/10";
-                  
-                  if (event.type === "EMAIL_SENT") {
-                    Icon = Check;
-                    iconColor = "text-green-500";
-                    badgeStatus = "completed";
-                    bgVariant = "bg-green-500/10";
-                  } else if (event.type === "FAILED") {
-                    Icon = X;
-                    iconColor = "text-destructive";
-                    badgeStatus = "error";
-                    bgVariant = "bg-destructive/10";
-                  } else if (event.type === "REPLY") {
-                    Icon = MessageSquare;
-                    iconColor = "text-orange-500";
-                    badgeStatus = "completed";
-                    bgVariant = "bg-orange-500/10";
-                  } else if (event.type === "SEQUENCE_STARTED") {
-                    Icon = Play;
-                    iconColor = "text-blue-500";
-                    badgeStatus = "active";
-                    bgVariant = "bg-blue-500/10";
-                  } else if (event.type === "SCHEDULED_EMAIL") {
-                    Icon = Clock;
-                    iconColor = "text-purple-500";
-                    badgeStatus = "pending";
-                    bgVariant = "bg-purple-500/10";
-                  }
+                  return filteredActivity.map((event: any) => {
+                    const isReply = event.type === "REPLY";
+                    const isEmail = event.type === "EMAIL_SENT";
+                    const isScheduled = event.type === "SCHEDULED_EMAIL";
+                    const isSequence = event.type === "SEQUENCE_STARTED";
+                    const isAdded = event.type === "ADDED";
 
-                  return (
-                    <div key={event.id} className="relative flex items-start gap-4 group is-active">
-                      {/* Solid bg-card wrapper to hide the vertical line, then colored background */}
-                      <div className="flex items-center justify-center w-10 h-10 rounded-full border border-border shrink-0 shadow-sm z-10 bg-card p-[2px]">
-                        <div className={`flex items-center justify-center w-full h-full rounded-full ${bgVariant}`}>
-                          <Icon className={`h-4 w-4 ${iconColor}`} />
+                    let iconBg = "bg-slate-100 text-slate-600 border-slate-200";
+                    let badgeLabel = "Event";
+                    let badgeClass = "bg-slate-100 text-slate-700 border-slate-200";
+
+                    if (isReply) {
+                      iconBg = "bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 border-indigo-200/80";
+                      badgeLabel = "Reply Received";
+                      badgeClass = "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200/60 font-bold";
+                    } else if (isEmail) {
+                      iconBg = "bg-blue-50 dark:bg-blue-950/80 text-blue-600 border-blue-200/80";
+                      badgeLabel = event.isManual ? "Manual Email" : (event.subtitle || "Email Sent");
+                      badgeClass = "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200/60";
+                    } else if (isScheduled) {
+                      iconBg = "bg-purple-50 dark:bg-purple-950/80 text-purple-600 border-purple-200/80";
+                      badgeLabel = "Scheduled Follow-up";
+                      badgeClass = "bg-purple-50 text-purple-700 border-purple-200";
+                    } else if (isSequence) {
+                      iconBg = "bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 border-emerald-200/80";
+                      badgeLabel = "Sequence Enrolled";
+                      badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                    } else if (isAdded) {
+                      iconBg = "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200";
+                      badgeLabel = "Lead Created";
+                      badgeClass = "bg-slate-100 text-slate-600 border-slate-200";
+                    }
+
+                    return (
+                      <div key={event.id} className="relative flex items-start gap-4 group">
+                        {/* Clean Node Icon */}
+                        <div className={`flex items-center justify-center w-9 h-9 rounded-xl border shrink-0 z-10 shadow-xs ${iconBg}`}>
+                          {isReply ? (
+                            <MessageSquare className="h-4 w-4" />
+                          ) : isEmail ? (
+                            <Mail className="h-4 w-4" />
+                          ) : isScheduled ? (
+                            <Clock className="h-4 w-4" />
+                          ) : isSequence ? (
+                            <Play className="h-4 w-4 fill-current" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
                         </div>
-                      </div>
-                      <div className="flex-1 p-4 rounded-xl border border-border bg-card shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                          <div className="flex items-center gap-3">
-                            <StatusBadge status={badgeStatus as any} label={event.type.replace("_", " ")} />
-                            {event.isManual && (
-                              <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                                Manual Email
+
+                        {/* Clean Content Card */}
+                        <div className="flex-1 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="outline" className={`text-[10px] px-2 py-0.5 rounded-full ${badgeClass}`}>
+                                {badgeLabel}
+                              </Badge>
+                              {event.isManual && !isEmail && (
+                                <span className="text-[10px] font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                  Manual
+                                </span>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center text-[11px] text-slate-400 gap-1.5">
+                              <span className="font-medium text-slate-500 dark:text-slate-400">
+                                {formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}
                               </span>
-                            )}
+                              <span>•</span>
+                              <span>{format(new Date(event.createdAt), "MMM d, yyyy, h:mm a")}</span>
+                            </div>
                           </div>
-                          
-                          <div className="flex items-center">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="text-xs font-medium text-muted-foreground whitespace-nowrap cursor-help">
-                                    {event.type === "SCHEDULED_EMAIL" ? "Scheduled for " : ""}
-                                    {formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{format(new Date(event.createdAt), "MMM d, yyyy h:mm a")}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                            <span className="hidden sm:inline-block text-xs text-muted-foreground/40 mx-2">•</span>
-                            <span className="hidden sm:inline-block text-xs font-medium text-muted-foreground whitespace-nowrap">
-                              {format(new Date(event.createdAt), "MMM d, yyyy h:mm a")}
-                            </span>
-                          </div>
-                        </div>
 
-                        {event.type.includes("EMAIL") ? (
-                          <div className="mt-2 space-y-2">
-                            <h4 className="text-sm font-semibold text-foreground">{event.description}</h4>
-                            {event.bodyPreview && (
-                              <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border border-border/50 line-clamp-3 whitespace-pre-wrap font-mono text-[13px]">
-                                {event.bodyPreview}
-                              </div>
-                            )}
+                          {/* Subject / Title */}
+                          <div className="text-xs font-semibold text-slate-900 dark:text-white">
+                            {event.title || event.description}
                           </div>
-                        ) : (
-                          <p className="text-sm text-foreground mt-2 font-medium">{event.description}</p>
-                        )}
+
+                          {/* Body preview */}
+                          {event.bodyPreview && (
+                            <div className="mt-2 text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200/60 dark:border-slate-800/80 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-wrap">
+                              {event.bodyPreview}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })})()}
+                    );
+                  })})()}
               </div>
             </CardContent>
           </Card>
