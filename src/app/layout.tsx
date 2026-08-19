@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppShell } from "@/components/AppShell";
+import { GlobalResilienceProvider } from "@/components/providers/GlobalResilienceProvider";
 import { Toaster } from "@/components/ui/sonner";
 import NextTopLoader from 'nextjs-toploader';
 import { getSession } from "@/lib/auth/session";
@@ -58,7 +59,9 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning data-theme={bannerTheme}>
         <NextTopLoader color="#4F46E5" showSpinner={false} speed={200} />
-        <AppShell fallbackHeaderStats={fallbackHeaderStats}>{children}</AppShell>
+        <GlobalResilienceProvider>
+          <AppShell fallbackHeaderStats={fallbackHeaderStats}>{children}</AppShell>
+        </GlobalResilienceProvider>
         <Toaster />
       </body>
     </html>
