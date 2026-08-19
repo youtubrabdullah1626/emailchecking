@@ -193,7 +193,7 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
                 <Globe className="h-4 w-4" />
                 {prospect.timezone || "UTC"}
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5" suppressHydrationWarning>
                 <Clock className="h-4 w-4" />
                 Added {formatDistanceToNow(new Date(prospect.created_at), { addSuffix: true })}
               </div>
@@ -309,7 +309,7 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
                               )}
                             </div>
                             
-                            <div className="flex items-center text-[11px] text-slate-400 gap-1.5">
+                            <div className="flex items-center text-[11px] text-slate-400 gap-1.5" suppressHydrationWarning>
                               <span className="font-medium text-slate-500 dark:text-slate-400">
                                 {formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}
                               </span>

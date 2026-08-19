@@ -36,9 +36,7 @@ export async function GET(
         reply_classifications: {
           orderBy: { classified_at: "desc" }
         },
-        adhoc_emails: {
-          orderBy: { created_at: "desc" }
-        }
+        adhoc_emails: true
       }
     });
 
@@ -113,7 +111,7 @@ export async function GET(
           bodyPreview: email.body,
           isManual: true,
           status: email.status,
-          createdAt: email.status === "PENDING" && email.scheduled_at ? email.scheduled_at : (email.sent_at || email.scheduled_at || email.created_at || new Date())
+          createdAt: email.status === "PENDING" && email.scheduled_at ? email.scheduled_at : (email.sent_at || email.scheduled_at || new Date())
         });
       });
     }
