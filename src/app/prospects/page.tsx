@@ -24,8 +24,8 @@ import {
   Send,
   MessageSquareReply,
   PlayCircle,
-  Clock,
   ArrowUpRight,
+  User,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -300,7 +300,7 @@ function ProspectsPageContent() {
                     </TooltipTrigger>
                     <TooltipContent side="right" align="center" className="max-w-xs p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl z-50 text-xs">
                       <p className="font-semibold text-slate-900 dark:text-white mb-1">
-                        Prospect Lead Dossier
+                        Prospect Directory
                       </p>
                       <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
                         Manage your outreach contacts, track email lifecycle status, and launch sequences.
@@ -672,8 +672,8 @@ function ProspectsPageContent() {
                               <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-lg">
                                 <DropdownMenuItem asChild>
                                   <FastLink href={`/prospects/${prospect.id}`} className="cursor-pointer">
-                                    <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                                    View Dossier
+                                    <User className="mr-2 h-3.5 w-3.5" />
+                                    View Profile
                                   </FastLink>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>
