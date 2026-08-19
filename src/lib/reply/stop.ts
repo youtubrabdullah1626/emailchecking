@@ -57,140 +57,162 @@ export async function applyReplyStop(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // ── 1. Lock sequence and steps to prevent race conditions (scheduler) ──
-      // By locking the sequence, we ensure no concurrent update to its status.
-      // By locking its pending steps, we block the scheduler from claiming them.
-      try {
-        if (typeof tx.$executeRaw === "function") {
-          await tx.$executeRaw`SELECT id FROM sequences WHERE id = ${sequenceId} FOR UPDATE`;
-          await tx.$executeRaw`SELECT id FROM sequence_steps WHERE sequence_id = ${sequenceId} AND status IN ('PENDING', 'PROCESSING') FOR UPDATE`;
-        }
-      } catch {}
-
-      const sequence = await tx.sequence.findUnique({
-        where: { id: sequenceId },
-        select: {
-          status: true,
-          steps: {
-            where: { status: { in: CANCELLABLE_STATUSES } },
-            select: { id: true, status: true },
-          },
-        },
-      });
-
-      if (!sequence) {
-        throw new Error(`Sequence ${sequenceId} not found.`);
-      }
-
-      // (Idempotency guard removed: we want to process new replies even if the sequence is COMPLETED or STOPPED. Duplicate messages are prevented by the unique gmail_message_id constraint in step 6.)
-
-      const cancellableSteps = sequence.steps;
+      let resolvedProspectId = prospectId;
       const now = new Date();
+      let stepsCancelledCount = 0;
 
-      // ── 3. Cancel PENDING and PROCESSING steps ────────────────────────────
-      if (cancellableSteps.length > 0) {
-        await tx.sequenceStep.updateMany({
+      // ── 0. Fallback lookup for prospect by email if prospectId is empty ──
+      if (!resolvedProspectId && classification.fromEmail) {
+        const foundProspect = await tx.prospect.findFirst({
           where: {
-            id: { in: cancellableSteps.map((s: { id: string }) => s.id) },
-            status: { in: CANCELLABLE_STATUSES },
+            email: { equals: classification.fromEmail, mode: "insensitive" }
           },
-          data: { status: "CANCELLED" },
+          select: { id: true }
         });
-
-        // Create EmailEvent CANCELLED records for audit trail
-        await tx.emailEvent.createMany({
-          data: cancellableSteps.map((step: { id: string }) => ({
-            sequence_step_id: step.id,
-            event_type: "CANCELLED" as const,
-            occurred_at: now,
-            metadata: {
-              reason: "real_reply_received",
-              gmail_thread_id: classification.gmailThreadId,
-              gmail_message_id: classification.gmailMessageId,
-            },
-          })),
-        });
-
-        replyLog("sequence_steps_cancelled", {
-          sequenceId,
-          prospectId,
-          stepsCancelled: cancellableSteps.length,
-          gmailThreadId: classification.gmailThreadId,
-        });
+        if (foundProspect) {
+          resolvedProspectId = foundProspect.id;
+        }
       }
 
-      // ── 4. Stop the sequence ──────────────────────────────────────────────
-      await tx.sequence.update({
-        where: { id: sequenceId },
-        data: {
-          status: "STOPPED",
-          stopped_at: now,
-        },
-      });
+      // ── 1. If sequenceId provided, lock and cancel pending steps ──
+      if (sequenceId) {
+        try {
+          if (typeof tx.$executeRaw === "function") {
+            await tx.$executeRaw`SELECT id FROM sequences WHERE id = ${sequenceId} FOR UPDATE`;
+            await tx.$executeRaw`SELECT id FROM sequence_steps WHERE sequence_id = ${sequenceId} AND status IN ('PENDING', 'PROCESSING') FOR UPDATE`;
+          }
+        } catch {}
 
-      // ── 5. Mark the prospect as REPLIED ───────────────────────────────────
-      await tx.prospect.update({
-        where: { id: prospectId },
-        data: { status: "REPLIED" },
-      });
+        const sequence = await tx.sequence.findUnique({
+          where: { id: sequenceId },
+          select: {
+            status: true,
+            prospect_id: true,
+            steps: {
+              where: { status: { in: CANCELLABLE_STATUSES } },
+              select: { id: true, status: true },
+            },
+          },
+        });
 
-      // ── 6. Record the reply classification ───────────────────────────────
-      await tx.replyClassification.create({
-        data: {
-          prospect_id: prospectId,
-          gmail_thread_id: classification.gmailThreadId,
-          gmail_message_id: classification.gmailMessageId,
-          reply_type: "REAL_REPLY",
-          raw_snippet: classification.snippet || null,
-          classified_at: now,
-        },
-      });
+        if (sequence) {
+          if (!resolvedProspectId && sequence.prospect_id) {
+            resolvedProspectId = sequence.prospect_id;
+          }
 
-      // ── 7. Record immutable AuditLog event ────────────────────────────────
-      const prospectInfo = await tx.prospect.findUnique({
-        where: { id: prospectId },
-        select: { email: true, name: true, company: true },
-      });
+          const cancellableSteps = sequence.steps;
+          stepsCancelledCount = cancellableSteps.length;
+
+          if (cancellableSteps.length > 0) {
+            await tx.sequenceStep.updateMany({
+              where: {
+                id: { in: cancellableSteps.map((s: { id: string }) => s.id) },
+                status: { in: CANCELLABLE_STATUSES },
+              },
+              data: { status: "CANCELLED" },
+            });
+
+            await tx.emailEvent.createMany({
+              data: cancellableSteps.map((step: { id: string }) => ({
+                sequence_step_id: step.id,
+                event_type: "CANCELLED" as const,
+                occurred_at: now,
+                metadata: {
+                  reason: "real_reply_received",
+                  gmail_thread_id: classification.gmailThreadId,
+                  gmail_message_id: classification.gmailMessageId,
+                },
+              })),
+            });
+          }
+
+          await tx.sequence.update({
+            where: { id: sequenceId },
+            data: {
+              status: "STOPPED",
+              stopped_at: now,
+            },
+          });
+        }
+      }
+
+      // ── 2. Mark the prospect as REPLIED ───────────────────────────────────
+      if (resolvedProspectId) {
+        await tx.prospect.update({
+          where: { id: resolvedProspectId },
+          data: { status: "REPLIED" },
+        }).catch(() => {});
+
+        // ── 3. Record the reply classification ───────────────────────────────
+        await tx.replyClassification.upsert({
+          where: { gmail_message_id: classification.gmailMessageId },
+          create: {
+            prospect_id: resolvedProspectId,
+            gmail_thread_id: classification.gmailThreadId,
+            gmail_message_id: classification.gmailMessageId,
+            reply_type: "REAL_REPLY",
+            raw_snippet: classification.snippet || null,
+            classified_at: now,
+          },
+          update: {
+            reply_type: "REAL_REPLY",
+            raw_snippet: classification.snippet || null,
+          }
+        }).catch(() => {});
+      }
+
+      // ── 4. Record immutable AuditLog event ────────────────────────────────
+      const prospectInfo = resolvedProspectId
+        ? await tx.prospect.findUnique({
+            where: { id: resolvedProspectId },
+            select: { email: true, name: true, company: true },
+          })
+        : null;
 
       await tx.auditLog.create({
         data: {
           action_type: "SYSTEM_ACTION",
           action: "PROSPECT_REPLIED_SEQUENCE_STOPPED",
-          prospect_id: prospectId,
-          sequence_id: sequenceId,
+          prospect_id: resolvedProspectId || null,
+          sequence_id: sequenceId || null,
           metadata: {
             gmail_thread_id: classification.gmailThreadId,
             gmail_message_id: classification.gmailMessageId,
             reply_type: classification.replyType,
-            steps_cancelled: cancellableSteps.length,
+            steps_cancelled: stepsCancelledCount,
             prospect_email: prospectInfo?.email ?? classification.fromEmail,
           },
         },
-      });
+      }).catch(() => {});
 
       replyLog("reply_processing_completed", {
         sequenceId,
-        prospectId,
+        prospectId: resolvedProspectId,
         gmailThreadId: classification.gmailThreadId,
         gmailMessageId: classification.gmailMessageId,
-        stepsCancelled: cancellableSteps.length,
+        stepsCancelled: stepsCancelledCount,
         outcome: "REAL_REPLY",
       });
 
       return {
-        sequenceId,
-        prospectId,
+        sequenceId: sequenceId || "",
+        prospectId: resolvedProspectId || "",
         prospectEmail: prospectInfo?.email ?? classification.fromEmail,
         prospectName: prospectInfo?.name ?? "",
         company: prospectInfo?.company ?? "",
-        stepsCancelled: cancellableSteps.length,
+        stepsCancelled: stepsCancelledCount,
         stateUpdated: true,
         classificationRecorded: true,
       };
     }, { timeout: 25000, maxWait: 10000 });
 
-    // ── 7.5 Ingest REPLIED event to Tracking Engine ────────────────────────
-    await emailTrackingService.ingestEventByProviderThreadId(classification.gmailThreadId, "REPLIED").catch(() => {});
+    // ── 5. Ingest REPLIED event to Tracking Engine with fallback to email ──
+    await emailTrackingService.ingestEventByProviderThreadId(
+      classification.gmailThreadId,
+      "REPLIED",
+      undefined,
+      classification.fromEmail
+    ).catch(() => {});
 
     // ── 8. Dispatch to CRM Adapter Layer (non-blocking for DB atomicity) ────
     try {

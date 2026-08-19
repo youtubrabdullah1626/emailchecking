@@ -247,26 +247,6 @@ async function scanThread(
     prospectName,
   });
 
-  // Check if sequence is already stopped (pre-scan idempotency check)
-  try {
-    const seq = await prisma.sequence.findUnique({
-      where: { id: sequenceId },
-      select: { status: true },
-    });
-    if (seq && seq.status === "STOPPED") {
-      return {
-        sequenceId,
-        prospectId,
-        prospectName,
-        gmailThreadId,
-        outcome: "ALREADY_STOPPED",
-        detail: `Sequence is already ${seq.status} — skipped.`,
-      };
-    }
-  } catch {
-    // Non-fatal — proceed with scan
-  }
-
   // Fetch the Gmail thread using the correct account's auth
   let gmailMessages: InboundMessage[];
   try {
@@ -441,9 +421,12 @@ async function scanThread(
  * for per-account OAuth client selection.
  */
 async function loadActiveThreads(): Promise<ActiveThread[]> {
+  const threads: ActiveThread[] = [];
+  const seenThreadIds = new Set<string>();
+
+  // 1. Sequences (Active, Completed, or Stopped)
   const sequences = await prisma.sequence.findMany({
     where: {
-      status: { in: ["ACTIVE", "COMPLETED"] },
       steps: {
         some: { gmail_thread_id: { not: null } },
       },
@@ -467,13 +450,7 @@ async function loadActiveThreads(): Promise<ActiveThread[]> {
     },
   });
 
-  const threads: ActiveThread[] = [];
-
   for (const s of sequences) {
-    // BUG FIX: Collect ALL unique thread IDs — not just steps[0]
-    // Multiple steps may share the same thread (follow-ups) or have distinct
-    // thread IDs (rare). Deduplicating ensures we check each unique thread once.
-    const seenThreadIds = new Set<string>();
     const ourMessageIds = new Set(
       s.steps.map((step) => step.gmail_message_id).filter((id): id is string => id !== null)
     );
@@ -494,6 +471,85 @@ async function loadActiveThreads(): Promise<ActiveThread[]> {
         ourMessageIds,
       });
     }
+  }
+
+  // 2. Adhoc Emails (Manual sends from Prospect view)
+  const adhocEmails = await prisma.adhocEmail.findMany({
+    where: {
+      gmail_thread_id: { not: null },
+    },
+    take: 200,
+    orderBy: { sent_at: "desc" },
+  });
+
+  const adhocProspectIds = adhocEmails.map((a) => a.prospect_id);
+  const adhocProspects = await prisma.prospect.findMany({
+    where: { id: { in: adhocProspectIds } },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      user_id: true,
+    },
+  });
+  const adhocProspectMap = new Map(adhocProspects.map((p) => [p.id, p]));
+
+  for (const adhoc of adhocEmails) {
+    const tid = adhoc.gmail_thread_id!;
+    if (seenThreadIds.has(tid)) continue;
+    seenThreadIds.add(tid);
+
+    const p = adhocProspectMap.get(adhoc.prospect_id);
+    const ourMessageIds = new Set<string>();
+    if (adhoc.gmail_message_id) ourMessageIds.add(adhoc.gmail_message_id);
+
+    threads.push({
+      gmailThreadId: tid,
+      sequenceId: "",
+      prospectId: p?.id || adhoc.prospect_id,
+      prospectName: p?.name || "",
+      prospectEmail: p?.email || "",
+      userId: p?.user_id || "",
+      assignedSenderEmail: null,
+      ourMessageIds,
+    });
+  }
+
+  // 3. Tracked Emails (Catch-all for any thread tracked in the system)
+  const trackedEmails = await prisma.trackedEmail.findMany({
+    where: {
+      provider_thread_id: { not: null },
+    },
+    select: {
+      id: true,
+      provider_thread_id: true,
+      provider_message_id: true,
+      recipient_email: true,
+      sender_email: true,
+      user_id: true,
+    },
+    take: 200,
+    orderBy: { created_at: "desc" },
+  });
+
+  for (const tracked of trackedEmails) {
+    const tid = tracked.provider_thread_id!;
+    if (seenThreadIds.has(tid)) continue;
+    seenThreadIds.add(tid);
+
+    const ourMessageIds = new Set<string>();
+    if (tracked.provider_message_id) ourMessageIds.add(tracked.provider_message_id);
+
+    threads.push({
+      gmailThreadId: tid,
+      sequenceId: "",
+      prospectId: "",
+      prospectName: "",
+      prospectEmail: tracked.recipient_email,
+      userId: tracked.user_id || "",
+      assignedSenderEmail: tracked.sender_email,
+      ourMessageIds,
+    });
   }
 
   return threads;

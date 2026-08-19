@@ -167,16 +167,28 @@ export class EmailTrackingService {
   public async ingestEventByProviderThreadId(
     providerThreadId: string, 
     eventType: TrackingEventType,
-    metadata?: any
+    metadata?: any,
+    recipientEmail?: string
   ): Promise<void> {
-    // Find all tracked emails associated with this thread
+    const whereOr: any[] = [];
+    if (providerThreadId) {
+      whereOr.push({ provider_thread_id: providerThreadId });
+      whereOr.push({ provider_message_id: providerThreadId });
+    }
+    if (recipientEmail) {
+      whereOr.push({ recipient_email: { equals: recipientEmail, mode: "insensitive" } });
+    }
+
+    if (whereOr.length === 0) return;
+
+    // Find all tracked emails associated with this thread / recipient
     const trackedEmails = await prisma.trackedEmail.findMany({
-      where: { provider_thread_id: providerThreadId },
+      where: { OR: whereOr },
       select: { id: true }
     });
     
     // Ingest the event for all associated tracked emails
-    // A single reply means the whole conversation (all outbound emails in thread) is replied to.
+    // A single reply means the whole conversation is marked as replied.
     for (const email of trackedEmails) {
       await this.ingestEvent(email.id, eventType, metadata);
     }

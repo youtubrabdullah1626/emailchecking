@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
         sequence_id: true,
         step_number: true,
         status: true,
+        sent_at: true,
         sequence: {
           select: {
             id: true,
@@ -123,12 +124,11 @@ export async function POST(req: NextRequest) {
     for (const step of sequenceSteps) {
       const prospectEmail = step.sequence?.prospect?.email?.toLowerCase();
       const prospectStatus = step.sequence?.prospect?.status;
-      const isReplied = prospectStatus === "REPLIED";
-      
       const tracking = trackingByStepId.get(step.id) || (prospectEmail ? trackingByEmail.get(prospectEmail) : null);
+      const isReplied = prospectStatus === "REPLIED" || tracking?.status === "REPLIED" || Boolean(tracking?.replied_at);
       
       let stepStatus = isReplied ? "REPLIED" : (tracking?.status || step.status);
-      if (step.status === "CANCELLED" && isReplied) {
+      if (step.status === "CANCELLED" && step.sent_at == null) {
         stepStatus = "CANCELLED";
       }
 

@@ -106,6 +106,32 @@ export async function GET(req: NextRequest) {
 
     const stepMap = new Map<string, any>(sequenceSteps.map((s) => [s.id, s]));
 
+    // Query replied prospects and reply classifications for all recipients in view
+    const recipientEmails = Array.from(new Set(trackedEmails.map((t) => t.recipient_email.toLowerCase())));
+    const threadIds = Array.from(new Set(trackedEmails.map((t) => t.provider_thread_id).filter((id): id is string => Boolean(id))));
+
+    const [repliedProspects, classifications] = await Promise.all([
+      prisma.prospect.findMany({
+        where: {
+          email: { in: recipientEmails, mode: "insensitive" },
+          status: "REPLIED",
+        },
+        select: { email: true, created_at: true },
+      }),
+      threadIds.length > 0
+        ? prisma.replyClassification.findMany({
+            where: {
+              gmail_thread_id: { in: threadIds },
+              reply_type: "REAL_REPLY",
+            },
+            select: { gmail_thread_id: true, classified_at: true },
+          })
+        : [],
+    ]);
+
+    const repliedEmailMap = new Map(repliedProspects.map((p) => [p.email.toLowerCase(), p.created_at]));
+    const threadReplyMap = new Map(classifications.map((c) => [c.gmail_thread_id, c.classified_at]));
+
     // 3. Build Normalized Timeline Email Items
     const items: TimelineEmailItem[] = trackedEmails.map((tracked) => {
       const step = tracked.source_id ? stepMap.get(tracked.source_id) : undefined;
@@ -116,19 +142,24 @@ export async function GET(req: NextRequest) {
       const sentAt = step?.sent_at || createdAt;
       const firstOpenedAt = tracked.first_opened_at;
       const lastOpenedAt = tracked.last_opened_at;
-      const repliedAt = tracked.replied_at;
       const bouncedAt = tracked.bounced_at;
+
+      const recipientLower = tracked.recipient_email.toLowerCase();
+      const threadReplyTime = tracked.provider_thread_id ? threadReplyMap.get(tracked.provider_thread_id) : null;
+      const prospectReplyTime = repliedEmailMap.get(recipientLower);
+
+      const effectiveRepliedAt = tracked.replied_at || threadReplyTime || prospectReplyTime || null;
 
       const hasSent = Boolean(sentAt);
       const isOpened = tracked.open_count > 0 || Boolean(firstOpenedAt) || tracked.status === "OPENED";
-      const isReplied = Boolean(repliedAt) || tracked.status === "REPLIED";
+      const isReplied = Boolean(effectiveRepliedAt) || tracked.status === "REPLIED" || prospect?.status === "REPLIED";
       const isClicked = tracked.click_count > 0 || tracked.status === "CLICKED";
       const isBounced = Boolean(bouncedAt) || tracked.status === "BOUNCED";
 
       // Latency computations
       const dispatchLatencyMs = (sentAt && scheduledAt) ? Math.max(0, sentAt.getTime() - scheduledAt.getTime()) : null;
       const openLatencyMs = (firstOpenedAt && sentAt) ? Math.max(0, firstOpenedAt.getTime() - sentAt.getTime()) : null;
-      const replyLatencyMs = (repliedAt && sentAt) ? Math.max(0, repliedAt.getTime() - sentAt.getTime()) : null;
+      const replyLatencyMs = (effectiveRepliedAt && sentAt) ? Math.max(0, effectiveRepliedAt.getTime() - sentAt.getTime()) : null;
 
       let overallStatus: TimelineEmailItem["overallStatus"] = "SENT";
       if (isReplied) overallStatus = "REPLIED";
@@ -189,7 +220,7 @@ export async function GET(req: NextRequest) {
           },
           replied: {
             status: isReplied ? "COMPLETED" : "PENDING",
-            at: repliedAt ? repliedAt.toISOString() : null,
+            at: effectiveRepliedAt ? effectiveRepliedAt.toISOString() : null,
             latencyMs: replyLatencyMs
           }
         },
