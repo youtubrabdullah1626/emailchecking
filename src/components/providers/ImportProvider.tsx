@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode } from "react";
+import { toast } from "sonner";
 import { ImportRecord, ImportSummary, ImportStatus, ParsedFileResult } from "@/lib/import/ImportService";
 import { getImportService } from "@/lib/import/RealImportService";
 
@@ -594,10 +595,9 @@ export function ImportProvider({ children }: { children: ReactNode }) {
 
       // ── PHASE 3: Mark complete ────────────────────────────────────────────────
       progress.isComplete = true;
-      setBulkProgress({ ...progress });
       perfMonitor.endPhase("handoffTimeMs");
 
-      // Save checkpoint and redirect after a short success delay
+      // Save checkpoint for live execution state
       if (sessionId) {
         await recoveryEngine.saveCheckpoint("EXECUTION_STARTED", {
           status: "EXECUTING",
@@ -606,9 +606,12 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         setSessionId(null);
       }
 
-      setTimeout(() => {
-        window.location.href = `/prospects?source=smart_import`;
-      }, 2500);
+      setBulkProgress(null);
+      setStatus("EXECUTING");
+      toast.success("Campaign launched successfully!", {
+        description: `${progress.successCount || totalRows} contacts saved and sequences scheduled.`,
+        duration: 5000,
+      });
 
     } catch (error: any) {
       console.error("[approveImport] Failed:", error);

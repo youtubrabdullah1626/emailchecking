@@ -13,7 +13,6 @@ import { SchedulingPreviewWorkspace } from "@/components/smart-import/Scheduling
 import { ImportHistoryWorkspace } from "@/components/smart-import/ImportHistoryWorkspace";
 import { EnterpriseDiagnosticsPanel } from "@/components/smart-import/EnterpriseDiagnosticsPanel";
 import { LiveExecutionDashboard } from "@/components/smart-import/LiveExecutionDashboard";
-import { BulkImportProgress } from "@/components/smart-import/BulkImportProgress";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Check } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -168,12 +167,9 @@ Return only the CSV content with the required headers. No markdown, explanations
         <SchedulingPreviewWorkspace />
       )}
 
-      {/* Live Execution Dashboard — only shown post-handoff when queue is live */}
-      {(status === "EXECUTING" || status === "COMPLETED") && (
-        <>
-          <BulkImportProgress />
-          {!bulkProgress && <LiveExecutionDashboard />}
-        </>
+      {/* Live Execution Dashboard — shown directly when campaign is launched */}
+      {status === "EXECUTING" && (
+        <LiveExecutionDashboard />
       )}
 
     </div>
