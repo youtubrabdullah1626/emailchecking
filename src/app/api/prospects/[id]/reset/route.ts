@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth/session";
 
+type RouteContext = { params: Promise<{ id: string }> | { id: string } };
+
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteContext
 ) {
   // ── Auth Guard — fail closed ──────────────────────────────────────────────
   const session = await getSession();
@@ -13,7 +15,8 @@ export async function DELETE(
   }
 
   try {
-    const prospectId = params.id;
+    const resolvedParams = await Promise.resolve(params);
+    const prospectId = resolvedParams.id;
 
     if (!prospectId) {
       return NextResponse.json({ error: "Prospect ID required" }, { status: 400 });

@@ -4,9 +4,11 @@ import { getSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
+type RouteContext = { params: Promise<{ id: string }> | { id: string } };
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteContext
 ) {
   const session = await getSession();
   if (!session?.user) {
@@ -14,8 +16,11 @@ export async function GET(
   }
 
   try {
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
+
     const prospect = await (prisma as any).prospect.findUnique({
-      where: { id: params.id, user_id: session.user.id },
+      where: { id, user_id: session.user.id },
       include: {
         sequences: {
           orderBy: { created_at: "desc" },
