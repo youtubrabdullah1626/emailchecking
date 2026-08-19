@@ -110,14 +110,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Dispatch immediately in background
-    sendSingleAdhocEmail(adhocEmail.id).catch((err) => {
-      console.error("[BACKGROUND_ADHOC_SEND_ERROR]", err);
-    });
+    // Dispatch immediately and report real delivery status
+    const result = await sendSingleAdhocEmail(adhocEmail.id);
+    if (!result.success) {
+      return NextResponse.json(
+        { ok: false, error: "SEND_FAILED", detail: result.error || "Failed to send email" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       ok: true,
-      messageId: adhocEmail.id,
+      messageId: result.messageId || adhocEmail.id,
       status: "SENT"
     });
   } catch (err: any) {

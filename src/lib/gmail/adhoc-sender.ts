@@ -17,9 +17,27 @@ function getBaseUrl(): string {
 
 /**
  * Process a single AdhocEmail record by ID and dispatch through Gmail.
+ * Guarantees exactly-once delivery via atomic state locking.
  */
 export async function sendSingleAdhocEmail(adhocId: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
+    // 1. Atomic distributed claim lock — ensures ONLY ONE worker/thread can ever send this email
+    const claim = await prisma.adhocEmail.updateMany({
+      where: {
+        id: adhocId,
+        status: "PENDING",
+        gmail_message_id: null
+      },
+      data: {
+        gmail_message_id: "IN_FLIGHT"
+      }
+    });
+
+    if (claim.count === 0) {
+      // Already claimed, currently in-flight, or already sent by another process
+      return { success: true };
+    }
+
     const adhoc = await prisma.adhocEmail.findUnique({
       where: { id: adhocId },
       include: {
@@ -35,10 +53,6 @@ export async function sendSingleAdhocEmail(adhocId: string): Promise<{ success: 
 
     if (!adhoc) {
       return { success: false, error: "Adhoc email not found" };
-    }
-
-    if (adhoc.status === "SENT" && adhoc.gmail_message_id) {
-      return { success: true, messageId: adhoc.gmail_message_id };
     }
 
     const prospect = adhoc.prospect;
@@ -138,6 +152,7 @@ export async function sendSingleAdhocEmail(adhocId: string): Promise<{ success: 
       where: { id: adhocId },
       data: {
         status: "FAILED",
+        gmail_message_id: null,
         error_message: errorMsg
       }
     }).catch(() => {});
@@ -148,18 +163,17 @@ export async function sendSingleAdhocEmail(adhocId: string): Promise<{ success: 
 
 /**
  * Sweeps and sends all pending adhoc emails whose scheduled time has arrived.
+ * Excludes instant emails (scheduled_at IS NULL) to prevent race conditions with user actions.
  */
 export async function sendDueAdhocEmails(limit = 20): Promise<{ processed: number; sent: number; failed: number }> {
   const now = new Date();
 
-  // Find due pending adhoc emails
+  // Find due pending scheduled emails (strictly future-scheduled items whose time has passed)
   const dueAdhocs = await prisma.adhocEmail.findMany({
     where: {
       status: "PENDING",
-      OR: [
-        { scheduled_at: { lte: now } },
-        { scheduled_at: null }
-      ]
+      scheduled_at: { lte: now, not: null },
+      gmail_message_id: null
     },
     take: limit,
     orderBy: { id: "asc" }

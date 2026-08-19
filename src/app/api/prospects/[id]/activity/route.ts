@@ -14,11 +14,6 @@ export async function GET(
   }
 
   try {
-    // Proactively dispatch any due scheduled adhoc emails in background
-    import("@/lib/gmail/adhoc-sender").then(({ sendDueAdhocEmails }) => {
-      sendDueAdhocEmails(10).catch(() => {});
-    }).catch(() => {});
-
     const prospect = await (prisma as any).prospect.findUnique({
       where: { id: params.id, user_id: session.user.id },
       include: {
