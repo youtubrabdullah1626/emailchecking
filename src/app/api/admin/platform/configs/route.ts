@@ -6,11 +6,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { platformConfigService } from "@/lib/platform/platform-config.service";
 import { getPlatformSessionUser } from "@/lib/platform/platform.rbac";
+import { ensurePageLockFlags } from "@/lib/platform/page-lock";
 
 export async function GET(req: NextRequest) {
   try {
     const actor = await getPlatformSessionUser();
     if (!actor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    // Auto-ensure page lock configs exist in database
+    await ensurePageLockFlags();
 
     const searchParams = req.nextUrl.searchParams;
     const params = {

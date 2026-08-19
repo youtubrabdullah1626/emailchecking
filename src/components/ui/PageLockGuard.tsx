@@ -68,13 +68,12 @@ export async function PageLockGuard({
 
           {/* Heading */}
           <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground">
-            We will launch this page shortly with a boom! 💥
+            {access.heading}
           </h1>
 
           {/* Description */}
           <p className="text-sm md:text-base text-muted-foreground leading-relaxed max-w-md mx-auto">
-            {customMessage ||
-              `We are crafting powerful new capabilities and optimizations for ${access.moduleName || moduleName || "this section"}. Stay tuned!`}
+            {customMessage || access.subtext}
           </p>
         </div>
 

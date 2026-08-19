@@ -31,6 +31,10 @@ function getInfoText(key: string): string | undefined {
       return "Example: If set to 'GMAIL', the system routes all outgoing sequence emails through the native Gmail API rather than SMTP.";
     case "BANNER_THEME":
       return "Example: Change this to GREEN on Independence Day or RED on Diwali to dynamically tint the background of the executive banner across all users' dashboards.";
+    case "PAGE_LOCK_HEADING":
+      return "Customize the big headline text displayed on all locked pages (e.g. 'We will launch this page shortly with a boom! 💥').";
+    case "PAGE_LOCK_SUBTEXT":
+      return "Customize the subtitle message displayed below the headline on locked pages.";
     default:
       return undefined;
   }
