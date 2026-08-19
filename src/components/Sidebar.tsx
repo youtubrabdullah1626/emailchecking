@@ -61,10 +61,9 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
     { name: "Smart Import", href: "/smart-import", icon: FileUp, lockKey: "PAGE_LOCK_SMART_IMPORT" },
     { name: "Timeline Inspector", href: "/timeline", icon: Clock, lockKey: "PAGE_LOCK_TIMELINE" },
     { name: "Replies", href: "/replies", icon: MessageSquareReply, lockKey: "PAGE_LOCK_REPLIES" },
-    { name: "Settings", href: "/settings", icon: Settings, lockKey: null },
   ];
 
-  // Smart Sorting: Active unlocked items stay at top, locked items move down to the bottom right above Settings
+  // Smart Sorting: Active unlocked items stay at top, locked items move down to the bottom
   const activeItems = baseNavigation.filter(
     (item) => !item.lockKey || !lockedKeys.includes(item.lockKey)
   );
@@ -72,13 +71,9 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
     (item) => item.lockKey && lockedKeys.includes(item.lockKey)
   );
 
-  const settingsItem = activeItems.find((i) => i.name === "Settings");
-  const topActiveItems = activeItems.filter((i) => i.name !== "Settings");
-
   const mainNavigation = [
-    ...topActiveItems,
+    ...activeItems,
     ...lockedItems,
-    ...(settingsItem ? [settingsItem] : []),
   ];
 
   const adminNavigation = [
