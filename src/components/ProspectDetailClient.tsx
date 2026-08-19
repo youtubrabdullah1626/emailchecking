@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useTransition } from "react";
+import React, { useState, useCallback, useTransition, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Prospect } from "@prisma/client";
@@ -54,8 +54,15 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
   
   const activity = activityData?.activity || [];
 
-  const isReplied = prospect.status === "REPLIED" || activity.some((a: any) => a.type === "REPLY");
-  const isSent = activity.some((a: any) => a.type === "EMAIL_SENT") || prospect.status === "COMPLETED";
+  // Determine chronological state between latest sent email and latest reply
+  const sortedActivity = useMemo(() => {
+    return [...activity].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [activity]);
+
+  const latestCommunication = sortedActivity.find((a: any) => a.type === "REPLY" || a.type === "EMAIL_SENT");
+  const isReplied = latestCommunication ? latestCommunication.type === "REPLY" : prospect.status === "REPLIED";
+  const hasSentAnyEmail = activity.some((a: any) => a.type === "EMAIL_SENT") || (prospect as any).isContacted || prospect.status === "COMPLETED";
+  const isSent = hasSentAnyEmail && !isReplied && (!sequence || sequence.status !== "ACTIVE");
   const isActive = Boolean(sequence && sequence.status === "ACTIVE" && !isReplied);
 
   return (

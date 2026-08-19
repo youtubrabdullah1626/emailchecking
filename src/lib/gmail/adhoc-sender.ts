@@ -143,6 +143,14 @@ export async function sendSingleAdhocEmail(adhocId: string): Promise<{ success: 
       }
     });
 
+    // If prospect was previously marked REPLIED, reset to ACTIVE since a new email was sent
+    if (prospect.status === "REPLIED") {
+      await prisma.prospect.update({
+        where: { id: prospect.id },
+        data: { status: "ACTIVE" }
+      }).catch(() => {});
+    }
+
     return { success: true, messageId: gmailMessageId || undefined };
   } catch (err: any) {
     const errorMsg = err instanceof Error ? err.message : String(err);

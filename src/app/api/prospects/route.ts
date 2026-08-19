@@ -119,39 +119,74 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const replyClassificationSet = new Set(replyClassifications.map((r) => r.prospect_id));
+    const replyByProspect = new Map<string, typeof replyClassifications>();
+    for (const r of replyClassifications) {
+      const list = replyByProspect.get(r.prospect_id) || [];
+      list.push(r);
+      replyByProspect.set(r.prospect_id, list);
+    }
 
-    // Build enriched prospects
+    // Build enriched prospects with accurate chronological state machine
     const prospects = rawProspects.map((p) => {
       const latestSequence = p.sequences[0] || null;
       const adhocList = adhocByProspect.get(p.id) || [];
       const trackedList = trackedByEmail.get(p.email.toLowerCase()) || [];
-      const hasReplyClassification = replyClassificationSet.has(p.id);
+      const classifiedReplies = replyByProspect.get(p.id) || [];
 
-      // Check if sent/contacted
+      // 1. Calculate latest sent email timestamp
+      let latestSentTime: number | null = null;
+      for (const a of adhocList) {
+        if (a.status === "SENT" || a.sent_at != null) {
+          const t = a.sent_at ? new Date(a.sent_at).getTime() : 0;
+          if (t && (!latestSentTime || t > latestSentTime)) latestSentTime = t;
+        }
+      }
+      for (const s of latestSequence?.steps || []) {
+        if (s.status === "SENT" || s.sent_at != null) {
+          const t = s.sent_at ? new Date(s.sent_at).getTime() : 0;
+          if (t && (!latestSentTime || t > latestSentTime)) latestSentTime = t;
+        }
+      }
+
       const hasSentAdhoc = adhocList.some((a) => a.status === "SENT" || a.sent_at != null);
       const hasSentStep = latestSequence?.steps.some((s) => s.status === "SENT" || s.sent_at != null);
       const allStepsSent = Boolean(latestSequence?.steps && latestSequence.steps.length > 0 && latestSequence.steps.every((s) => s.status === "SENT"));
-      const isContacted = hasSentAdhoc || hasSentStep;
+      const isContacted = hasSentAdhoc || hasSentStep || latestSentTime !== null;
 
-      // Check if replied (only valid if contacted or explicit reply classification exists)
-      const hasRepliedTracked = trackedList.some((t) => t.status === "REPLIED" || t.replied_at != null);
-      const isReplied = hasReplyClassification || (isContacted && (hasRepliedTracked || p.status === "REPLIED"));
+      // 2. Calculate latest reply timestamp
+      let latestReplyTime: number | null = null;
+      for (const r of classifiedReplies) {
+        const t = r.classified_at ? new Date(r.classified_at).getTime() : 0;
+        if (t && (!latestReplyTime || t > latestReplyTime)) latestReplyTime = t;
+      }
+      if (isContacted) {
+        for (const t of trackedList) {
+          if (t.status === "REPLIED" || t.replied_at != null) {
+            const time = t.replied_at ? new Date(t.replied_at).getTime() : 0;
+            if (time && (!latestReplyTime || time > latestReplyTime)) latestReplyTime = time;
+          }
+        }
+      }
+
+      // 3. Chronological state resolution:
+      // If the latest event is a reply (latestReplyTime > latestSentTime), prospect is REPLIED.
+      // If the latest event is a sent email (latestSentTime >= latestReplyTime), prospect is SENT/ACTIVE!
+      const isReplied = latestReplyTime !== null && (latestSentTime === null || latestReplyTime > latestSentTime);
 
       if (allStepsSent && latestSequence && latestSequence.status !== "STOPPED") {
         latestSequence.status = "COMPLETED";
       }
 
-      // Compute status
+      // 4. Compute status
       let computedStatus = p.status;
       if (isReplied) {
         computedStatus = "REPLIED";
         if (latestSequence && latestSequence.status === "ACTIVE") {
           latestSequence.status = "STOPPED";
         }
-      } else if (latestSequence?.status === "ACTIVE") {
+      } else if (latestSequence?.status === "ACTIVE" && !allStepsSent) {
         computedStatus = "ACTIVE";
-      } else if (latestSequence?.status === "COMPLETED" || allStepsSent) {
+      } else if (isContacted || latestSequence?.status === "COMPLETED" || allStepsSent) {
         computedStatus = "COMPLETED";
       } else if (latestSequence?.status === "STOPPED") {
         computedStatus = "STOPPED";
@@ -174,6 +209,9 @@ export async function GET(request: NextRequest) {
           if (t.last_opened_at) timestamps.push(t.last_opened_at);
           if (t.first_opened_at) timestamps.push(t.first_opened_at);
         }
+      }
+      for (const r of classifiedReplies) {
+        if (r.classified_at) timestamps.push(r.classified_at);
       }
 
       let latestActivity = p.created_at;
