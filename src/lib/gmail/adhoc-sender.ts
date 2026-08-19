@@ -168,6 +168,19 @@ export async function sendSingleAdhocEmail(adhocId: string): Promise<{ success: 
 export async function sendDueAdhocEmails(limit = 20): Promise<{ processed: number; sent: number; failed: number }> {
   const now = new Date();
 
+  // Auto-recover any stale IN_FLIGHT adhoc records older than 5 minutes (in case of server restart mid-send)
+  const staleThreshold = new Date(Date.now() - 5 * 60 * 1000);
+  await prisma.adhocEmail.updateMany({
+    where: {
+      status: "PENDING",
+      gmail_message_id: "IN_FLIGHT",
+      scheduled_at: { lte: staleThreshold, not: null }
+    },
+    data: {
+      gmail_message_id: null
+    }
+  }).catch(() => {});
+
   // Find due pending scheduled emails (strictly future-scheduled items whose time has passed)
   const dueAdhocs = await prisma.adhocEmail.findMany({
     where: {

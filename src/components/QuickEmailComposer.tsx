@@ -63,6 +63,8 @@ export function QuickEmailComposer({
   };
 
   const handleSend = async () => {
+    if (isSending) return;
+
     if (!subject.trim() || !body.trim()) {
       toast.error("Subject and body are required");
       return;
