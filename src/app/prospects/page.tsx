@@ -498,12 +498,11 @@ function ProspectsPageContent() {
             <Table>
               <TableHeader className="bg-slate-50/90 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-[11px] uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
                 <TableRow>
-                  <TableHead className="w-[300px] py-3 px-4">Prospect</TableHead>
-                  <TableHead className="w-[180px] py-3 px-3">Company</TableHead>
-                  <TableHead className="w-[140px] py-3 px-3">Source</TableHead>
-                  <TableHead className="w-[140px] py-3 px-3">Status</TableHead>
+                  <TableHead className="w-[320px] py-3 px-4">Prospect</TableHead>
+                  <TableHead className="w-[200px] py-3 px-3">Company</TableHead>
+                  <TableHead className="w-[150px] py-3 px-3">Status</TableHead>
                   <TableHead className="w-[160px] py-3 px-3">Sequence</TableHead>
-                  <TableHead className="w-[140px] py-3 px-3">Last Activity</TableHead>
+                  <TableHead className="w-[180px] py-3 px-3">Last Activity</TableHead>
                   <TableHead className="text-right w-[80px] py-3 px-4">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -586,18 +585,6 @@ function ProspectsPageContent() {
                         {/* Company */}
                         <TableCell className="py-3 px-3 text-xs text-slate-600 dark:text-slate-300">
                           <HighlightMatch text={cleanCompany} query={search} />
-                        </TableCell>
-
-                        {/* Source */}
-                        <TableCell className="py-3 px-3">
-                          {prospect.campaign || prospect.source === "SMART_IMPORT" ? (
-                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 text-indigo-600 dark:text-indigo-400 text-[10px] font-semibold">
-                              <Sparkles className="h-3 w-3" />
-                              Smart Import
-                            </div>
-                          ) : (
-                            <span className="text-slate-400 text-xs font-medium">Manual</span>
-                          )}
                         </TableCell>
 
                         {/* Status */}
