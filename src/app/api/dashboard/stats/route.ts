@@ -505,6 +505,16 @@ export async function GET(req: NextRequest) {
       totalFleetDailyLimit = dailyLimitConfig?.value ? parseInt(String(dailyLimitConfig.value), 10) : 50;
     }
 
+    // Query currently locked modules from feature flags
+    const lockFlags = await prisma.feature_flags.findMany({
+      where: {
+        key: { startsWith: "PAGE_LOCK_" },
+        enabled: true,
+      },
+      select: { key: true },
+    }).catch(() => []);
+    const lockedModules = lockFlags.map((f) => f.key);
+
     return NextResponse.json({
       activeSequences,
       emailsSentToday,
@@ -548,6 +558,7 @@ export async function GET(req: NextRequest) {
       emailsSentThisHour: emailsSentThisHour ?? 0,
       bannerTheme: bannerThemeConfig?.value ? String(bannerThemeConfig.value) : "DEFAULT",
       userTimezone,
+      lockedModules,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to load dashboard metrics";

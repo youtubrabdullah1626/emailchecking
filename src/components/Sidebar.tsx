@@ -23,7 +23,8 @@ import {
   Database,
   MessageSquareHeart,
   Sparkles,
-  Clock
+  Clock,
+  Lock
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 
@@ -51,14 +52,33 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
     if (onNavigate) onNavigate();
   };
 
+  const lockedKeys: string[] = summary?.lockedModules || [];
+
+  const baseNavigation = [
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, lockKey: null },
+    { name: "Prospects", href: "/prospects", icon: Users, lockKey: "PAGE_LOCK_PROSPECTS" },
+    { name: "Sequences", href: "/sequences", icon: Activity, lockKey: "PAGE_LOCK_SEQUENCES" },
+    { name: "Smart Import", href: "/smart-import", icon: FileUp, lockKey: "PAGE_LOCK_SMART_IMPORT" },
+    { name: "Timeline Inspector", href: "/timeline", icon: Clock, lockKey: "PAGE_LOCK_TIMELINE" },
+    { name: "Replies", href: "/replies", icon: MessageSquareReply, lockKey: "PAGE_LOCK_REPLIES" },
+    { name: "Settings", href: "/settings", icon: Settings, lockKey: null },
+  ];
+
+  // Smart Sorting: Active unlocked items stay at top, locked items move down to the bottom right above Settings
+  const activeItems = baseNavigation.filter(
+    (item) => !item.lockKey || !lockedKeys.includes(item.lockKey)
+  );
+  const lockedItems = baseNavigation.filter(
+    (item) => item.lockKey && lockedKeys.includes(item.lockKey)
+  );
+
+  const settingsItem = activeItems.find((i) => i.name === "Settings");
+  const topActiveItems = activeItems.filter((i) => i.name !== "Settings");
+
   const mainNavigation = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Prospects", href: "/prospects", icon: Users },
-    { name: "Sequences", href: "/sequences", icon: Activity },
-    { name: "Smart Import", href: "/smart-import", icon: FileUp },
-    { name: "Timeline Inspector", href: "/timeline", icon: Clock },
-    { name: "Replies", href: "/replies", icon: MessageSquareReply },
-    { name: "Settings", href: "/settings", icon: Settings },
+    ...topActiveItems,
+    ...lockedItems,
+    ...(settingsItem ? [settingsItem] : []),
   ];
 
   const adminNavigation = [
@@ -100,6 +120,7 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
         <div suppressHydrationWarning className="px-3 pb-2 pt-1">
           <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">Main Menu</h3>
           {mainNavigation.map((item) => {
+            const isLocked = item.lockKey ? lockedKeys.includes(item.lockKey) : false;
             const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
             return (
               <FastLink 
@@ -110,11 +131,19 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
                   "flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-sm font-medium transition-all duration-150 active:scale-[0.98]",
                   isActive 
                     ? "bg-primary/15 text-primary shadow-sm border-r-4 border-primary rounded-r-none font-semibold" 
+                    : isLocked
+                    ? "text-sidebar-foreground/50 hover:bg-sidebar-accent/30 hover:text-sidebar-foreground"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:translate-x-1"
                 )}
               >
-                <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                {item.name}
+                <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : isLocked ? "text-muted-foreground/60" : "text-muted-foreground")} />
+                <span className="flex-1 truncate">{item.name}</span>
+                {isLocked && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground/80 border border-border/40 shrink-0">
+                    <Lock className="h-2.5 w-2.5" />
+                    Soon
+                  </span>
+                )}
               </FastLink>
             );
           })}
