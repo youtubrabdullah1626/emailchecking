@@ -180,6 +180,13 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // Sort prospects by latest activity timestamp descending (most recently sent/active first)
+    prospects.sort((a, b) => {
+      const timeA = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : new Date(a.created_at).getTime();
+      const timeB = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : new Date(b.created_at).getTime();
+      return timeB - timeA;
+    });
+
     const totalPages = Math.ceil(total / limit);
     return NextResponse.json({
       data: prospects,

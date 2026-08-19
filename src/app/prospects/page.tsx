@@ -168,7 +168,15 @@ function ProspectsPageContent() {
     dedupingInterval: 5000,
   });
 
-  const prospects = useMemo(() => data?.data || [], [data?.data]);
+  const prospects = useMemo(() => {
+    const list = [...(data?.data || [])];
+    list.sort((a, b) => {
+      const timeA = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : new Date(a.created_at).getTime();
+      const timeB = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : new Date(b.created_at).getTime();
+      return timeB - timeA;
+    });
+    return list;
+  }, [data?.data]);
 
   // Summary Metrics
   const stats = useMemo(() => {
@@ -622,8 +630,19 @@ function ProspectsPageContent() {
                         </TableCell>
 
                         {/* Last Activity */}
-                        <TableCell className="py-3 px-3 text-xs text-slate-500 dark:text-slate-400">
-                          {lastActivity ? format(new Date(lastActivity), "MMM d, yyyy") : "Never"}
+                        <TableCell className="py-3 px-3">
+                          {lastActivity ? (
+                            <div className="flex flex-col">
+                              <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                                {format(new Date(lastActivity), "MMM d, yyyy")}
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                {formatDistanceToNow(new Date(lastActivity), { addSuffix: true })}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400">Never</span>
+                          )}
                         </TableCell>
 
                         {/* Actions */}
