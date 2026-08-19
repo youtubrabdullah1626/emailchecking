@@ -244,7 +244,7 @@ export function TimelineInspector() {
       {/* 1. Harmonious Enterprise Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
         {/* Total Sent */}
-        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center justify-between">
+        <div className="bg-card border border-border rounded-xl p-4 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Total Sent
@@ -256,13 +256,13 @@ export function TimelineInspector() {
               <span className="text-[11px] text-muted-foreground font-medium">dispatches</span>
             </div>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
             <Send className="h-4 w-4 text-primary" />
           </div>
         </div>
 
         {/* Opened */}
-        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center justify-between">
+        <div className="bg-card border border-border rounded-xl p-4 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Opened
@@ -276,13 +276,13 @@ export function TimelineInspector() {
               </span>
             </div>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
             <Eye className="h-4 w-4 text-blue-500" />
           </div>
         </div>
 
         {/* Replied */}
-        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center justify-between">
+        <div className="bg-card border border-border rounded-xl p-4 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Replied
@@ -296,13 +296,13 @@ export function TimelineInspector() {
               </span>
             </div>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
             <MessageSquareReply className="h-4 w-4 text-emerald-500" />
           </div>
         </div>
 
         {/* Failed */}
-        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center justify-between">
+        <div className="bg-card border border-border rounded-xl p-4 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Failed
@@ -314,13 +314,13 @@ export function TimelineInspector() {
               <span className="text-[11px] text-destructive font-medium">bounces</span>
             </div>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
             <AlertCircle className="h-4 w-4 text-destructive" />
           </div>
         </div>
 
         {/* Avg Delivery Speed */}
-        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs flex items-center justify-between col-span-2 lg:col-span-1">
+        <div className="bg-card border border-border rounded-xl p-4 shadow-xs flex items-center justify-between col-span-2 lg:col-span-1">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Avg Delivery Speed
@@ -329,7 +329,7 @@ export function TimelineInspector() {
               {stats.avgLatencyMs < 1000 ? `+${stats.avgLatencyMs}ms` : `+${(stats.avgLatencyMs / 1000).toFixed(1)}s`}
             </div>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
             <Zap className="h-4 w-4 text-amber-500" />
           </div>
         </div>
@@ -351,7 +351,7 @@ export function TimelineInspector() {
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
             placeholder="Search email, name, subject, or message ID... (Press / to search)"
-            className="w-full pl-10 pr-12 py-2 bg-card border border-border/80 rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-all shadow-2xs h-9"
+            className="w-full pl-10 pr-12 py-2 bg-card border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-all shadow-2xs h-9"
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {localSearch ? (
@@ -363,7 +363,7 @@ export function TimelineInspector() {
                 <X className="h-3.5 w-3.5" />
               </button>
             ) : (
-              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground border border-border/80">
+              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground border border-border">
                 /
               </kbd>
             )}
@@ -372,7 +372,7 @@ export function TimelineInspector() {
 
         {/* Status Category Tabs with Dynamic Item Counters */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="inline-flex bg-secondary p-1 rounded-lg border border-border/80 shadow-2xs text-xs gap-1">
+          <div className="inline-flex bg-secondary p-1 rounded-lg border border-border shadow-2xs text-xs gap-1">
             {(["ALL", "OPENED", "REPLIED", "SENT", "FAILED"] as const).map((tab) => {
               const count = categoryCounts[tab];
               const isActive = statusFilter === tab;
@@ -382,7 +382,7 @@ export function TimelineInspector() {
                   onClick={() => setStatusFilter(tab)}
                   className={`px-3 py-1 rounded-md font-semibold text-xs flex items-center gap-1.5 transition-all ${
                     isActive
-                      ? "bg-card text-foreground shadow-xs border border-border/60 font-bold"
+                      ? "bg-card text-foreground shadow-xs border border-border font-bold"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                   }`}
                 >
@@ -405,7 +405,7 @@ export function TimelineInspector() {
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value)}
-            className="px-2.5 py-1.5 bg-card border border-border/80 rounded-lg text-xs text-foreground focus:outline-none shadow-2xs cursor-pointer h-9"
+            className="px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs text-foreground focus:outline-none shadow-2xs cursor-pointer h-9"
           >
             <option value="all">All Time</option>
             <option value="today">Today</option>
@@ -418,8 +418,8 @@ export function TimelineInspector() {
             onClick={toggleLiveSync}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border shadow-2xs transition-all h-9 ${
               isLiveSync
-                ? "bg-card text-foreground border-border/80 font-bold"
-                : "bg-secondary text-muted-foreground border-border/60"
+                ? "bg-card text-foreground border-border font-bold"
+                : "bg-secondary text-muted-foreground border-border"
             }`}
           >
             <span className={`h-1.5 w-1.5 rounded-full ${isLiveSync ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"}`} />
@@ -430,7 +430,7 @@ export function TimelineInspector() {
           <button
             onClick={refreshNow}
             disabled={isValidating}
-            className="p-2 rounded-lg bg-card border border-border/80 text-muted-foreground hover:text-foreground shadow-2xs transition-all disabled:opacity-50 h-9 w-9 flex items-center justify-center"
+            className="p-2 rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground shadow-2xs transition-all disabled:opacity-50 h-9 w-9 flex items-center justify-center"
             title="Refresh stream"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isValidating ? "animate-spin text-primary" : ""}`} />
@@ -439,7 +439,7 @@ export function TimelineInspector() {
           {/* CSV Export */}
           <button
             onClick={exportToCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-border/80 text-foreground text-xs font-semibold hover:bg-secondary shadow-2xs transition-all h-9"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-semibold hover:bg-secondary shadow-2xs transition-all h-9"
           >
             <Download className="h-3 w-3" />
             <span className="text-[11px]">Export CSV</span>
@@ -448,10 +448,10 @@ export function TimelineInspector() {
       </div>
 
       {/* 3. Professional Spreadsheet Table with Sticky Header */}
-      <div className="bg-card border border-border/80 rounded-xl shadow-xs overflow-hidden">
+      <div className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto max-h-[640px] overflow-y-auto">
           <table className="w-full text-left border-collapse text-xs">
-            <thead className="sticky top-0 z-10 bg-secondary/80 backdrop-blur-xs border-b border-border/80 text-muted-foreground font-semibold text-[11px] uppercase tracking-wider">
+            <thead className="sticky top-0 z-10 bg-secondary/80 backdrop-blur-xs border-b border-border text-muted-foreground font-semibold text-[11px] uppercase tracking-wider">
               <tr>
                 <th className="py-3 px-4 font-semibold">Recipient</th>
                 <th className="py-3 px-3 font-semibold">Sender Account</th>
@@ -469,7 +469,7 @@ export function TimelineInspector() {
                 <th className="py-3 px-4 font-semibold text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody className="divide-y divide-border">
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, idx) => (
                   <tr key={idx} className="animate-pulse">

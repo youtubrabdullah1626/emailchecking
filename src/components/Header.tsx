@@ -120,7 +120,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           <Menu className="h-5 w-5" />
         </Button>
         <div className="hidden lg:flex items-center gap-3">
-          <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/80 bg-secondary/50 shadow-2xs">
+          <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border bg-secondary/50 shadow-2xs">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
@@ -153,7 +153,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               </FastLink>
             ) : accountStats?.connectedGmail ? (
               accountStats.connectionStatus === 'CONNECTED' ? (
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-mono text-xs bg-secondary border border-border/80 text-foreground font-medium">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-mono text-xs bg-secondary border border-border text-foreground font-medium">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   {accountStats.connectedGmail}
                 </span>

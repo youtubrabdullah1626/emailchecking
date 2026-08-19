@@ -26,7 +26,7 @@ export default async function TimelinePage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Dynamic Header Banner */}
-      <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs relative overflow-hidden transition-colors duration-200">
+      <div className="bg-card border border-border rounded-xl p-6 shadow-xs relative overflow-hidden transition-colors duration-200">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 relative z-10">
           <div className="flex items-start sm:items-center gap-4">
             <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
@@ -51,7 +51,7 @@ export default async function TimelinePage() {
 
           {/* Clean Stream Status Badges */}
           <div className="flex items-center gap-2.5 shrink-0 self-start md:self-center">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary border border-border/80 text-xs font-semibold text-foreground shadow-2xs">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary border border-border text-xs font-semibold text-foreground shadow-2xs">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />

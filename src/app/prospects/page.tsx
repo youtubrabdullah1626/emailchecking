@@ -276,7 +276,7 @@ function ProspectsPageContent() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* 1. Dynamic Silaer Signature Header */}
-      <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs relative overflow-hidden transition-colors duration-200">
+      <div className="bg-card border border-border rounded-xl p-6 shadow-xs relative overflow-hidden transition-colors duration-200">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 relative z-10">
           <div className="flex items-start sm:items-center gap-4">
             <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
@@ -293,7 +293,7 @@ function ProspectsPageContent() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="flex items-center justify-center h-5 w-5 rounded-full bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-help border border-border/80"
+                        className="flex items-center justify-center h-5 w-5 rounded-full bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-help border border-border"
                       >
                         <Info className="h-3 w-3" />
                       </button>
@@ -339,7 +339,7 @@ function ProspectsPageContent() {
       {/* 2. Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* Total Prospects */}
-        <div className="bg-card border border-border/80 rounded-xl p-4 sm:p-5 shadow-xs hover:border-border transition-all duration-150 flex items-center justify-between group">
+        <div className="bg-card border border-border rounded-xl p-4 sm:p-5 shadow-xs hover:border-border transition-all duration-150 flex items-center justify-between group">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Total Prospects
@@ -348,13 +348,13 @@ function ProspectsPageContent() {
               {stats.total}
             </div>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
             <Users className="h-4 w-4 text-primary" />
           </div>
         </div>
 
         {/* In Active Sequences */}
-        <div className="bg-card border border-border/80 rounded-xl p-4 sm:p-5 shadow-xs hover:border-border transition-all duration-150 flex items-center justify-between group">
+        <div className="bg-card border border-border rounded-xl p-4 sm:p-5 shadow-xs hover:border-border transition-all duration-150 flex items-center justify-between group">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Active Outreach
@@ -369,13 +369,13 @@ function ProspectsPageContent() {
               </span>
             </div>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
             <PlayCircle className="h-4 w-4 text-emerald-500" />
           </div>
         </div>
 
         {/* Replied */}
-        <div className="bg-card border border-border/80 rounded-xl p-4 sm:p-5 shadow-xs hover:border-border transition-all duration-150 flex items-center justify-between group">
+        <div className="bg-card border border-border rounded-xl p-4 sm:p-5 shadow-xs hover:border-border transition-all duration-150 flex items-center justify-between group">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Replied
@@ -389,13 +389,13 @@ function ProspectsPageContent() {
               </span>
             </div>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
             <MessageSquareReply className="h-4 w-4 text-blue-500" />
           </div>
         </div>
 
         {/* Ready to Outreach */}
-        <div className="bg-card border border-border/80 rounded-xl p-4 sm:p-5 shadow-xs hover:border-border transition-all duration-150 flex items-center justify-between group">
+        <div className="bg-card border border-border rounded-xl p-4 sm:p-5 shadow-xs hover:border-border transition-all duration-150 flex items-center justify-between group">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Ready to Outreach
@@ -404,7 +404,7 @@ function ProspectsPageContent() {
               {stats.notContacted}
             </div>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
             <Send className="h-4 w-4 text-amber-500" />
           </div>
         </div>
@@ -422,7 +422,7 @@ function ProspectsPageContent() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name, email, or company... (Press / to search)"
-            className="w-full pl-10 pr-12 py-2 bg-card border border-border/80 rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-all shadow-2xs h-9"
+            className="w-full pl-10 pr-12 py-2 bg-card border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-all shadow-2xs h-9"
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {search ? (
@@ -433,7 +433,7 @@ function ProspectsPageContent() {
                 <X className="h-3.5 w-3.5" />
               </button>
             ) : (
-              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground border border-border/80">
+              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground border border-border">
                 /
               </kbd>
             )}
@@ -441,7 +441,7 @@ function ProspectsPageContent() {
         </div>
 
         {/* Filter Tabs with Live Item Counts */}
-        <div className="inline-flex bg-secondary p-1 rounded-lg border border-border/80 shadow-2xs text-xs gap-1">
+        <div className="inline-flex bg-secondary p-1 rounded-lg border border-border shadow-2xs text-xs gap-1">
           {[
             { key: "ALL", label: "All", count: stats.total },
             { key: "ACTIVE", label: "Active", count: stats.active },
@@ -455,7 +455,7 @@ function ProspectsPageContent() {
                 onClick={() => setStatusFilter(tab.key as any)}
                 className={`px-3 py-1 rounded-md font-semibold text-xs flex items-center gap-1.5 transition-all ${
                   isActive
-                    ? "bg-card text-foreground shadow-xs border border-border/60 font-bold"
+                    ? "bg-card text-foreground shadow-xs border border-border font-bold"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                 }`}
               >
@@ -477,14 +477,14 @@ function ProspectsPageContent() {
 
       {/* 4. Table */}
       {isLoading && prospects.length === 0 ? (
-        <div className="bg-card border border-border/80 rounded-xl p-4 shadow-xs space-y-3">
+        <div className="bg-card border border-border rounded-xl p-4 shadow-xs space-y-3">
           {Array.from({ length: 5 }).map((_, idx) => (
             <div key={idx} className="h-14 bg-secondary/60 rounded-lg animate-pulse" />
           ))}
         </div>
       ) : filteredProspects.length === 0 ? (
-        <div className="text-center py-16 bg-card rounded-xl border border-border/80 shadow-xs">
-          <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground mx-auto mb-3 border border-border/60">
+        <div className="text-center py-16 bg-card rounded-xl border border-border shadow-xs">
+          <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground mx-auto mb-3 border border-border">
             <Users className="h-5 w-5" />
           </div>
           <h3 className="text-sm font-semibold text-foreground mb-1">
@@ -498,11 +498,11 @@ function ProspectsPageContent() {
           </Button>
         </div>
       ) : (
-        <div className="bg-card border border-border/80 rounded-xl shadow-xs overflow-hidden">
+        <div className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-secondary/50 border-b border-border/80 text-muted-foreground font-semibold text-[11px] uppercase tracking-wider sticky top-0 z-10">
-                <TableRow className="border-border/80 hover:bg-transparent">
+              <TableHeader className="bg-secondary/50 border-b border-border text-muted-foreground font-semibold text-[11px] uppercase tracking-wider sticky top-0 z-10">
+                <TableRow className="border-border hover:bg-transparent">
                   <TableHead className="w-[320px] py-3 px-4 text-muted-foreground">Prospect</TableHead>
                   <TableHead className="w-[200px] py-3 px-3 text-muted-foreground">Company</TableHead>
                   <TableHead className="w-[150px] py-3 px-3 text-muted-foreground">Status</TableHead>
@@ -511,7 +511,7 @@ function ProspectsPageContent() {
                   <TableHead className="text-right w-[80px] py-3 px-4 text-muted-foreground">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-border/60">
+              <TableBody className="divide-y divide-border">
                 <AnimatePresence initial={false}>
                   {filteredProspects.map((prospect) => {
                     const avatarStyle = getAvatarColor(prospect.email || prospect.id);

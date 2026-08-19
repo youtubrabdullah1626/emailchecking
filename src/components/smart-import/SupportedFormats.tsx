@@ -12,20 +12,20 @@ export function SupportedFormats() {
   ];
 
   return (
-    <Card className="border-border shadow-sm">
+    <Card className="border border-border shadow-xs bg-card">
       <CardHeader>
-        <CardTitle className="text-base font-semibold">Supported Formats</CardTitle>
-        <CardDescription>Upload leads directly if they match these formats.</CardDescription>
+        <CardTitle className="text-base font-bold text-foreground">Supported Formats</CardTitle>
+        <CardDescription className="text-xs">Upload leads directly if they match these formats.</CardDescription>
       </CardHeader>
-      <CardContent className="grid grid-cols-2 gap-4">
+      <CardContent className="grid grid-cols-2 gap-3.5">
         {formats.map((f) => (
-          <div key={f.ext} className="flex items-center gap-3 p-3 rounded-md border border-border/50 bg-muted/10">
-            <div className="p-2 bg-background rounded-md shadow-sm border border-border/50 text-muted-foreground">
+          <div key={f.ext} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-secondary/30 hover:border-border hover:bg-secondary/50 transition-all">
+            <div className="p-2 bg-card rounded-md shadow-2xs border border-border text-foreground">
               {f.icon}
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">{f.ext}</span>
-              <span className="text-xs text-muted-foreground">{f.desc}</span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-bold text-foreground">{f.ext}</span>
+              <span className="text-[11px] text-muted-foreground truncate">{f.desc}</span>
             </div>
           </div>
         ))}

@@ -302,12 +302,12 @@ export default function DashboardPage() {
       <AnimatedList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Active Sequences */}
         <AnimatedItem>
-          <div className="relative group rounded-xl border border-border/80 bg-card p-5 shadow-xs hover:border-border transition-all duration-150 flex flex-col justify-between min-h-[140px]">
+          <div className="relative group rounded-xl border border-border bg-card p-5 shadow-xs hover:border-border transition-all duration-150 flex flex-col justify-between min-h-[140px]">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Active Sequences
               </span>
-              <div className="h-8 w-8 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+              <div className="h-8 w-8 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
                 <PlayCircle className="h-4 w-4 text-primary" />
               </div>
             </div>
@@ -322,7 +322,7 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs text-muted-foreground">
+            <div className="flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground">
               <span>{stats?.totalProspects ?? 0} total prospects</span>
               <Link href="/sequences" className="text-primary font-medium hover:underline flex items-center gap-0.5">
                 Manage &rarr;
@@ -333,12 +333,12 @@ export default function DashboardPage() {
 
         {/* Card 2: Emails Sent */}
         <AnimatedItem>
-          <div className="relative group rounded-xl border border-border/80 bg-card p-5 shadow-xs hover:border-border transition-all duration-150 flex flex-col justify-between min-h-[140px]">
+          <div className="relative group rounded-xl border border-border bg-card p-5 shadow-xs hover:border-border transition-all duration-150 flex flex-col justify-between min-h-[140px]">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Emails Sent ({timeframeLabel})
               </span>
-              <div className="h-8 w-8 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+              <div className="h-8 w-8 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
                 <Send className="h-4 w-4 text-primary" />
               </div>
             </div>
@@ -347,12 +347,12 @@ export default function DashboardPage() {
               <div className="text-3xl font-extrabold tracking-tight text-foreground">
                 {loading ? "—" : timeframeStats.sent.toLocaleString()}
               </div>
-              <span className="text-xs font-mono font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-md border border-border/60">
+              <span className="text-xs font-mono font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-md border border-border">
                 Cap: {stats?.dailyLimit ?? 50}/day
               </span>
             </div>
 
-            <div className="pt-2 border-t border-border/40 flex items-center justify-between text-xs text-muted-foreground">
+            <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
               <div className="flex-1 mr-3">
                 <Progress 
                   value={stats ? Math.min(Math.round((stats.emailsSentToday / stats.dailyLimit) * 100), 100) : 0} 
@@ -368,12 +368,12 @@ export default function DashboardPage() {
 
         {/* Card 3: Emails Opened */}
         <AnimatedItem>
-          <div className="relative group rounded-xl border border-border/80 bg-card p-5 shadow-xs hover:border-border transition-all duration-150 flex flex-col justify-between min-h-[140px]">
+          <div className="relative group rounded-xl border border-border bg-card p-5 shadow-xs hover:border-border transition-all duration-150 flex flex-col justify-between min-h-[140px]">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Emails Opened ({timeframeLabel})
               </span>
-              <div className="h-8 w-8 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+              <div className="h-8 w-8 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
                 <Eye className="h-4 w-4 text-blue-500" />
               </div>
             </div>
@@ -387,7 +387,7 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs text-muted-foreground">
+            <div className="flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground">
               <span>Verified open telemetry</span>
               <span className="text-muted-foreground/80 text-[11px] font-mono">
                 {timeframeLabel}
@@ -398,12 +398,12 @@ export default function DashboardPage() {
 
         {/* Card 4: Replies Received */}
         <AnimatedItem>
-          <div className="relative group rounded-xl border border-border/80 bg-card p-5 shadow-xs hover:border-border transition-all duration-150 flex flex-col justify-between min-h-[140px]">
+          <div className="relative group rounded-xl border border-border bg-card p-5 shadow-xs hover:border-border transition-all duration-150 flex flex-col justify-between min-h-[140px]">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Replies Received ({timeframeLabel})
               </span>
-              <div className="h-8 w-8 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+              <div className="h-8 w-8 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
                 <Reply className="h-4 w-4 text-emerald-500" />
               </div>
             </div>
@@ -417,7 +417,7 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs text-muted-foreground">
+            <div className="flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground">
               <span>{stats?.pendingReviews ? `${stats.pendingReviews} pending review` : "Inbox clear"}</span>
               <Link href="/replies" className="text-emerald-600 dark:text-emerald-400 font-medium hover:underline flex items-center gap-0.5">
                 View Inbox &rarr;
@@ -428,8 +428,8 @@ export default function DashboardPage() {
       </AnimatedList>
 
       {/* ── 3. Interactive Outreach Velocity & Performance Chart ── */}
-      <Card className="border-border shadow-xs bg-card overflow-hidden">
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 gap-4 border-b border-border/60">
+      <Card className="border border-border shadow-xs bg-card overflow-hidden">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 gap-4 border-b border-border">
           <div>
             <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-primary" />
@@ -604,8 +604,8 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Conversion Funnel */}
-        <Card className="border-border shadow-xs bg-card flex flex-col justify-between">
-          <CardHeader className="pb-3 border-b border-border/50">
+        <Card className="border border-border shadow-xs bg-card flex flex-col justify-between">
+          <CardHeader className="pb-3 border-b border-border">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
@@ -616,7 +616,7 @@ export default function DashboardPage() {
                   End-to-end prospect progression from cold dispatch to positive meeting response
                 </CardDescription>
               </div>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
                 {stats?.funnel.replyRate ?? 0}% Total Yield
               </span>
             </div>
@@ -676,8 +676,8 @@ export default function DashboardPage() {
         </Card>
 
         {/* Mailbox Deliverability Sentinel & Capacity */}
-        <Card className="border-border shadow-xs bg-card flex flex-col justify-between">
-          <CardHeader className="pb-3 border-b border-border/50">
+        <Card className="border border-border shadow-xs bg-card flex flex-col justify-between">
+          <CardHeader className="pb-3 border-b border-border">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
@@ -689,7 +689,7 @@ export default function DashboardPage() {
                 </CardDescription>
               </div>
               {stats?.userTimezone && (
-                <span className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-muted text-muted-foreground border border-border/60 flex items-center gap-1.5">
+                <span className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-secondary text-muted-foreground border border-border flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   {stats.userTimezone.split("/").pop()?.replace("_", " ")}
                 </span>
@@ -699,19 +699,19 @@ export default function DashboardPage() {
 
           <CardContent className="pt-6 space-y-6 flex-1">
             <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="p-3 rounded-xl bg-muted/40 border border-border/50">
-                <div className="text-[10px] font-medium text-muted-foreground uppercase">Reputation</div>
-                <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">99.4%</div>
+              <div className="p-3 rounded-xl bg-secondary/40 border border-border">
+                <div className="text-[10px] font-semibold text-muted-foreground uppercase">Reputation</div>
+                <div className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">99.4%</div>
                 <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Optimal</div>
               </div>
-              <div className="p-3 rounded-xl bg-muted/40 border border-border/50">
-                <div className="text-[10px] font-medium text-muted-foreground uppercase">SPF / DKIM</div>
-                <div className="text-lg font-bold text-foreground mt-0.5">Verified</div>
+              <div className="p-3 rounded-xl bg-secondary/40 border border-border">
+                <div className="text-[10px] font-semibold text-muted-foreground uppercase">SPF / DKIM</div>
+                <div className="text-lg font-extrabold text-foreground mt-0.5 font-mono">Verified</div>
                 <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Pass 100%</div>
               </div>
-              <div className="p-3 rounded-xl bg-muted/40 border border-border/50">
-                <div className="text-[10px] font-medium text-muted-foreground uppercase">Spam Guard</div>
-                <div className="text-lg font-bold text-foreground mt-0.5">0.0%</div>
+              <div className="p-3 rounded-xl bg-secondary/40 border border-border">
+                <div className="text-[10px] font-semibold text-muted-foreground uppercase">Spam Guard</div>
+                <div className="text-lg font-extrabold text-foreground mt-0.5 font-mono">0.0%</div>
                 <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Protected</div>
               </div>
             </div>
@@ -728,12 +728,12 @@ export default function DashboardPage() {
               </div>
               <Progress 
                 value={stats ? Math.min(Math.round((stats.emailsSentToday / stats.dailyLimit) * 100), 100) : 0} 
-                className="h-2 bg-primary/10 [&>div]:bg-primary"
+                className="h-2 bg-secondary [&>div]:bg-primary"
               />
             </div>
 
             {/* Hourly Pacing Indicator */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/40 text-xs">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 border border-border text-xs">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-primary" />
                 <span>Current Hourly Dispatch: <strong>{stats?.emailsSentThisHour ?? 0} / {stats?.hourlyLimit ?? 15}</strong></span>
@@ -748,8 +748,8 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Top Active Sequences Leaderboard */}
-        <Card className="lg:col-span-2 shadow-xs border-border bg-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border/50">
+        <Card className="lg:col-span-2 shadow-xs border border-border bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border">
             <div>
               <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
                 <Layers className="h-4 w-4 text-primary" />
@@ -767,7 +767,7 @@ export default function DashboardPage() {
           <CardContent className="pt-4">
             {loading ? (
               <div className="space-y-3 py-4">
-                {[1, 2, 3].map(i => <div key={i} className="h-12 bg-muted rounded-xl animate-pulse" />)}
+                {[1, 2, 3].map(i => <div key={i} className="h-12 bg-secondary/60 rounded-xl animate-pulse" />)}
               </div>
             ) : !stats?.topSequences || stats.topSequences.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground text-sm">
@@ -783,10 +783,10 @@ export default function DashboardPage() {
                   <Link
                     key={seq.id}
                     href="/sequences"
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl hover:bg-muted/50 border border-border/40 hover:border-primary/30 transition-all gap-3 group cursor-pointer"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl hover:bg-secondary/60 border border-border hover:border-primary/50 transition-all gap-3 group cursor-pointer"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xs border border-primary/20 shrink-0">
+                      <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-xs border border-primary/20 shrink-0">
                         {seq.prospectName.charAt(0).toUpperCase() || "P"}
                       </div>
                       <div className="min-w-0">
@@ -801,11 +801,11 @@ export default function DashboardPage() {
 
                     <div className="flex items-center gap-4 shrink-0 justify-between sm:justify-end">
                       <div className="text-right">
-                        <div className="text-xs font-semibold text-foreground">
+                        <div className="text-xs font-semibold text-foreground font-mono">
                           Step {seq.completedSteps} of {seq.totalSteps || 1}
                         </div>
                         <div className="w-24 mt-1">
-                          <Progress value={seq.progressPct} className="h-1 bg-muted [&>div]:bg-primary" />
+                          <Progress value={seq.progressPct} className="h-1 bg-secondary [&>div]:bg-primary" />
                         </div>
                       </div>
                       
@@ -814,7 +814,7 @@ export default function DashboardPage() {
                           ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20"
                           : seq.status === "COMPLETED"
                           ? "bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20"
-                          : "bg-secondary text-muted-foreground border border-border/80"
+                          : "bg-secondary text-muted-foreground border border-border"
                       }`}>
                         {seq.status}
                       </span>
@@ -827,8 +827,8 @@ export default function DashboardPage() {
         </Card>
 
         {/* Priority Inbox Feed */}
-        <Card className="shadow-xs border-border bg-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border/50">
+        <Card className="shadow-xs border border-border bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border">
             <div>
               <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
                 <Reply className="h-4 w-4 text-primary" />
@@ -851,7 +851,7 @@ export default function DashboardPage() {
           <CardContent className="pt-4">
             {loading ? (
               <div className="space-y-3 py-4">
-                {[1, 2, 3].map(i => <div key={i} className="h-12 bg-muted rounded-xl animate-pulse" />)}
+                {[1, 2, 3].map(i => <div key={i} className="h-12 bg-secondary/60 rounded-xl animate-pulse" />)}
               </div>
             ) : (() => {
               const visibleReplies = recentReplies.filter(r => {
@@ -878,7 +878,7 @@ export default function DashboardPage() {
                       prefetch={true} 
                       key={reply.id} 
                       href={`/replies?id=${reply.id}`}
-                      className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 border border-border/40 hover:border-primary/30 transition-all cursor-pointer group"
+                      className="flex items-center justify-between p-3 rounded-xl hover:bg-secondary/60 border border-border hover:border-primary/50 transition-all cursor-pointer group"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs border border-primary/20 shrink-0">

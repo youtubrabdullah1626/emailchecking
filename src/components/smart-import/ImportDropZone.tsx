@@ -50,10 +50,10 @@ export function ImportDropZone() {
 
   if (uploadedFile && status === "REVIEW") {
     return (
-      <Card className="border-border shadow-sm bg-muted/5">
+      <Card className="border border-border shadow-xs bg-card">
         <CardContent className="flex items-center justify-between py-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-background rounded-full shadow-sm border border-border/50">
+            <div className="p-3 bg-card rounded-full shadow-2xs border border-border">
               <FileIcon className="h-6 w-6 text-primary" />
             </div>
             <div>
@@ -72,8 +72,8 @@ export function ImportDropZone() {
 
   return (
     <Card 
-      className={`border-2 border-dashed shadow-sm transition-colors ${
-        isDragging ? "border-primary bg-primary/5" : "border-border hover:border-border/80 bg-card"
+      className={`border-2 border-dashed shadow-xs transition-colors ${
+        isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 bg-card"
       }`}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}

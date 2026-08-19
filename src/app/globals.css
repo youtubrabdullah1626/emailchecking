@@ -79,13 +79,13 @@
 
   --background: 210 20% 98%;
   --foreground: 222 47% 11%;
-  --border: 220 13% 88%;
+  --border: 220 13% 80%;
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
-  --card-border: 220 13% 88%;
+  --card-border: 220 13% 80%;
   --sidebar: 0 0% 100%;
   --sidebar-foreground: 222 47% 11%;
-  --sidebar-border: 220 13% 88%;
+  --sidebar-border: 220 13% 80%;
   --sidebar-primary: 142 71% 45%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 142 20% 97%;
@@ -93,7 +93,7 @@
   --sidebar-ring: 142 71% 45%;
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
-  --popover-border: 220 13% 88%;
+  --popover-border: 220 13% 80%;
   --primary: 142 71% 45%;
   --primary-foreground: 0 0% 100%;
   --secondary: 220 14% 96%;
@@ -104,7 +104,7 @@
   --accent-foreground: 142 71% 45%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --input: 220 13% 88%;
+  --input: 220 13% 80%;
   --ring: 142 71% 45%;
   --chart-1: 142 71% 45%;
   --chart-2: 160 84% 39%;
@@ -193,8 +193,8 @@
 }
 
 .dark {
-  --button-outline: rgba(255, 255, 255, 0.12);
-  --badge-outline: rgba(255, 255, 255, 0.08);
+  --button-outline: rgba(255, 255, 255, 0.15);
+  --badge-outline: rgba(255, 255, 255, 0.1);
 
   --opaque-button-border-intensity: 9;
 
@@ -204,27 +204,27 @@
   /* Deep Canvas Background */
   --background: 222 47% 7%;
   --foreground: 210 20% 98%;
-  --border: 220 25% 16%;
+  --border: 220 18% 24%;
   
   /* Elevated Working Surface (Level 1) */
   --card: 222 40% 11%;
   --card-foreground: 210 20% 98%;
-  --card-border: 220 25% 16%;
+  --card-border: 220 18% 24%;
   
   /* Sidebar Surface */
   --sidebar: 222 42% 9%;
   --sidebar-foreground: 210 20% 98%;
-  --sidebar-border: 220 25% 16%;
+  --sidebar-border: 220 18% 24%;
   --sidebar-primary: 142 71% 45%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 220 25% 16%;
+  --sidebar-accent: 220 18% 24%;
   --sidebar-accent-foreground: 210 20% 98%;
   --sidebar-ring: 142 71% 45%;
   
   /* Overlays & Modals (Level 3) */
   --popover: 222 40% 12%;
   --popover-foreground: 210 20% 98%;
-  --popover-border: 220 25% 18%;
+  --popover-border: 220 18% 26%;
   
   --primary: 142 70% 48%;
   --primary-foreground: 0 0% 100%;
@@ -232,11 +232,11 @@
   --secondary-foreground: 210 20% 98%;
   --muted: 220 25% 15%;
   --muted-foreground: 215 16% 65%;
-  --accent: 220 25% 16%;
+  --accent: 220 18% 24%;
   --accent-foreground: 210 20% 98%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --input: 220 25% 16%;
+  --input: 220 18% 24%;
   --ring: 142 70% 48%;
   --chart-1: 142 70% 48%;
   --chart-2: 160 84% 39%;

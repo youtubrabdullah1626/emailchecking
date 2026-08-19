@@ -18,7 +18,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md shadow-sm border border-border/80 rounded-xl bg-card">
+      <Card className="w-full max-w-md shadow-sm border border-border rounded-xl bg-card">
         <CardContent className="p-8 flex flex-col items-center text-center space-y-6">
           {/* Logo */}
           <div className="mb-2 flex items-center justify-center">
@@ -40,11 +40,11 @@ export default function LoginPage() {
           </div>
 
           {/* Sign In Button */}
-          <div className="w-full pt-4 border-t border-border/80 space-y-3">
+          <div className="w-full pt-4 border-t border-border space-y-3">
             <button
               onClick={handleGoogleSignIn}
               disabled={isLoading}
-              className="w-full h-11 flex items-center justify-center gap-3 rounded-lg bg-secondary hover:bg-secondary/80 border border-border/80 text-xs font-semibold text-foreground shadow-2xs active:scale-[0.98] transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full h-11 flex items-center justify-center gap-3 rounded-lg bg-secondary hover:bg-secondary/80 border border-border text-xs font-semibold text-foreground shadow-2xs active:scale-[0.98] transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <svg className="w-4 h-4 animate-spin text-muted-foreground" fill="none" viewBox="0 0 24 24">

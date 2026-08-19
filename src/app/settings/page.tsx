@@ -189,7 +189,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Signature Silaer Header Banner */}
-      <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs relative overflow-hidden transition-colors duration-200">
+      <div className="bg-card border border-border rounded-xl p-6 shadow-xs relative overflow-hidden transition-colors duration-200">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-start sm:items-center gap-4">
             <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
@@ -206,7 +206,7 @@ export default function SettingsPage() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="flex items-center justify-center h-5 w-5 rounded-full bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-help border border-border/80"
+                        className="flex items-center justify-center h-5 w-5 rounded-full bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-help border border-border"
                       >
                         <Info className="h-3 w-3" />
                       </button>
@@ -234,8 +234,8 @@ export default function SettingsPage() {
         <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-8">
           <Tabs defaultValue="profile" className="flex flex-col md:flex-row gap-6">
             <TabsList className="flex flex-col h-auto bg-transparent p-0 space-y-1 md:w-48 lg:w-64">
-              <TabsTrigger value="profile" className="w-full justify-start gap-2 px-3 py-2.5 rounded-lg data-[state=active]:bg-secondary data-[state=active]:text-foreground border border-transparent data-[state=active]:border-border/80 font-medium text-xs"><User className="h-4 w-4" /> Profile & Timezone</TabsTrigger>
-              <TabsTrigger value="gmail" className="w-full justify-start gap-2 px-3 py-2.5 rounded-lg data-[state=active]:bg-secondary data-[state=active]:text-foreground border border-transparent data-[state=active]:border-border/80 font-medium text-xs"><Mail className="h-4 w-4" /> Gmail Integration</TabsTrigger>
+              <TabsTrigger value="profile" className="w-full justify-start gap-2 px-3 py-2.5 rounded-lg data-[state=active]:bg-secondary data-[state=active]:text-foreground border border-transparent data-[state=active]:border-border font-medium text-xs"><User className="h-4 w-4" /> Profile & Timezone</TabsTrigger>
+              <TabsTrigger value="gmail" className="w-full justify-start gap-2 px-3 py-2.5 rounded-lg data-[state=active]:bg-secondary data-[state=active]:text-foreground border border-transparent data-[state=active]:border-border font-medium text-xs"><Mail className="h-4 w-4" /> Gmail Integration</TabsTrigger>
             </TabsList>
 
               <div className="flex-1 max-w-3xl">

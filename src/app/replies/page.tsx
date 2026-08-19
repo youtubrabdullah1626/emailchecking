@@ -249,7 +249,7 @@ export default function RepliesPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* 1. Dynamic Silaer Signature Header */}
-      <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs relative overflow-hidden transition-colors duration-200">
+      <div className="bg-card border border-border rounded-xl p-6 shadow-xs relative overflow-hidden transition-colors duration-200">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-start sm:items-center gap-4">
             <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
@@ -266,7 +266,7 @@ export default function RepliesPage() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="flex items-center justify-center h-5 w-5 rounded-full bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-help border border-border/80"
+                        className="flex items-center justify-center h-5 w-5 rounded-full bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-help border border-border"
                       >
                         <Info className="h-3 w-3" />
                       </button>
@@ -321,7 +321,7 @@ export default function RepliesPage() {
           className={`bg-card border rounded-xl p-4 shadow-xs flex items-center justify-between cursor-pointer transition-all duration-150 ${
             activeTab === "REAL_REPLY"
               ? "border-emerald-500 ring-2 ring-emerald-500/10 bg-emerald-500/5"
-              : "border-border/80 hover:border-border"
+              : "border-border hover:border-border"
           }`}
         >
           <div>
@@ -335,7 +335,7 @@ export default function RepliesPage() {
               Sequences stopped automatically
             </div>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           </div>
         </div>
@@ -346,7 +346,7 @@ export default function RepliesPage() {
           className={`bg-card border rounded-xl p-4 shadow-xs flex items-center justify-between cursor-pointer transition-all duration-150 ${
             activeTab === "NEEDS_REVIEW"
               ? "border-amber-500 ring-2 ring-amber-500/10 bg-amber-500/5"
-              : "border-border/80 hover:border-border"
+              : "border-border hover:border-border"
           }`}
         >
           <div>
@@ -360,7 +360,7 @@ export default function RepliesPage() {
               Ambiguous replies checked
             </div>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
             <AlertCircle className="h-4 w-4 text-amber-500" />
           </div>
         </div>
@@ -371,7 +371,7 @@ export default function RepliesPage() {
           className={`bg-card border rounded-xl p-4 shadow-xs flex items-center justify-between cursor-pointer transition-all duration-150 ${
             activeTab === "AUTO_REPLY"
               ? "border-primary ring-2 ring-primary/10 bg-primary/5"
-              : "border-border/80 hover:border-border"
+              : "border-border hover:border-border"
           }`}
         >
           <div>
@@ -385,7 +385,7 @@ export default function RepliesPage() {
               Automated responses filtered
             </div>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border/60">
+          <div className="h-9 w-9 rounded-lg bg-secondary text-foreground flex items-center justify-center border border-border">
             <Reply className="h-4 w-4 text-primary" />
           </div>
         </div>
@@ -403,7 +403,7 @@ export default function RepliesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search reply by lead, email, company, or subject... (Press / to search)"
-            className="w-full pl-10 pr-12 py-2 bg-card border border-border/80 rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-all shadow-2xs h-9"
+            className="w-full pl-10 pr-12 py-2 bg-card border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-all shadow-2xs h-9"
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {search ? (
@@ -414,7 +414,7 @@ export default function RepliesPage() {
                 <X className="h-3.5 w-3.5" />
               </button>
             ) : (
-              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground border border-border/80">
+              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground border border-border">
                 /
               </kbd>
             )}
@@ -422,7 +422,7 @@ export default function RepliesPage() {
         </div>
 
         {/* Filter Tabs with Live Item Counts */}
-        <div className="inline-flex bg-secondary p-1 rounded-lg border border-border/80 shadow-2xs text-xs gap-1">
+        <div className="inline-flex bg-secondary p-1 rounded-lg border border-border shadow-2xs text-xs gap-1">
           {[
             { key: "ALL", label: "All", count: replies.length },
             { key: "REAL_REPLY", label: "Real Replies", count: realCount },
@@ -436,7 +436,7 @@ export default function RepliesPage() {
                 onClick={() => setActiveTab(tab.key as any)}
                 className={`px-3 py-1 rounded-md font-semibold text-xs flex items-center gap-1.5 transition-all ${
                   isActive
-                    ? "bg-card text-foreground shadow-xs border border-border/60 font-bold"
+                    ? "bg-card text-foreground shadow-xs border border-border font-bold"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                 }`}
               >
@@ -457,11 +457,11 @@ export default function RepliesPage() {
       </div>
 
       {/* 4. Table */}
-      <div className="bg-card border border-border/80 rounded-xl shadow-xs overflow-hidden">
+      <div className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-secondary/50 border-b border-border/80 text-muted-foreground font-semibold text-[11px] uppercase tracking-wider sticky top-0 z-10">
-              <TableRow className="border-border/80 hover:bg-transparent">
+            <TableHeader className="bg-secondary/50 border-b border-border text-muted-foreground font-semibold text-[11px] uppercase tracking-wider sticky top-0 z-10">
+              <TableRow className="border-border hover:bg-transparent">
                 <TableHead className="w-[300px] py-3 px-4 text-muted-foreground">Prospect</TableHead>
                 <TableHead className="w-[180px] py-3 px-3 text-muted-foreground">Replied After</TableHead>
                 <TableHead className="w-[160px] py-3 px-3 text-muted-foreground">Sentiment & Status</TableHead>
@@ -469,7 +469,7 @@ export default function RepliesPage() {
                 <TableHead className="text-right w-[80px] py-3 px-4 text-muted-foreground">Action</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-border/60">
+            <TableBody className="divide-y divide-border">
               {loading ? (
                 Array.from({ length: 5 }).map((_, idx) => (
                   <TableRow key={idx}>
