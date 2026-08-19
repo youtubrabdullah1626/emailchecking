@@ -4,7 +4,9 @@ import React, { createContext, useContext, useState, ReactNode } from "react";
 import { ImportRecord, ImportSummary, ImportStatus, ParsedFileResult } from "@/lib/import/ImportService";
 import { getImportService } from "@/lib/import/RealImportService";
 
-import { CampaignSequence, SequenceSummaryData } from "@/lib/import/engines/SequenceBuilderEngine";
+import { CampaignSequence, SequenceSummaryData, SequenceBuilderEngine } from "@/lib/import/engines/SequenceBuilderEngine";
+import { SchedulingEngine } from "@/lib/scheduler/SchedulingEngine";
+import { getWarmupService } from "@/lib/warmup/WarmupService";
 
 import { ExecutionQueueItem, QueueSummary } from "@/lib/scheduler/SchedulingTypes";
 import { CampaignConfig } from "@/lib/import/engines/ForecastEngine";
@@ -303,7 +305,6 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     try {
       setCampaignConfig(config);
       setStatus("BUILDING");
-      const { SequenceBuilderEngine } = await import("@/lib/import/engines/SequenceBuilderEngine");
       const builder = new SequenceBuilderEngine();
       
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -347,7 +348,6 @@ export function ImportProvider({ children }: { children: ReactNode }) {
 
       // 2. Build Sequences
       setStatus("BUILDING");
-      const { SequenceBuilderEngine } = await import("@/lib/import/engines/SequenceBuilderEngine");
       const builder = new SequenceBuilderEngine();
       await new Promise(resolve => setTimeout(resolve, 300));
       const seqResult = builder.buildSequences(recordsRef.current);
@@ -355,7 +355,6 @@ export function ImportProvider({ children }: { children: ReactNode }) {
       setSequenceSummary(seqResult.summary);
 
       // 3. Fetch Warmup Data
-      const { getWarmupService } = await import("@/lib/warmup/WarmupService");
       const warmupService = getWarmupService();
       const [wSettings, wStatus] = await Promise.all([
         warmupService.getSettings(),
@@ -379,7 +378,6 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     perfMonitor.startPhase();
     try {
       setStatus("SCHEDULING");
-      const { SchedulingEngine } = await import("@/lib/scheduler/SchedulingEngine");
       const engine = new SchedulingEngine();
 
       queueRef.current = [];
