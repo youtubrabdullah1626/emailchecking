@@ -155,8 +155,8 @@ export async function GET(request: NextRequest) {
         computedStatus = "COMPLETED";
       } else if (latestSequence?.status === "STOPPED") {
         computedStatus = "STOPPED";
-      } else if (!isContacted && !latestSequence) {
-        computedStatus = "NOT_STARTED";
+      } else {
+        computedStatus = "ACTIVE";
       }
 
       // Compute lastActivityAt
