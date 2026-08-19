@@ -187,7 +187,7 @@ function ProspectsPageContent() {
     prospects.forEach((p) => {
       if (p.status === "REPLIED") replied++;
       else if (p.sequence?.status === "ACTIVE") active++;
-      else if (!p.sequence || p.status === "ACTIVE") notContacted++;
+      else if (!p.isContacted) notContacted++;
     });
 
     return {
@@ -203,7 +203,7 @@ function ProspectsPageContent() {
     return prospects.filter((p) => {
       if (statusFilter === "ACTIVE" && p.sequence?.status !== "ACTIVE") return false;
       if (statusFilter === "REPLIED" && p.status !== "REPLIED") return false;
-      if (statusFilter === "NOT_CONTACTED" && (p.sequence || p.status === "REPLIED")) return false;
+      if (statusFilter === "NOT_CONTACTED" && (p.isContacted || p.status === "REPLIED")) return false;
 
       if (search && search.trim()) {
         const q = search.toLowerCase().trim();

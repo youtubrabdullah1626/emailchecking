@@ -128,16 +128,15 @@ export async function GET(request: NextRequest) {
       const trackedList = trackedByEmail.get(p.email.toLowerCase()) || [];
       const hasReplyClassification = replyClassificationSet.has(p.id);
 
-      // Check if replied
-      const hasRepliedTracked = trackedList.some((t) => t.status === "REPLIED" || t.replied_at != null);
-      const isReplied = p.status === "REPLIED" || hasReplyClassification || hasRepliedTracked;
-
       // Check if sent/contacted
       const hasSentAdhoc = adhocList.some((a) => a.status === "SENT" || a.sent_at != null);
       const hasSentStep = latestSequence?.steps.some((s) => s.status === "SENT" || s.sent_at != null);
       const allStepsSent = Boolean(latestSequence?.steps && latestSequence.steps.length > 0 && latestSequence.steps.every((s) => s.status === "SENT"));
-      const hasTracked = trackedList.length > 0;
-      const isContacted = hasSentAdhoc || hasSentStep || hasTracked;
+      const isContacted = hasSentAdhoc || hasSentStep;
+
+      // Check if replied (only valid if contacted or explicit reply classification exists)
+      const hasRepliedTracked = trackedList.some((t) => t.status === "REPLIED" || t.replied_at != null);
+      const isReplied = hasReplyClassification || (isContacted && (hasRepliedTracked || p.status === "REPLIED"));
 
       if (allStepsSent && latestSequence && latestSequence.status !== "STOPPED") {
         latestSequence.status = "COMPLETED";
@@ -156,6 +155,8 @@ export async function GET(request: NextRequest) {
         computedStatus = "COMPLETED";
       } else if (latestSequence?.status === "STOPPED") {
         computedStatus = "STOPPED";
+      } else if (!isContacted && !latestSequence) {
+        computedStatus = "NOT_STARTED";
       }
 
       // Compute lastActivityAt
@@ -167,11 +168,12 @@ export async function GET(request: NextRequest) {
       for (const s of latestSequence?.steps || []) {
         if (s.sent_at) timestamps.push(s.sent_at);
       }
-      for (const t of trackedList) {
-        if (t.replied_at) timestamps.push(t.replied_at);
-        if (t.last_opened_at) timestamps.push(t.last_opened_at);
-        if (t.first_opened_at) timestamps.push(t.first_opened_at);
-        if (t.created_at) timestamps.push(t.created_at);
+      if (isContacted) {
+        for (const t of trackedList) {
+          if (t.replied_at) timestamps.push(t.replied_at);
+          if (t.last_opened_at) timestamps.push(t.last_opened_at);
+          if (t.first_opened_at) timestamps.push(t.first_opened_at);
+        }
       }
 
       let latestActivity = p.created_at;

@@ -28,7 +28,7 @@ export async function DELETE(
     // to someone else, vs. if it simply doesn't exist.
     const owned = await prisma.prospect.findUnique({
       where: { id: prospectId, user_id: session.user.id },
-      select: { id: true },
+      select: { id: true, email: true },
     });
 
     if (!owned) {
@@ -52,10 +52,15 @@ export async function DELETE(
         where: { prospect_id: prospectId, user_id: session.user.id }
       }),
 
-      // Reset the prospect status back to ACTIVE
+      // Delete all tracked emails and events for this recipient
+      prisma.trackedEmail.deleteMany({
+        where: { recipient_email: owned.email, user_id: session.user.id }
+      }),
+
+      // Reset the prospect status back to ACTIVE and refresh created_at
       prisma.prospect.update({
         where: { id: prospectId, user_id: session.user.id },
-        data: { status: "ACTIVE" }
+        data: { status: "ACTIVE", created_at: new Date() }
       })
     ]);
 
