@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Query directly with user_id — bypasses DAL which lacks tenant param
-    const [total, prospects] = await prisma.$transaction([
+    const [total, rawProspects] = await prisma.$transaction([
       prisma.prospect.count({ where: { user_id: session.user.id } }),
       prisma.prospect.findMany({
         where: { user_id: session.user.id },
@@ -47,18 +47,147 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               status: true,
-              steps: { select: { id: true, step_number: true, status: true } },
+              steps: {
+                select: {
+                  id: true,
+                  step_number: true,
+                  status: true,
+                  sent_at: true,
+                },
+                orderBy: { step_number: "asc" },
+              },
             },
           },
         },
       }),
     ]);
 
+    const prospectIds = rawProspects.map((p) => p.id);
+    const prospectEmails = rawProspects.map((p) => p.email.toLowerCase());
+
+    // Fetch adhoc emails, tracked emails, and reply classifications in parallel
+    const [adhocEmails, trackedEmails, replyClassifications] = await Promise.all([
+      prisma.adhocEmail.findMany({
+        where: { prospect_id: { in: prospectIds } },
+        select: {
+          prospect_id: true,
+          status: true,
+          sent_at: true,
+          scheduled_at: true,
+        },
+      }),
+      prisma.trackedEmail.findMany({
+        where: {
+          recipient_email: { in: prospectEmails, mode: "insensitive" },
+        },
+        select: {
+          recipient_email: true,
+          status: true,
+          created_at: true,
+          first_opened_at: true,
+          last_opened_at: true,
+          replied_at: true,
+        },
+      }),
+      prisma.replyClassification.findMany({
+        where: {
+          prospect_id: { in: prospectIds },
+          reply_type: "REAL_REPLY",
+        },
+        select: {
+          prospect_id: true,
+          classified_at: true,
+        },
+      }),
+    ]);
+
+    // Grouping by prospect
+    const adhocByProspect = new Map<string, typeof adhocEmails>();
+    for (const a of adhocEmails) {
+      const list = adhocByProspect.get(a.prospect_id) || [];
+      list.push(a);
+      adhocByProspect.set(a.prospect_id, list);
+    }
+
+    const trackedByEmail = new Map<string, typeof trackedEmails>();
+    for (const t of trackedEmails) {
+      if (t.recipient_email) {
+        const em = t.recipient_email.toLowerCase();
+        const list = trackedByEmail.get(em) || [];
+        list.push(t);
+        trackedByEmail.set(em, list);
+      }
+    }
+
+    const replyClassificationSet = new Set(replyClassifications.map((r) => r.prospect_id));
+
+    // Build enriched prospects
+    const prospects = rawProspects.map((p) => {
+      const latestSequence = p.sequences[0] || null;
+      const adhocList = adhocByProspect.get(p.id) || [];
+      const trackedList = trackedByEmail.get(p.email.toLowerCase()) || [];
+      const hasReplyClassification = replyClassificationSet.has(p.id);
+
+      // Check if replied
+      const hasRepliedTracked = trackedList.some((t) => t.status === "REPLIED" || t.replied_at != null);
+      const isReplied = p.status === "REPLIED" || hasReplyClassification || hasRepliedTracked;
+
+      // Check if sent/contacted
+      const hasSentAdhoc = adhocList.some((a) => a.status === "SENT" || a.sent_at != null);
+      const hasSentStep = latestSequence?.steps.some((s) => s.status === "SENT" || s.sent_at != null);
+      const hasTracked = trackedList.length > 0;
+      const isContacted = hasSentAdhoc || hasSentStep || hasTracked;
+
+      // Compute status
+      let computedStatus = p.status;
+      if (isReplied) {
+        computedStatus = "REPLIED";
+      } else if (latestSequence?.status === "ACTIVE") {
+        computedStatus = "ACTIVE";
+      } else if (latestSequence?.status === "COMPLETED") {
+        computedStatus = "COMPLETED";
+      } else if (latestSequence?.status === "STOPPED") {
+        computedStatus = "STOPPED";
+      }
+
+      // Compute lastActivityAt
+      const timestamps: Date[] = [p.created_at];
+      for (const a of adhocList) {
+        if (a.sent_at) timestamps.push(a.sent_at);
+        if (a.scheduled_at) timestamps.push(a.scheduled_at);
+      }
+      for (const s of latestSequence?.steps || []) {
+        if (s.sent_at) timestamps.push(s.sent_at);
+      }
+      for (const t of trackedList) {
+        if (t.replied_at) timestamps.push(t.replied_at);
+        if (t.last_opened_at) timestamps.push(t.last_opened_at);
+        if (t.first_opened_at) timestamps.push(t.first_opened_at);
+        if (t.created_at) timestamps.push(t.created_at);
+      }
+
+      let latestActivity = p.created_at;
+      if (timestamps.length > 0) {
+        latestActivity = new Date(Math.max(...timestamps.map((d) => d.getTime())));
+      }
+
+      return {
+        ...p,
+        status: computedStatus,
+        isContacted,
+        sequence: latestSequence,
+        lastActivityAt: latestActivity.toISOString(),
+      };
+    });
+
     const totalPages = Math.ceil(total / limit);
     return NextResponse.json({
       data: prospects,
       pagination: {
-        page, limit, total, totalPages,
+        page,
+        limit,
+        total,
+        totalPages,
         hasNext: page < totalPages,
         hasPrevious: page > 1,
       },
