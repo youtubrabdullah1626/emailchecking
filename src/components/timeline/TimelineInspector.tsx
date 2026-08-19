@@ -242,94 +242,94 @@ export function TimelineInspector() {
   return (
     <div className="space-y-4 max-w-full">
       {/* 1. Harmonious Enterprise Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
         {/* Total Sent */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl p-3.5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all flex items-center justify-between group">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 flex items-center justify-between group">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Total Sent
             </div>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                 {stats.totalSent}
               </span>
-              <span className="text-[11px] text-slate-400">dispatches</span>
+              <span className="text-[11px] text-slate-400 font-medium">dispatches</span>
             </div>
           </div>
-          <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center group-hover:scale-105 transition-transform">
+          <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200/70 dark:border-slate-700/70 group-hover:scale-105 transition-transform">
             <Send className="h-4 w-4" />
           </div>
         </div>
 
         {/* Opened */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl p-3.5 shadow-xs hover:border-indigo-200 dark:hover:border-indigo-900 transition-all flex items-center justify-between group">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-200 flex items-center justify-between group">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Opened
             </div>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                 {stats.totalOpened}
               </span>
-              <span className="text-[11px] font-semibold px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-900/60">
+              <span className="text-[11px] text-purple-600 dark:text-purple-400 font-bold">
                 {stats.openRate}%
               </span>
             </div>
           </div>
-          <div className="h-8 w-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+          <div className="h-10 w-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-200/80 group-hover:scale-105 transition-transform">
             <Eye className="h-4 w-4" />
           </div>
         </div>
 
         {/* Replied */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl p-3.5 shadow-xs hover:border-emerald-200 dark:hover:border-emerald-900 transition-all flex items-center justify-between group">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-200 flex items-center justify-between group">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Replied
             </div>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                 {stats.totalReplied}
               </span>
-              <span className="text-[11px] font-semibold px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/60">
+              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
                 {stats.replyRate}%
               </span>
             </div>
           </div>
-          <div className="h-8 w-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+          <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/80 group-hover:scale-105 transition-transform">
             <MessageSquareReply className="h-4 w-4" />
           </div>
         </div>
 
         {/* Failed */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl p-3.5 shadow-xs hover:border-rose-200 dark:hover:border-rose-900 transition-all flex items-center justify-between group">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-rose-300 dark:hover:border-rose-700 transition-all duration-200 flex items-center justify-between group">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Failed
             </div>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                 {stats.totalFailed}
               </span>
-              <span className="text-[11px] text-slate-400">bounces</span>
+              <span className="text-[11px] text-rose-500 font-medium">bounces</span>
             </div>
           </div>
-          <div className="h-8 w-8 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+          <div className="h-10 w-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-200/80 group-hover:scale-105 transition-transform">
             <AlertCircle className="h-4 w-4" />
           </div>
         </div>
 
         {/* Avg Delivery Speed */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl p-3.5 shadow-xs hover:border-amber-200 dark:hover:border-amber-900 transition-all flex items-center justify-between col-span-2 lg:col-span-1 group">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 transition-all duration-200 flex items-center justify-between col-span-2 lg:col-span-1 group">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Avg Delivery Speed
             </div>
-            <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono mt-1 tracking-tight">
               {stats.avgLatencyMs < 1000 ? `+${stats.avgLatencyMs}ms` : `+${(stats.avgLatencyMs / 1000).toFixed(1)}s`}
             </div>
           </div>
-          <div className="h-8 w-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+          <div className="h-10 w-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200/80 group-hover:scale-105 transition-transform">
             <Zap className="h-4 w-4" />
           </div>
         </div>
@@ -339,7 +339,7 @@ export function TimelineInspector() {
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Instant Search Bar */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <input
             ref={searchInputRef}
             type="text"
@@ -351,9 +351,9 @@ export function TimelineInspector() {
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
             placeholder="Search email, name, subject, or message ID... (Press / to search)"
-            className="w-full pl-9 pr-14 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 dark:focus:border-orange-400 transition-all shadow-xs"
+            className="w-full pl-10 pr-14 py-2.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 dark:focus:border-orange-400 transition-all shadow-xs h-10"
           />
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {localSearch ? (
               <button
                 onClick={() => setLocalSearch("")}
@@ -363,7 +363,7 @@ export function TimelineInspector() {
                 <X className="h-3.5 w-3.5" />
               </button>
             ) : (
-              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700">
+              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700">
                 /
               </kbd>
             )}
@@ -372,7 +372,7 @@ export function TimelineInspector() {
 
         {/* Status Category Tabs with Dynamic Item Counters */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="inline-flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
+          <div className="inline-flex bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs gap-1">
             {(["ALL", "OPENED", "REPLIED", "SENT", "FAILED"] as const).map((tab) => {
               const count = categoryCounts[tab];
               const isActive = statusFilter === tab;
@@ -380,18 +380,18 @@ export function TimelineInspector() {
                 <button
                   key={tab}
                   onClick={() => setStatusFilter(tab)}
-                  className={`px-2.5 py-1 rounded-lg font-medium text-[11px] flex items-center gap-1.5 transition-all ${
+                  className={`px-3 py-1.5 rounded-xl font-bold text-[11px] flex items-center gap-1.5 transition-all ${
                     isActive
-                      ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-semibold"
-                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs"
+                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                   }`}
                 >
                   <span>{tab === "ALL" ? "All" : tab.charAt(0) + tab.slice(1).toLowerCase()}</span>
                   <span
                     className={`text-[10px] px-1 py-0.2 rounded-full ${
                       isActive
-                        ? "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold"
-                        : "bg-slate-200/60 dark:bg-slate-800 text-slate-400"
+                        ? "bg-slate-700 text-white dark:bg-slate-200 dark:text-slate-900"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-400"
                     }`}
                   >
                     {count}
