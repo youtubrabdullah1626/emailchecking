@@ -55,9 +55,6 @@ export async function PATCH(req: NextRequest) {
     console.error("[Platform Flags PATCH]", err);
     if (err.message === "UNAUTHORIZED") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (err.message?.startsWith("FORBIDDEN")) return NextResponse.json({ error: err.message }, { status: 403 });
-    if (err.message?.includes("not found") || err.message?.includes("Cannot enable") || err.message?.includes("Validation")) {
-      return NextResponse.json({ error: err.message }, { status: 400 });
-    }
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: err.message || "Failed to toggle flag" }, { status: 400 });
   }
 }

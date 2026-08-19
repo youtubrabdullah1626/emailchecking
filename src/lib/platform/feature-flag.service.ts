@@ -73,7 +73,8 @@ export class FeatureFlagService {
     // Dependency validation (only enforced when enabling)
     if (enabled) {
       const depErrors: string[] = [];
-      for (const depKey of flag.depends_on) {
+      const dependsOn = Array.isArray(flag.depends_on) ? flag.depends_on : [];
+      for (const depKey of dependsOn) {
         const dep = allFlags.find((f) => f.key === depKey);
         if (!dep) { depErrors.push(`Dependency '${depKey}' does not exist`); continue; }
         if (!dep.enabled) depErrors.push(`Cannot enable '${flag.name}'. Required dependency '${dep.name}' is disabled.`);
@@ -81,17 +82,19 @@ export class FeatureFlagService {
       if (depErrors.length > 0) throw new Error(depErrors.join("; "));
     }
 
-    const updated = await this.repo.updateEnabled(key, enabled, actor.id, reason, environment);
+    const updated = await this.repo.updateEnabled(key, enabled, actor.id || "admin", reason, environment);
 
     configCache.delete(CACHE_KEYS.ALL_FLAGS);
     configCache.delete(CACHE_KEYS.FLAG(key));
 
-    auditService.logAction(
-      actor.id, actor.email,
-      enabled ? "Feature Flag Enabled" : "Feature Flag Disabled",
-      "SYSTEM", flag.name, "FeatureFlag", "SUCCESS",
-      { resourceId: flag.id, oldValues: { enabled: flag.enabled }, newValues: { enabled }, metadata: { key, reason } }
-    );
+    try {
+      auditService.logAction(
+        actor.id || "admin", actor.email || "admin",
+        enabled ? "Feature Flag Enabled" : "Feature Flag Disabled",
+        "SYSTEM", flag.name, "FeatureFlag", "SUCCESS",
+        { resourceId: flag.id, oldValues: { enabled: flag.enabled }, newValues: { enabled }, metadata: { key, reason } }
+      );
+    } catch {}
 
     return updated;
   }
