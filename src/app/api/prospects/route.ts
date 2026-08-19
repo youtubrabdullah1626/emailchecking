@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
         select: {
           recipient_email: true,
           status: true,
+          open_count: true,
           created_at: true,
           first_opened_at: true,
           last_opened_at: true,
@@ -168,22 +169,37 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // 3. Chronological state resolution:
-      // If the latest event is a reply (latestReplyTime > latestSentTime), prospect is REPLIED.
-      // If the latest event is a sent email (latestSentTime >= latestReplyTime), prospect is SENT/ACTIVE!
+      // 3. Calculate open events
+      let latestOpenTime: number | null = null;
+      let totalOpenCount = 0;
+      for (const t of trackedList) {
+        if (t.first_opened_at || t.last_opened_at || t.status === "OPENED" || (t.open_count && t.open_count > 0)) {
+          const openTime = t.last_opened_at ? new Date(t.last_opened_at).getTime() : (t.first_opened_at ? new Date(t.first_opened_at).getTime() : 0);
+          if (openTime && (!latestOpenTime || openTime > latestOpenTime)) latestOpenTime = openTime;
+          totalOpenCount += (t.open_count || 1);
+        }
+      }
+
+      // 4. Chronological state resolution:
+      // - If replied (and reply happened after our last sent email), prospect is REPLIED.
+      // - If opened (and open happened after our last sent email or total opens > 0), prospect is OPENED.
+      // - Otherwise, prospect is ACTIVE / SENT / NOT_CONTACTED.
       const isReplied = latestReplyTime !== null && (latestSentTime === null || latestReplyTime > latestSentTime);
+      const isOpened = !isReplied && totalOpenCount > 0;
 
       if (allStepsSent && latestSequence && latestSequence.status !== "STOPPED") {
         latestSequence.status = "COMPLETED";
       }
 
-      // 4. Compute status
-      let computedStatus = p.status;
+      // 5. Compute status
+      let computedStatus: string = p.status;
       if (isReplied) {
         computedStatus = "REPLIED";
         if (latestSequence && latestSequence.status === "ACTIVE") {
           latestSequence.status = "STOPPED";
         }
+      } else if (isOpened) {
+        computedStatus = "OPENED";
       } else if (latestSequence?.status === "ACTIVE" && !allStepsSent) {
         computedStatus = "ACTIVE";
       } else if (isContacted || latestSequence?.status === "COMPLETED" || allStepsSent) {
@@ -223,6 +239,8 @@ export async function GET(request: NextRequest) {
         ...p,
         status: computedStatus,
         isContacted,
+        isOpened,
+        openCount: totalOpenCount,
         sequence: latestSequence,
         lastActivityAt: latestActivity.toISOString(),
       };

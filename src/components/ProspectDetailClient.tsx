@@ -32,7 +32,7 @@ import ProspectForm from "@/components/ProspectForm";
 import { QuickEmailComposer } from "@/components/QuickEmailComposer";
 import useSWR from "swr";
 import { LegacyLoadingState as LoadingState, LegacyErrorState as ErrorState } from "@/components/ui/legacy-adapters";
-import { Check, X, Play, MessageSquare, Send } from "lucide-react";
+import { Check, X, Play, MessageSquare, Send, Eye } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -54,16 +54,18 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
   
   const activity = activityData?.activity || [];
 
-  // Determine chronological state between latest sent email and latest reply
+  // Determine chronological state between latest sent email, opens, and replies
   const sortedActivity = useMemo(() => {
     return [...activity].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [activity]);
 
-  const latestCommunication = sortedActivity.find((a: any) => a.type === "REPLY" || a.type === "EMAIL_SENT");
+  const latestCommunication = sortedActivity.find((a: any) => a.type === "REPLY" || a.type === "EMAIL_OPENED" || a.type === "EMAIL_SENT");
   const isReplied = latestCommunication ? latestCommunication.type === "REPLY" : prospect.status === "REPLIED";
+  const hasOpenActivity = activity.some((a: any) => a.type === "EMAIL_OPENED") || (prospect as any).isOpened || (prospect as any).status === "OPENED";
+  const isOpened = !isReplied && hasOpenActivity;
   const hasSentAnyEmail = activity.some((a: any) => a.type === "EMAIL_SENT") || (prospect as any).isContacted || prospect.status === "COMPLETED";
-  const isSent = hasSentAnyEmail && !isReplied && (!sequence || sequence.status !== "ACTIVE");
-  const isActive = Boolean(sequence && sequence.status === "ACTIVE" && !isReplied);
+  const isSent = hasSentAnyEmail && !isReplied && !isOpened && (!sequence || sequence.status !== "ACTIVE");
+  const isActive = Boolean(sequence && sequence.status === "ACTIVE" && !isReplied && !isOpened);
 
   return (
     <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
@@ -170,6 +172,11 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
                   <MessageSquare className="h-3 w-3" />
                   Replied
                 </Badge>
+              ) : isOpened ? (
+                <Badge className="bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border-sky-200/60 text-xs font-bold gap-1 px-2.5 py-0.5">
+                  <Eye className="h-3 w-3" />
+                  Opened
+                </Badge>
               ) : isActive ? (
                 <Badge className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 text-xs font-bold gap-1 px-2.5 py-0.5">
                   <Play className="h-3 w-3 fill-current animate-pulse" />
@@ -211,46 +218,45 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
         </div>
       </div>
 
-      <Tabs defaultValue="activity" className="w-full">
-        <TabsList className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 h-12 w-full justify-start rounded-2xl p-1 shadow-xs gap-1">
-          <TabsTrigger value="activity" className="rounded-xl px-4 text-xs font-bold data-[state=active]:bg-slate-900 data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-900 transition-all">Activity</TabsTrigger>
-          <TabsTrigger value="sequence" className="rounded-xl px-4 text-xs font-bold data-[state=active]:bg-slate-900 data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-900 transition-all">Sequence</TabsTrigger>
-          <TabsTrigger value="profile" className="rounded-xl px-4 text-xs font-bold data-[state=active]:bg-slate-900 data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-900 transition-all">Profile Details</TabsTrigger>
+      {/* Main Content Tabs */}
+      <Tabs defaultValue="activity" className="space-y-6">
+        <TabsList className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-1 rounded-2xl shadow-2xs inline-flex">
+          <TabsTrigger value="activity" className="rounded-xl text-xs font-semibold px-4 py-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white">
+            Activity
+          </TabsTrigger>
+          <TabsTrigger value="sequence" className="rounded-xl text-xs font-semibold px-4 py-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white">
+            Sequence
+          </TabsTrigger>
+          <TabsTrigger value="details" className="rounded-xl text-xs font-semibold px-4 py-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white">
+            Profile Details
+          </TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="activity" className="mt-6">
-          {/* Unified Executive Activity Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
-            {/* Integrated Card Header */}
-            <div className="p-4 sm:px-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/40 dark:bg-slate-900/40">
+
+        <TabsContent value="activity">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-500/20">
+                <div className="h-9 w-9 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100">
                   <Clock className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                    Activity & Outreach History
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Chronological history of sent emails, replies, and sequence touches
-                  </p>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-sm">Activity & Outreach History</h3>
+                  <p className="text-xs text-slate-400">Chronological history of sent emails, replies, and sequence touches</p>
                 </div>
               </div>
-
-              <Badge variant="outline" className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-2xs">
-                {activity.length} {activity.length === 1 ? "Event" : "Events"}
-              </Badge>
+              <span className="text-xs font-semibold text-slate-400 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200/60 dark:border-slate-700">
+                {activity.length} Events
+              </span>
             </div>
 
-            {/* Seamless List Items */}
-            <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-              {isActivityLoading ? (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              {isActivityLoading && activity.length === 0 ? (
                 <div className="p-10 text-center text-xs text-slate-400 animate-pulse">Loading activity history...</div>
               ) : activityError ? (
                 <div className="p-10 text-center text-xs text-red-500">Failed to load activity timeline.</div>
               ) : (() => {
                 const filteredActivity = activity.filter((e: any) => 
-                  ["EMAIL_SENT", "SCHEDULED_EMAIL", "REPLY", "FAILED", "SEQUENCE_STARTED", "ADDED"].includes(e.type)
+                  ["EMAIL_SENT", "EMAIL_OPENED", "SCHEDULED_EMAIL", "REPLY", "FAILED", "SEQUENCE_STARTED", "ADDED"].includes(e.type)
                 );
                 
                 if (filteredActivity.length === 0) {
@@ -263,6 +269,7 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
 
                 return filteredActivity.map((event: any) => {
                   const isReply = event.type === "REPLY";
+                  const isOpenedEvent = event.type === "EMAIL_OPENED";
                   const isEmail = event.type === "EMAIL_SENT";
                   const isScheduled = event.type === "SCHEDULED_EMAIL";
                   const isSequence = event.type === "SEQUENCE_STARTED";
@@ -276,12 +283,14 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
                       <div className="flex items-center gap-3.5 min-w-0 flex-1">
                         <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs ${
                           isReply ? "bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 border-indigo-200/70" :
+                          isOpenedEvent ? "bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400 border-sky-200/70" :
                           isEmail ? "bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 border-blue-200/70" :
                           isScheduled ? "bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400 border-purple-200/70" :
                           isSequence ? "bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 border-emerald-200/70" :
                           "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200/70"
                         }`}>
                           {isReply ? <MessageSquare className="h-4 w-4" /> :
+                           isOpenedEvent ? <Eye className="h-4 w-4" /> :
                            isEmail ? <Mail className="h-4 w-4" /> :
                            isScheduled ? <Clock className="h-4 w-4" /> :
                            isSequence ? <Play className="h-4 w-4 fill-current" /> :
@@ -295,12 +304,13 @@ function ProspectDetailClientComponent({ prospect, sequence }: ProspectDetailCli
                             </span>
                             <Badge variant="outline" className={`text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 ${
                               isReply ? "bg-indigo-50 text-indigo-700 border-indigo-200/80 font-bold" :
+                              isOpenedEvent ? "bg-sky-50 text-sky-700 border-sky-200/80 font-bold" :
                               isEmail ? "bg-blue-50 text-blue-700 border-blue-200/80" :
                               isScheduled ? "bg-purple-50 text-purple-700 border-purple-200/80" :
                               isSequence ? "bg-emerald-50 text-emerald-700 border-emerald-200/80" :
                               "bg-slate-100 text-slate-600 border-slate-200/80"
                             }`}>
-                              {isReply ? "REPLY" : isEmail ? (event.isManual ? "Manual Email" : "Outreach Email") : isScheduled ? "Scheduled" : isSequence ? "Sequence" : "Created"}
+                              {isReply ? "REPLY" : isOpenedEvent ? (event.subtitle || "OPENED") : isEmail ? (event.isManual ? "Manual Email" : "Outreach Email") : isScheduled ? "Scheduled" : isSequence ? "Sequence" : "Created"}
                             </Badge>
                           </div>
 

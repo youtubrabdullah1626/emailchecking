@@ -116,7 +116,60 @@ export async function GET(
       });
     }
 
-    // 4. Sequence Started (Show only 1 clean enrollment per unique campaign run, avoid duplicate spam)
+    // 4. Tracked Email Opens (Direct & Sequences)
+    try {
+      const trackedList = await prisma.trackedEmail.findMany({
+        where: {
+          recipient_email: { equals: prospect.email, mode: "insensitive" }
+        },
+        include: {
+          events: {
+            where: {
+              event_type: { in: ["OPEN", "OPENED"] }
+            },
+            orderBy: { occurred_at: "desc" }
+          }
+        }
+      });
+
+      const seenOpenKeys = new Set<string>();
+      trackedList.forEach((t: any) => {
+        if (t.events && t.events.length > 0) {
+          t.events.forEach((ev: any) => {
+            const timeKey = new Date(ev.occurred_at).toISOString().slice(0, 16);
+            if (!seenOpenKeys.has(timeKey)) {
+              seenOpenKeys.add(timeKey);
+              activity.push({
+                id: `open-${ev.id}`,
+                type: "EMAIL_OPENED",
+                title: "Email Opened",
+                subtitle: t.open_count > 1 ? `${t.open_count} Opens` : "1 Open",
+                description: `Prospect opened "${t.subject || "Outreach Email"}"`,
+                createdAt: ev.occurred_at
+              });
+            }
+          });
+        } else if (t.first_opened_at || t.last_opened_at || t.status === "OPENED" || (t.open_count && t.open_count > 0)) {
+          const openDate = t.last_opened_at || t.first_opened_at || new Date();
+          const timeKey = new Date(openDate).toISOString().slice(0, 16);
+          if (!seenOpenKeys.has(timeKey)) {
+            seenOpenKeys.add(timeKey);
+            activity.push({
+              id: `open-tracked-${t.id}`,
+              type: "EMAIL_OPENED",
+              title: "Email Opened",
+              subtitle: t.open_count > 1 ? `${t.open_count} Opens` : "1 Open",
+              description: `Prospect opened "${t.subject || "Outreach Email"}"`,
+              createdAt: openDate
+            });
+          }
+        }
+      });
+    } catch (openErr) {
+      console.warn("[PROSPECT_ACTIVITY_OPEN_ERR]", openErr);
+    }
+
+    // 5. Sequence Started (Show only 1 clean enrollment per unique campaign run, avoid duplicate spam)
     const seenStartMinutes = new Set<string>();
     if (prospect.sequences && prospect.sequences.length > 0) {
       prospect.sequences.forEach((sequence: any) => {
@@ -136,7 +189,7 @@ export async function GET(
       });
     }
 
-    // 5. Prospect Created (Earliest origin event)
+    // 6. Prospect Created (Earliest origin event)
     if (prospect.created_at) {
       activity.push({
         id: `created-${prospect.id}`,

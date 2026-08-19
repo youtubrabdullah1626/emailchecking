@@ -25,6 +25,7 @@ import {
   PlayCircle,
   ArrowUpRight,
   User,
+  Eye,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -81,6 +82,8 @@ interface ProspectDetail {
   lastActivityAt: string | null;
   source?: string;
   isContacted?: boolean;
+  isOpened?: boolean;
+  openCount?: number;
   campaign?: {
     id: string;
     name: string;
@@ -141,7 +144,7 @@ function ProspectsPageContent() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "REPLIED" | "NOT_CONTACTED">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "OPENED" | "ACTIVE" | "REPLIED" | "NOT_CONTACTED">("ALL");
   const [prospectToDelete, setProspectToDelete] = useState<{ id: string; name: string } | null>(null);
 
   // Keyboard shortcut listener (/ or Ctrl+K to search)
@@ -181,10 +184,12 @@ function ProspectsPageContent() {
   const stats = useMemo(() => {
     let active = 0;
     let replied = 0;
+    let opened = 0;
     let notContacted = 0;
 
     prospects.forEach((p) => {
       if (p.status === "REPLIED") replied++;
+      else if (p.status === "OPENED" || p.isOpened) opened++;
       else if (p.sequence?.status === "ACTIVE") active++;
       else if (!p.isContacted) notContacted++;
     });
@@ -193,6 +198,7 @@ function ProspectsPageContent() {
       total: prospects.length,
       active,
       replied,
+      opened,
       notContacted,
     };
   }, [prospects]);
@@ -203,8 +209,9 @@ function ProspectsPageContent() {
   const filteredProspects = useMemo(() => {
     return prospects.filter((p) => {
       if (statusFilter === "ACTIVE" && p.sequence?.status !== "ACTIVE") return false;
+      if (statusFilter === "OPENED" && p.status !== "OPENED" && !p.isOpened) return false;
       if (statusFilter === "REPLIED" && p.status !== "REPLIED") return false;
-      if (statusFilter === "NOT_CONTACTED" && (p.isContacted || p.status === "REPLIED")) return false;
+      if (statusFilter === "NOT_CONTACTED" && (p.isContacted || p.status === "REPLIED" || p.status === "OPENED" || p.isOpened)) return false;
 
       if (deferredSearch && deferredSearch.trim()) {
         const q = deferredSearch.toLowerCase().trim();
@@ -445,6 +452,7 @@ function ProspectsPageContent() {
         <div className="inline-flex bg-secondary p-1 rounded-lg border border-border shadow-2xs text-xs gap-1">
           {[
             { key: "ALL", label: "All", count: stats.total },
+            { key: "OPENED", label: "Opened", count: stats.opened },
             { key: "ACTIVE", label: "Active", count: stats.active },
             { key: "REPLIED", label: "Replied", count: stats.replied },
             { key: "NOT_CONTACTED", label: "Not Contacted", count: stats.notContacted },
@@ -606,6 +614,11 @@ function ProspectsPageContent() {
                           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-semibold text-[10px] border border-indigo-500/20">
                             <MessageSquareReply className="h-3 w-3 text-indigo-600" />
                             Replied
+                          </span>
+                        ) : (prospect.status === "OPENED" || prospect.isOpened) ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-700 dark:text-sky-300 font-semibold text-[10px] border border-sky-500/20">
+                            <Eye className="h-3 w-3 text-sky-600" />
+                            Opened{prospect.openCount && prospect.openCount > 1 ? ` (${prospect.openCount})` : ""}
                           </span>
                         ) : prospect.sequence?.status === "ACTIVE" ? (
                           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] border border-emerald-500/20">
