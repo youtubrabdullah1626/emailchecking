@@ -61,18 +61,8 @@ export async function applyReplyStop(
       const now = new Date();
       let stepsCancelledCount = 0;
 
-      // ── 0. Fallback lookup for prospect by email if prospectId is empty ──
-      if (!resolvedProspectId && classification.fromEmail) {
-        const foundProspect = await tx.prospect.findFirst({
-          where: {
-            email: { equals: classification.fromEmail, mode: "insensitive" }
-          },
-          select: { id: true }
-        });
-        if (foundProspect) {
-          resolvedProspectId = foundProspect.id;
-        }
-      }
+      // ── 0. Prospect resolution: strictly use sequence-linked prospect ──
+      // We do not do a global fallback by email to avoid cross-campaign contamination.
 
       // ── 1. If sequenceId provided, lock and cancel pending steps ──
       if (sequenceId) {

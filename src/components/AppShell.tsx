@@ -100,9 +100,9 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
         {isLoginPage ? (
           <>{children}</>
         ) : (
-          <div className="flex h-screen w-full bg-background overflow-hidden transition-colors duration-500">
+          <div className="flex h-screen w-full bg-background overflow-hidden transition-colors duration-500" suppressHydrationWarning>
             {/* Desktop Sidebar (hidden on mobile) */}
-            <div className="hidden md:block h-full">
+            <div className="hidden md:block h-full" suppressHydrationWarning>
               <Sidebar />
             </div>
 

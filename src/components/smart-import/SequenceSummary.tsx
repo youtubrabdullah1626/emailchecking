@@ -23,12 +23,12 @@ export function SequenceSummary() {
       <Card className="border-border shadow-sm">
         <CardContent className="p-6">
           <div className="flex items-center justify-between space-y-0 pb-2">
-            <p className="text-sm font-medium">Valid Sequences</p>
+            <p className="text-sm font-medium">Ready Leads</p>
             <Users className="h-4 w-4 text-muted-foreground" />
           </div>
-          <div className="text-2xl font-bold">{sequenceSummary.totalLeads.toLocaleString()}</div>
+          <div className="text-2xl font-bold font-mono">{sequenceSummary.totalLeads.toLocaleString()}</div>
           <p className="text-xs text-muted-foreground mt-1">
-            Ready for execution
+            Verified and ready to email
           </p>
         </CardContent>
       </Card>
@@ -36,12 +36,12 @@ export function SequenceSummary() {
       <Card className="border-border shadow-sm">
         <CardContent className="p-6">
           <div className="flex items-center justify-between space-y-0 pb-2">
-            <p className="text-sm font-medium">Total Emails</p>
+            <p className="text-sm font-medium">Total Emails to Send</p>
             <Mail className="h-4 w-4 text-muted-foreground" />
           </div>
-          <div className="text-2xl font-bold">{sequenceSummary.totalEmails.toLocaleString()}</div>
+          <div className="text-2xl font-bold font-mono">{sequenceSummary.totalEmails.toLocaleString()}</div>
           <p className="text-xs text-muted-foreground mt-1">
-            Across all steps
+            Initial emails + follow-ups
           </p>
         </CardContent>
       </Card>
@@ -49,33 +49,33 @@ export function SequenceSummary() {
       <Card className="border-border shadow-sm">
         <CardContent className="p-6">
           <div className="flex items-center justify-between space-y-0 pb-2">
-            <p className="text-sm font-medium">Avg. Length</p>
+            <p className="text-sm font-medium">Steps per Lead</p>
             <Layers className="h-4 w-4 text-muted-foreground" />
           </div>
-          <div className="text-2xl font-bold">{sequenceSummary.averageEmailsPerLead}</div>
+          <div className="text-2xl font-bold font-mono">{sequenceSummary.averageEmailsPerLead}</div>
           <p className="text-xs text-muted-foreground mt-1">
-            Emails per sequence
+            Emails each contact receives
           </p>
         </CardContent>
       </Card>
       
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
-          <Card className="border-border shadow-sm relative group cursor-pointer hover:border-amber-500/50 hover:bg-amber-50/50 transition-all overflow-hidden">
-            <div className="absolute inset-0 bg-amber-500/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 backdrop-blur-[1px]">
-              <div className="bg-background/90 text-amber-700 text-sm font-semibold py-1.5 px-4 rounded-full shadow-sm flex items-center gap-2 border border-amber-200">
-                <Eye className="h-4 w-4" /> View Details
+          <Card className="border-border shadow-sm relative group cursor-pointer hover:border-border transition-all overflow-hidden">
+            <div className="absolute inset-0 bg-muted/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 backdrop-blur-[1px]">
+              <div className="bg-background text-foreground text-xs font-semibold py-1.5 px-3 rounded-full shadow-sm flex items-center gap-1.5 border border-border">
+                <Eye className="h-3.5 w-3.5" /> View Reason
               </div>
             </div>
             
-            <CardContent className="p-6 relative z-0 group-hover:opacity-30 transition-opacity">
+            <CardContent className="p-6 relative z-0 group-hover:opacity-20 transition-opacity">
               <div className="flex items-center justify-between space-y-0 pb-2">
-                <p className="text-sm font-medium">Invalid Leads</p>
-                <AlertCircle className="h-4 w-4 text-muted-foreground group-hover:text-amber-500 transition-colors" />
+                <p className="text-sm font-medium">Skipped Leads</p>
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
               </div>
-              <div className="text-2xl font-bold text-amber-600">{sequenceSummary.skippedInvalidLeads.toLocaleString()}</div>
+              <div className="text-2xl font-bold font-mono text-foreground">{sequenceSummary.skippedInvalidLeads.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                Skipped due to missing data
+                Missing email or bad format
               </p>
             </CardContent>
           </Card>

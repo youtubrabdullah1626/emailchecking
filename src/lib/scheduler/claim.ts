@@ -56,22 +56,18 @@ export async function claimStep(
   runId: string
 ): Promise<ClaimResult> {
   try {
-    const result = await prisma.sequenceStep.updateMany({
-      where: {
-        id: stepId,
-        status: "PENDING", // ← atomic guard: only matches if still PENDING
-      },
-      data: {
-        status: "PROCESSING",
-      },
-    });
+    const updated = await prisma.$executeRaw`
+      UPDATE sequence_steps 
+      SET status = 'PROCESSING', claimed_at = NOW() 
+      WHERE id = ${stepId} AND status = 'PENDING'
+    `;
 
-    if (result.count === 1) {
+    if (updated === 1) {
       return { stepId, outcome: "CLAIMED" };
     }
 
-    // count === 0: step was already claimed by a concurrent run between
-    // our findMany and this updateMany. This is expected behaviour.
+    // updated === 0: step was already claimed by a concurrent run between
+    // our findMany and this update. This is expected behaviour.
     return { stepId, outcome: "ALREADY_TAKEN" };
   } catch (error) {
     const message =

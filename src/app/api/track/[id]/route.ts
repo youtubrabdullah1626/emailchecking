@@ -5,8 +5,9 @@ import { emailTrackingService } from "@/lib/tracking/EmailTrackingService";
 const PIXEL_BASE64 = "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 const PIXEL_BUFFER = Buffer.from(PIXEL_BASE64, "base64");
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const rawId = params.id || "";
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> | { id: string } }) {
+  const resolvedParams = await Promise.resolve(params);
+  const rawId = resolvedParams?.id || "";
   const trackingId = rawId.replace(/\.(gif|png|jpg|jpeg)$/i, "").trim();
 
   // Extract IP and User Agent for future analytics (e.g. detecting Apple Mail Privacy Protection)
@@ -35,7 +36,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   });
 }
 
-export async function HEAD(req: Request, { params }: { params: { id: string } }) {
+export async function HEAD(req: Request, { params }: { params: Promise<{ id: string }> | { id: string } }) {
   return GET(req, { params });
 }
 

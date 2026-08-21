@@ -24,10 +24,8 @@ export async function POST(request: NextRequest) {
     // ── Auth ──────────────────────────────────────────────────────────────────
     let user = await getSessionUser();
     let userId = user?.id;
-    if (!userId || userId === "mock_admin_123") {
-      const firstUser = await prisma.users.findFirst();
-      if (!firstUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      userId = firstUser.id;
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
@@ -55,10 +53,15 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Build step schedule map ───────────────────────────────────────────────
-    const stepScheduleMap: Record<string, string> = {};
+    const stepScheduleMap: Record<string, { date: string; time: string; timestamp?: number; timezone?: string }> = {};
     for (const item of executionQueue) {
       if (item?.recordId && item?.sequenceStep?.stepNumber !== undefined) {
-        stepScheduleMap[`${item.recordId}_${item.sequenceStep.stepNumber}`] = item.scheduledDate;
+        stepScheduleMap[`${item.recordId}_${item.sequenceStep.stepNumber}`] = {
+          date: item.scheduledDate,
+          time: item.scheduledTime || "09:00",
+          timestamp: item.scheduledTimestamp,
+          timezone: item.timezone || "UTC",
+        };
       }
     }
 
@@ -111,27 +114,46 @@ export async function POST(request: NextRequest) {
     }
 
     // ── STEP 3: Bulk upsert prospects ─────────────────────────────────────────
-    // Single SQL: INSERT ... ON CONFLICT (user_id, email) DO NOTHING
+    // 1. Insert new prospects
     await prisma.prospect.createMany({
       data: validProspectData,
       skipDuplicates: true,
     });
 
-    // Fetch back all matching prospects (both new and pre-existing) to get their IDs
+    // 2. Reactivate and link existing prospects to the new campaign!
     const emails = validProspectData.map(p => p.email);
+    await prisma.prospect.updateMany({
+      where: { email: { in: emails }, user_id: userId },
+      data: {
+        status: "ACTIVE",
+        campaign_id: campaignId,
+      }
+    });
+
+    // Fetch back all matching prospects (both new and pre-existing) to get their IDs
     const existingProspects = await prisma.prospect.findMany({
       where: { email: { in: emails }, user_id: userId },
       select: { id: true, email: true }
     });
     const prospectIdByEmail = new Map(existingProspects.map(p => [p.email, p.id]));
 
-    // ── STEP 4: Stop old active sequences for these prospects ─────────────────
+    // ── STEP 4: Stop only OLD sequences (not from this import run) ─────────────
     const prospectIds = existingProspects.map(p => p.id);
+    const newSequenceIds = new Set(validProspectData.map(p => emailToSeqMap.get(p.email)?.recordId).filter(Boolean));
+    
     if (prospectIds.length > 0) {
-      await prisma.sequence.updateMany({
+      // Only stop sequences that are NOT part of this import run
+      const allSequences = await prisma.sequence.findMany({
         where: { prospect_id: { in: prospectIds }, status: { in: ["ACTIVE", "DRAFT"] } },
-        data: { status: "STOPPED", stopped_at: new Date() }
+        select: { id: true }
       });
+      const idsToStop = allSequences.map(s => s.id).filter(id => !newSequenceIds.has(id));
+      if (idsToStop.length > 0) {
+        await prisma.sequence.updateMany({
+          where: { id: { in: idsToStop } },
+          data: { status: "STOPPED", stopped_at: new Date() }
+        });
+      }
     }
 
     // ── STEP 5: Bulk create sequences ─────────────────────────────────────────
@@ -156,6 +178,11 @@ export async function POST(request: NextRequest) {
     // Single SQL INSERT for all sequences in this chunk
     if (sequenceInserts.length > 0) {
       await prisma.sequence.createMany({ data: sequenceInserts, skipDuplicates: true });
+      // Ensure created sequences are ACTIVE (in case of skipDuplicates hitting existing)
+      await prisma.sequence.updateMany({
+        where: { id: { in: sequenceInserts.map(s => s.id) } },
+        data: { status: "ACTIVE" }
+      });
     }
 
     // ── STEP 6: Bulk create sequence steps ────────────────────────────────────
@@ -168,17 +195,40 @@ export async function POST(request: NextRequest) {
       if (!Array.isArray(seq.steps)) continue;
       for (const step of seq.steps) {
         const key = `${seq.recordId}_${step.stepNumber}`;
-        const dateStr = stepScheduleMap[key] || new Date().toISOString().split("T")[0];
+        const scheduleInfo = stepScheduleMap[key];
+        const dateStr = scheduleInfo?.date || new Date().toISOString().split("T")[0];
+        const timeStr = scheduleInfo?.time || "09:00";
+        const tz = scheduleInfo?.timezone || "UTC";
+
+        let scheduledUtc: Date;
+        if (scheduleInfo?.timestamp && !isNaN(scheduleInfo.timestamp)) {
+          scheduledUtc = new Date(scheduleInfo.timestamp);
+        } else {
+          try {
+            scheduledUtc = new Date(`${dateStr}T${timeStr.length === 5 ? timeStr + ":00" : timeStr}`);
+            if (isNaN(scheduledUtc.getTime())) scheduledUtc = new Date(`${dateStr}T09:00:00Z`);
+          } catch {
+            scheduledUtc = new Date(`${dateStr}T09:00:00Z`);
+          }
+        }
+
+        const isFirstStep = step.stepNumber === 1;
+        const now = new Date();
+        const eligibleAfter = isFirstStep ? (scheduledUtc.getTime() <= now.getTime() ? now : scheduledUtc) : null;
+        
         stepInserts.push({
           sequence_id: seq.recordId,
           step_number: step.stepNumber,
           subject: step.subject || "Important Outreach",
           body: step.content || "",
-          scheduled_at_utc: new Date(`${dateStr}T09:00:00Z`),
-          scheduled_time_local: "09:00:00",
-          timezone: "UTC",
+          scheduled_at_utc: scheduledUtc,
+          scheduled_time_local: timeStr,
+          timezone: tz,
           status: "PENDING",
-        });
+          eligible_after_utc: eligibleAfter,
+          priority_class: "NORMAL",
+          soft_sla_deadline: null
+        } as any);
       }
     }
 
@@ -204,6 +254,21 @@ export async function POST(request: NextRequest) {
         completedAt: isLastChunk ? new Date() : undefined,
       }
     });
+
+    // ── On final chunk: immediately trigger scheduler in-process ─────────────
+    // This ensures steps due NOW or in the past dispatch within seconds —
+    // no waiting for a cron tick or HTTP loopback lock contention.
+    if (isLastChunk) {
+      try {
+        const { runScheduler } = await import("@/lib/scheduler/run");
+        const { sendBatch } = await import("@/lib/gmail/sender");
+        runScheduler().then(async (result) => {
+          if (result.claimedStepIds.length > 0) {
+            await sendBatch(result.claimedStepIds).catch(() => {});
+          }
+        }).catch(() => {});
+      } catch { /* non-fatal */ }
+    }
 
     return NextResponse.json({
       ok: true,

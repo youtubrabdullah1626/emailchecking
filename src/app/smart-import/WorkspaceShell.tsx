@@ -14,7 +14,7 @@ import { ImportHistoryWorkspace } from "@/components/smart-import/ImportHistoryW
 import { EnterpriseDiagnosticsPanel } from "@/components/smart-import/EnterpriseDiagnosticsPanel";
 import { LiveExecutionDashboard } from "@/components/smart-import/LiveExecutionDashboard";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Check, FileUp, History } from "lucide-react";
+import { Sparkles, Check, FileUp, History, ArrowLeft, X } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function WorkspaceShell() {
@@ -32,16 +32,26 @@ export function WorkspaceShell() {
     <div className="space-y-6 pb-20">
       
       {showBackButton && (
-        <div className="flex items-center gap-2 -mb-2">
-          {canUndo && (
-            <Button variant="ghost" size="sm" onClick={undo} className="text-muted-foreground hover:text-foreground">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-4 w-4"><path d="m15 18-6-6 6-6"/></svg>
-              Previous Step
+        <div className="flex items-center justify-between pb-1">
+          {canUndo ? (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={undo} 
+              className="text-xs font-semibold text-muted-foreground hover:text-foreground gap-1.5 h-8.5 rounded-lg border-border shadow-2xs"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Previous Step</span>
             </Button>
-          )}
-          <Button variant="ghost" size="sm" onClick={resetImport} className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 ml-auto">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-4 w-4"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-            Cancel Import
+          ) : <div />}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={resetImport} 
+            className="text-xs font-semibold text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors gap-1.5 h-8.5 rounded-lg border-border shadow-2xs"
+          >
+            <X className="h-3.5 w-3.5" />
+            <span>Cancel Import</span>
           </Button>
         </div>
       )}

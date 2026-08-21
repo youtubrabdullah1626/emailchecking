@@ -11,17 +11,7 @@ export const metadata: Metadata = {
   description: "Detailed end-to-end lifecycle inspection and delivery latencies for outreach emails.",
 };
 
-export default async function TimelinePage() {
-  // Fetch active theme set in Platform Config Admin Panel
-  let bannerTheme = "ORANGE";
-  try {
-    const config = await prisma.platform_configs.findFirst({ where: { key: "BANNER_THEME" } });
-    if (config?.value) {
-      bannerTheme = String(config.value).toUpperCase();
-    }
-  } catch (e) {
-    console.error("Failed to load BANNER_THEME in /timeline:", e);
-  }
+export default function TimelinePage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">

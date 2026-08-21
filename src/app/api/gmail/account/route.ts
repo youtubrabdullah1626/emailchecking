@@ -8,13 +8,13 @@
  *   - Renew Watch
  *   - Sync Now
  *   - Disconnect
+ *   - Delete Account
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import {
   getAccountHealthSummary,
-  listAllAccountHealth,
   autoRepairAccount,
 } from "@/lib/reply-tracker/health-monitor";
 import { disconnectAccount } from "@/lib/gmail/oauth";
@@ -26,54 +26,76 @@ import { getSession } from "@/lib/auth/session";
 import { getTenantPrisma } from "@/lib/db/tenant-prisma";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const isSameOrigin =
-    request.headers.get("sec-fetch-site") === "same-origin" ||
-    request.headers.get("sec-fetch-site") === "same-site" ||
-    process.env.NODE_ENV === "development";
-
-  if (!isSameOrigin) {
-    const auth = verifySchedulerSecret(request);
-    if (!auth.authorized) return unauthorizedResponse(auth.reason);
-  }
-
   try {
     const session = await getSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    
+    // Check either user session or scheduler secret header
+    let userId: string | null = session?.user?.id || null;
+    if (!userId) {
+      const auth = verifySchedulerSecret(request);
+      if (!auth.authorized) {
+        return unauthorizedResponse(auth.reason || "Unauthorized");
+      }
     }
-    const tenantPrisma = getTenantPrisma(session.user.id);
 
     // Fetch user's configured timezone
-    const userRecord = await prisma.users.findUnique({
-      where: { id: session.user.id },
-      select: { timezone: true },
-    });
-    const userTimezone = userRecord?.timezone || "UTC";
+    let userTimezone = "UTC";
+    if (userId) {
+      const userRecord = await prisma.users.findUnique({
+        where: { id: userId },
+        select: { timezone: true },
+      });
+      userTimezone = userRecord?.timezone || "UTC";
+    }
+
     const { getStartOfDayInTimezone } = await import("@/lib/date-utils");
     const startOfDay = getStartOfDayInTimezone(userTimezone);
 
-    // Only fetch accounts belonging to the authenticated user
-    const userAccounts = await tenantPrisma.emailAccount.findMany({
-      select: { 
-        email: true, 
-        sent_today: true, 
-        health_score: true, 
-        connection_status: true,
-        created_at: true,
-        warmup_status: true,
-        daily_limit: true,
-      }
-    });
-
-    const healthSummaries = await listAllAccountHealth();
+    // Fetch user-scoped accounts (or all accounts if authorized via scheduler secret)
+    const userAccounts = userId 
+      ? await getTenantPrisma(userId).emailAccount.findMany({
+          orderBy: { updated_at: "desc" },
+          select: { 
+            email: true, 
+            sent_today: true, 
+            health_score: true, 
+            connection_status: true,
+            created_at: true,
+            warmup_status: true,
+            daily_limit: true,
+          }
+        })
+      : await prisma.emailAccount.findMany({
+          orderBy: { updated_at: "desc" },
+          select: { 
+            email: true, 
+            sent_today: true, 
+            health_score: true, 
+            connection_status: true,
+            created_at: true,
+            warmup_status: true,
+            daily_limit: true,
+          }
+        });
 
     const accountDetails = await Promise.all(
       userAccounts.map(async (account) => {
-        const summary = healthSummaries.find(h => h.email === account.email) || {
+        let summary: any = {
           email: account.email,
           healthStatus: account.connection_status === "CONNECTED" ? "HEALTHY" : "DISCONNECTED",
           errorCount: 0,
+          hasRefreshToken: true,
+          lastError: null,
+          lastWatchRenewal: null,
+          historyId: null,
         };
+
+        try {
+          const health = await getAccountHealthSummary(account.email);
+          if (health) summary = health;
+        } catch {
+          // Fallback gracefully without breaking UI
+        }
 
         const now = new Date();
         const created = account.created_at || now;
@@ -98,21 +120,25 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
         // Live real-time sent count for today (single source of truth)
         const normalizedEmail = account.email.toLowerCase();
-        const actualSentToday = await prisma.emailEvent.count({
-          where: {
-            event_type: "SENT",
-            occurred_at: { gte: startOfDay },
-            step: {
-              sequence: {
-                user_id: session.user.id,
-                assigned_sender_email: normalizedEmail,
+        const actualSentToday = userId 
+          ? await prisma.emailEvent.count({
+              where: {
+                event_type: "SENT",
+                occurred_at: { gte: startOfDay },
+                step: {
+                  sequence: {
+                    user_id: userId,
+                    assigned_sender_email: normalizedEmail,
+                  }
+                }
               }
-            }
-          }
-        }).catch(() => 0);
+            }).catch(() => 0)
+          : 0;
 
         return {
           ...summary,
+          email: account.email,
+          connectionStatus: account.connection_status || "CONNECTED",
           sentToday: actualSentToday,
           dailyLimit,
           warmupStage,
@@ -130,50 +156,45 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to load connected accounts.";
     return NextResponse.json(
-      { ok: false, error: "LOAD_FAILED", detail: msg },
+      { ok: false, error: "LOAD_FAILED", detail: msg, accounts: [] },
       { status: 500 }
     );
   }
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const isSameOrigin =
-    request.headers.get("sec-fetch-site") === "same-origin" ||
-    request.headers.get("sec-fetch-site") === "same-site" ||
-    process.env.NODE_ENV === "development";
-
-  if (!isSameOrigin) {
-    const auth = verifySchedulerSecret(request);
-    if (!auth.authorized) return unauthorizedResponse(auth.reason);
-  }
-
-  let body: { email?: string; action?: string } = {};
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
+    const session = await getSession();
+    if (!session?.user) {
+      const auth = verifySchedulerSecret(request);
+      if (!auth.authorized) {
+        return unauthorizedResponse(auth.reason || "Unauthorized");
+      }
+    }
 
-  const email = body.email || process.env.GMAIL_SENDER_EMAIL;
-  const action = body.action;
+    let body: { email?: string; action?: string } = {};
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    }
 
-  if (!email) {
-    return NextResponse.json({ error: "Missing account email parameter." }, { status: 400 });
-  }
+    const email = body.email || process.env.GMAIL_SENDER_EMAIL;
+    const action = body.action;
 
-  const session = await getSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const tenantPrisma = getTenantPrisma(session.user.id);
+    if (!email) {
+      return NextResponse.json({ error: "Missing account email parameter." }, { status: 400 });
+    }
 
-  // Strict Tenant Isolation: Ensure the user actually owns this email account before acting on it
-  const account = await tenantPrisma.emailAccount.findUnique({ where: { email } });
-  if (!account) {
-    return NextResponse.json({ error: "Unauthorized: Account not found or belongs to another user." }, { status: 403 });
-  }
+    const userId = session?.user?.id;
+    if (userId) {
+      const tenantPrisma = getTenantPrisma(userId);
+      const account = await tenantPrisma.emailAccount.findUnique({ where: { email } });
+      if (!account) {
+        return NextResponse.json({ error: "Unauthorized: Account not found or belongs to another user." }, { status: 403 });
+      }
+    }
 
-  try {
     if (action === "TEST_CONNECTION") {
       const historyId = await getCurrentHistoryId(email);
       return NextResponse.json({
@@ -206,16 +227,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (action === "DISCONNECT") {
       await disconnectAccount(email);
       
-      auditService.logAction(
-        session.user.id,
-        session.user.email,
-        'GMAIL_DISCONNECTED',
-        'AUTHENTICATION',
-        `Gmail (${email})`,
-        'Email Account',
-        'SUCCESS',
-        { metadata: { email } }
-      );
+      if (session?.user) {
+        auditService.logAction(
+          session.user.id,
+          session.user.email,
+          'GMAIL_DISCONNECTED',
+          'AUTHENTICATION',
+          `Gmail (${email})`,
+          'Email Account',
+          'SUCCESS',
+          { metadata: { email } }
+        );
+      }
       
       return NextResponse.json({
         ok: true,
@@ -225,25 +248,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     if (action === "DELETE_ACCOUNT") {
-      // Gracefully clear sticky lock on any active sequences so they dynamically fall back to remaining inboxes
-      await prisma.sequence.updateMany({
-        where: { user_id: session.user.id, assigned_sender_email: email },
-        data: { assigned_sender_email: null }
-      }).catch(() => {});
+      if (session?.user) {
+        await prisma.sequence.updateMany({
+          where: { user_id: session.user.id, assigned_sender_email: email },
+          data: { assigned_sender_email: null }
+        }).catch(() => {});
 
-      await tenantPrisma.emailAccount.deleteMany({ where: { email } });
+        await getTenantPrisma(session.user.id).emailAccount.deleteMany({ where: { email } });
+      } else {
+        await prisma.emailAccount.deleteMany({ where: { email } });
+      }
+
       await prisma.gmailWatchState.deleteMany({ where: { email } });
       
-      auditService.logAction(
-        session.user.id,
-        session.user.email,
-        'GMAIL_DELETED',
-        'AUTHENTICATION',
-        `Gmail (${email})`,
-        'Email Account',
-        'SUCCESS',
-        { metadata: { email } }
-      );
+      if (session?.user) {
+        auditService.logAction(
+          session.user.id,
+          session.user.email,
+          'GMAIL_DELETED',
+          'AUTHENTICATION',
+          `Gmail (${email})`,
+          'Email Account',
+          'SUCCESS',
+          { metadata: { email } }
+        );
+      }
       
       return NextResponse.json({
         ok: true,

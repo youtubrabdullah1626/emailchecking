@@ -91,12 +91,17 @@ export default function SettingsPage() {
       }
 
       const [accountData, settingsData, profileData] = await Promise.all([
-        apiClient<any>("/api/gmail/account").catch(() => ({ accounts: [] })),
+        fetch("/api/gmail/account").then(r => r.json()).catch(() => ({ accounts: [] })),
         fetch("/api/settings").then((r) => r.json()).catch(() => null),
         fetch("/api/user/profile").then((r) => r.json()).catch(() => null),
       ]);
 
-      setAccounts(accountData.accounts ?? []);
+      const loadedAccounts = Array.isArray(accountData?.accounts) 
+        ? accountData.accounts 
+        : Array.isArray(accountData) 
+          ? accountData 
+          : [];
+      setAccounts(loadedAccounts);
 
       if (settingsData && !settingsData.error) {
         form.reset(settingsData);
@@ -347,14 +352,12 @@ export default function SettingsPage() {
                         )}
                       </div>
                     </CardContent>
-                    <CardFooter className="bg-muted/30 py-4 px-6 mt-4 border-t border-border/40 flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        Hourly velocity limits automatically reset at the top of every hour (:00:00).
-                      </p>
+                    <CardFooter className="bg-muted/30 py-4 px-6 mt-4 border-t border-border/40 flex items-center justify-end">
                       <Button 
                         type="button" 
                         onClick={handleSaveProfile}
                         disabled={isSavingProfile}
+                        className="text-xs font-semibold"
                       >
                         {isSavingProfile ? "Saving..." : "Save Preferences"}
                       </Button>
@@ -364,73 +367,61 @@ export default function SettingsPage() {
 
                 <TabsContent value="gmail" className="mt-0">
                   <div className="flex flex-col gap-6">
+                    {/* Clean Header Row */}
                     <div className="flex flex-wrap items-center justify-between gap-4">
                       <div>
-                        <h2 className="text-xl font-bold tracking-tight text-foreground">
-                          Connected Gmail Accounts ({accounts.length})
-                        </h2>
-                        <p className="text-sm text-muted-foreground mt-1">Connect your Google Workspace accounts for multi-inbox smart rotation and automated outreach.</p>
+                        <div className="flex items-center gap-2.5">
+                          <h2 className="text-xl font-bold tracking-tight text-foreground">
+                            Connected Inboxes
+                          </h2>
+                          <span className="px-2 py-0.5 rounded-md text-xs font-mono font-semibold bg-muted text-muted-foreground border border-border">
+                            {accounts.length}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Manage your Google accounts for multi-inbox rotation and reputation guardianship.
+                        </p>
                       </div>
-                      <Button asChild className="gap-2 shadow-sm font-semibold">
+                      <Button asChild className="gap-2 shadow-2xs font-semibold text-xs h-9 px-4">
                         <a href="/api/auth/gmail">
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-3.5 w-3.5" />
                           {accounts.length === 0 ? "Connect Gmail Account" : "Connect Another Inbox"}
                         </a>
                       </Button>
                     </div>
 
-                    {/* Multi-Inbox Fleet Overview Banner */}
-                    {accounts.length > 0 && (
-                      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-5 shadow-sm space-y-4">
-                        <div className="flex flex-wrap items-center justify-between gap-4">
-                          <div className="space-y-1">
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                              <Sparkles className="h-3.5 w-3.5" /> Multi-Inbox Fleet Engine
-                            </span>
-                            <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-                              ⚡ Smart Load Rotation & Sticky Thread Protection
-                            </h3>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="px-3.5 py-1.5 bg-background/80 backdrop-blur rounded-xl border border-border/80 text-xs font-semibold text-foreground shadow-xs">
-                              Total Fleet Capacity: <strong className="text-primary">{accounts.reduce((acc, a) => acc + (a.dailyLimit || 50), 0)} emails/day</strong>
-                            </span>
-                          </div>
+                    {/* Clean Fleet Metrics Bar */}
+                    {accounts.length > 1 && (
+                      <div className="rounded-xl border border-border bg-card p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs shadow-2xs">
+                        <div className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                          <span className="font-semibold text-foreground">Multi-Inbox Rotation Fleet</span>
                         </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-2 bg-background/60 backdrop-blur p-2.5 rounded-xl border border-border/40">
-                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">🔒 Sticky Sender:</span>
-                            <span>Thread continuity locked</span>
-                          </div>
-                          <div className="flex items-center gap-2 bg-background/60 backdrop-blur p-2.5 rounded-xl border border-border/40">
-                            <span className="text-blue-600 dark:text-blue-400 font-bold">🔥 Auto-Ramp:</span>
-                            <span>Domain reputation protected</span>
-                          </div>
-                          <div className="flex items-center gap-2 bg-background/60 backdrop-blur p-2.5 rounded-xl border border-border/40">
-                            <span className="text-purple-600 dark:text-purple-400 font-bold">⏱️ Human Jitter:</span>
-                            <span>15s–45s anti-spam delays</span>
-                          </div>
+                        <div className="font-mono text-xs font-semibold text-foreground">
+                          Total Capacity: <span className="text-emerald-600 dark:text-emerald-400 font-bold">{accounts.reduce((acc, a) => acc + (a.dailyLimit || 50), 0)}</span> emails/day
                         </div>
                       </div>
                     )}
 
                     {accounts.length === 0 ? (
-                      <Card className="border-primary bg-primary/5 shadow-sm mt-2">
+                      <Card className="border-border bg-card shadow-xs mt-2">
                         <CardContent className="p-8">
-                          <div className="flex flex-col gap-2 items-center text-center">
-                            <h3 className="text-xl font-bold text-foreground">No Gmail Account Connected</h3>
-                            <p className="text-muted-foreground mb-4">
-                              Connect your Gmail account via OAuth to start sending automated sequence emails and tracking replies.
+                          <div className="flex flex-col gap-2 items-center text-center max-w-sm mx-auto">
+                            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground mb-1">
+                              <Mail className="h-5 w-5" />
+                            </div>
+                            <h3 className="text-base font-bold text-foreground">No Inboxes Connected</h3>
+                            <p className="text-xs text-muted-foreground mb-4">
+                              Connect your Google Workspace or Gmail account to start automated outreach with reputation protections.
                             </p>
-                            <Button asChild>
+                            <Button asChild className="text-xs font-semibold">
                               <a href="/api/auth/gmail">Connect Gmail Account</a>
                             </Button>
                           </div>
                         </CardContent>
                       </Card>
                     ) : (
-                      <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-3">
                         {accounts.map((acc) => (
                           <ConnectedAccountCard key={acc.email} account={acc} onAccountUpdated={loadData} />
                         ))}

@@ -49,6 +49,8 @@ export const BLOCKING_SEQUENCE_STATUSES = new Set([
  */
 export const BLOCKING_STEP_STATUSES = new Set([
   "PROCESSING", // already claimed by another scheduler run
+  "RETRYABLE_FAILURE",
+  "UNCERTAIN",
   "SENT",
   "FAILED",     // not automatically retried — requires manual admin reset
   "SKIPPED",

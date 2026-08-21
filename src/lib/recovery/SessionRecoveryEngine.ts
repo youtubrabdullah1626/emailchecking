@@ -12,7 +12,9 @@ export type ImportCheckpoint =
   | "PLANNING_COMPLETED" 
   | "SEQUENCE_GENERATED" 
   | "SCHEDULING_COMPLETED"
-  | "EXECUTION_STARTED";
+  | "EXECUTION_STARTED"
+  | "PAUSED"
+  | "COMPLETED";
 
 export interface CheckpointData {
   status: ImportStatus;
@@ -130,7 +132,12 @@ export class SessionRecoveryEngine {
       case "SEQUENCE_GENERATED": status = "PREVIEW"; break;
       case "SCHEDULING_COMPLETED": status = "APPROVED"; break;
       case "EXECUTION_STARTED": status = "EXECUTING"; break;
+      case "PAUSED": status = "EXECUTING"; break;
       case "COMPLETED": status = "EXECUTING"; break;
+    }
+
+    if (["PAUSED", "EXECUTING", "COMPLETED"].includes(meta.status as string)) {
+      status = "EXECUTING";
     }
 
     return {

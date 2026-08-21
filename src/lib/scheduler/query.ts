@@ -32,9 +32,10 @@ export async function findCandidateSteps(
   return prisma.sequenceStep.findMany({
     where: {
       status: "PENDING",
-      scheduled_at_utc: {
-        lte: nowUtc, // scheduled time has arrived
-      },
+      OR: [
+        { eligible_after_utc: { lte: nowUtc } },
+        { eligible_after_utc: null, scheduled_at_utc: { lte: nowUtc } }
+      ],
       sequence: {
         status: "ACTIVE",
       },
@@ -47,24 +48,31 @@ export async function findCandidateSteps(
       scheduled_time_local: true,
       timezone: true,
       status: true,
+      eligible_after_utc: true,
+      soft_sla_deadline: true,
+      priority_class: true,
       sequence: {
         select: {
           id: true,
           status: true,
           user_id: true,
+          assigned_sender_email: true,
           prospect: {
             select: {
               id: true,
               name: true,
               email: true,
               status: true,
+              campaign: {
+                select: {
+                  id: true,
+                  last_dispatched_at: true
+                }
+              }
             },
           },
         },
       },
-    },
-    orderBy: {
-      scheduled_at_utc: "asc",
     },
     take: limit,
   }) as unknown as CandidateStep[];
@@ -74,19 +82,17 @@ export async function findCandidateSteps(
 }
 
 /**
- * Phase 8: Find PROCESSING steps that have been stuck for longer than
- * the given threshold — indicating they were claimed but never advanced.
+ * Find PROCESSING steps stuck longer than the threshold — they were claimed
+ * but never advanced to SENT/FAILED.
  *
- * These steps are NOT automatically reset. They are returned for observability
- * so an operator can investigate and reset them manually if appropriate.
+ * Uses `claimed_at` as the authoritative detection timestamp (set atomically
+ * by claim.ts when PENDING → PROCESSING). This is precise: it measures exactly
+ * how long a step has been PROCESSING, not when it was originally scheduled.
  *
- * NOTE: SequenceStep does not store a claimed_at timestamp.
- * We approximate stale detection by checking scheduled_at_utc as a
- * lower-bound proxy: if scheduled_at_utc + threshold < now, the step
- * should have been processed long ago.
+ * The `reconciler.ts` runStaleMonitor handles auto-resolution. This function
+ * is used for observability logging in the scheduler run result.
  *
- * @param thresholdMs — how many milliseconds old a PROCESSING step must be
- *                      to be considered stale (default: 15 minutes)
+ * @param thresholdMs — staleness threshold in ms (default: 15 minutes)
  */
 export async function findStaleProcessingSteps(
   nowUtc: Date,
@@ -97,16 +103,16 @@ export async function findStaleProcessingSteps(
   const rows = await prisma.sequenceStep.findMany({
     where: {
       status: "PROCESSING",
-      // A step with scheduled_at_utc before the stale threshold is suspicious:
-      // it was due at least `thresholdMs` ago but still hasn't advanced.
-      scheduled_at_utc: {
+      // claimed_at is set by claim.ts on every successful PENDING → PROCESSING transition.
+      // Steps where claimed_at < (now - threshold) have been stuck too long.
+      claimed_at: {
         lte: staleBeforeUtc,
       },
     },
     select: {
       id: true,
       step_number: true,
-      scheduled_at_utc: true,
+      claimed_at: true,
       sequence: {
         select: {
           id: true,
@@ -123,7 +129,8 @@ export async function findStaleProcessingSteps(
     stepNumber: row.step_number,
     sequenceId: row.sequence.id,
     prospectId: row.sequence.prospect.id,
-    staleDurationMs: nowUtc.getTime() - row.scheduled_at_utc.getTime(),
+    staleDurationMs: row.claimed_at
+      ? nowUtc.getTime() - row.claimed_at.getTime()
+      : 0,
   }));
 }
-

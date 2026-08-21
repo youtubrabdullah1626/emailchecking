@@ -56,15 +56,24 @@ export interface CandidateStep {
   scheduled_time_local: string;
   timezone: string;
   status: string;
+  eligible_after_utc: Date | null;
+  soft_sla_deadline: Date | null;
+  claimed_at: Date | null;
+  priority_class: string | null;
   sequence: {
     id: string;
     status: string;
     user_id?: string;
+    assigned_sender_email?: string | null;
     prospect: {
       id: string;
       name: string;
       email: string;
       status: string;
+      campaign?: {
+        id: string;
+        last_dispatched_at: Date | null;
+      } | null;
     };
   };
 }
@@ -92,7 +101,8 @@ export type SchedulerLogEvent =
   | "scheduler_skipped_due_to_limits"
   | "scheduler_limit_check_failed"
   | "scheduler_config_fetch_warning"
-  | "step_skipped_user_capacity_exhausted";
+  | "step_skipped_user_capacity_exhausted"
+  | "step_skipped_sender_capacity";
 
 // ── Smart Scheduler Pure Engine Types ─────────────────────────────────────────
 

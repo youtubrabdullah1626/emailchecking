@@ -151,7 +151,9 @@ export async function canSendEmail(email: string): Promise<ReputationGuardResult
     : account.hourly_limit || 15;
 
   const effectiveSentToday = Math.max(sentToday, account.sent_today || 0);
-  const effectiveSentThisHour = Math.max(sentThisHour, account.sent_this_hour || 0);
+  // For hourly: use ONLY the live event count (not the cached column).
+  // The cached column never resets when a new hour starts, causing permanent blocking.
+  const effectiveSentThisHour = sentThisHour;
   const effectiveSentLast24h = Math.max(sentLast24h, account.sent_today || 0);
 
   // Background sync counter cache for dashboard cards & admin visibility

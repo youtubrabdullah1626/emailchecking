@@ -53,6 +53,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (prospect.campaign_id) {
+      const parentCampaign = await prisma.campaign.findUnique({
+        where: { id: prospect.campaign_id },
+        select: { status: true }
+      });
+      if (parentCampaign && parentCampaign.status === "PAUSED") {
+        return NextResponse.json({ error: "Campaign is currently paused. Please resume the campaign to send emails." }, { status: 400 });
+      }
+    }
+
     let sequence;
     let step;
 

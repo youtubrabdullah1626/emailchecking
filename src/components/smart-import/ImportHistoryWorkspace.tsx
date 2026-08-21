@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { 
   History, 
   Play, 
+  Pause,
   Trash2, 
   CheckCircle2, 
   Clock, 
@@ -208,6 +209,54 @@ export function ImportHistoryWorkspace() {
     }
   };
 
+  const handleTogglePause = async (session: ImportSessionMetadata) => {
+    const isCurrentlyPaused = session.status === "PAUSED" || (session.lastCheckpoint as string) === "PAUSED";
+    const nextAction = isCurrentlyPaused ? "RESUME" : "PAUSE";
+    
+    // 1. Instant Optimistic UI Update (0ms latency!)
+    const prevStatus = session.status;
+    const prevCheckpoint = session.lastCheckpoint;
+    session.status = isCurrentlyPaused ? "EXECUTING" : "PAUSED";
+    session.lastCheckpoint = isCurrentlyPaused ? "EXECUTION_STARTED" : ("PAUSED" as any);
+    storage.saveSessionMetadata(session);
+    setSessions(prev => [...prev]);
+    toast.success(isCurrentlyPaused ? "Campaign resumed" : "Campaign paused");
+
+    // 2. Background Server Sync
+    try {
+      let targetId = session.sessionId;
+      try {
+        const dataset = await storage.loadHeavyDataset(session.sessionId);
+        if (dataset?.campaignId) targetId = dataset.campaignId;
+      } catch (e) {}
+
+      const res = await fetch(`/api/campaigns/${encodeURIComponent(targetId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          action: nextAction,
+          campaignName: session.campaignName 
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        session.status = prevStatus;
+        session.lastCheckpoint = prevCheckpoint;
+        storage.saveSessionMetadata(session);
+        loadSessions();
+        toast.error(data.error || `Failed to ${nextAction.toLowerCase()} campaign`);
+        return;
+      }
+      loadSessions();
+    } catch (err) {
+      session.status = prevStatus;
+      session.lastCheckpoint = prevCheckpoint;
+      storage.saveSessionMetadata(session);
+      loadSessions();
+      toast.error("Failed to update campaign state");
+    }
+  };
+
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [targetAppendId, setTargetAppendId] = useState<string | null>(null);
 
@@ -307,7 +356,8 @@ export function ImportHistoryWorkspace() {
           ) : (
             filteredSessions.map((session) => {
               const isCompleted = session.status === "COMPLETED";
-              const isLive = session.lastCheckpoint === "EXECUTION_STARTED";
+              const isPaused = session.status === "PAUSED" || (session.lastCheckpoint as string) === "PAUSED";
+              const isLive = !isCompleted && !isPaused && (session.lastCheckpoint === "EXECUTION_STARTED" || session.status === "EXECUTING");
 
               return (
                 <motion.div
@@ -327,12 +377,16 @@ export function ImportHistoryWorkspace() {
                         ? "bg-blue-50 dark:bg-blue-950/50 text-blue-600 border-blue-200/60" 
                         : isLive
                         ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 border-emerald-200/60"
-                        : "bg-amber-50 dark:bg-amber-950/50 text-amber-600 border-amber-200/60"
+                        : isPaused
+                        ? "bg-amber-50 dark:bg-amber-950/50 text-amber-600 border-amber-200/60"
+                        : "bg-slate-50 dark:bg-slate-800/50 text-slate-600 border-slate-200/60"
                     }`}>
                       {isCompleted ? (
                         <CheckCircle2 className="h-4 w-4" />
                       ) : isLive ? (
                         <Play className="h-4 w-4 fill-current animate-pulse" />
+                      ) : isPaused ? (
+                        <Pause className="h-4 w-4" />
                       ) : (
                         <FolderOpen className="h-4 w-4" />
                       )}
@@ -351,10 +405,12 @@ export function ImportHistoryWorkspace() {
                               ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200/60"
                               : isLive
                               ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/60"
-                              : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200/60"
+                              : isPaused
+                              ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200/60"
+                              : "bg-slate-50 dark:bg-slate-800 text-slate-600 border-slate-200/60"
                           }`}
                         >
-                          {isCompleted ? "COMPLETED" : isLive ? "LIVE CAMPAIGN" : session.status}
+                          {isCompleted ? "COMPLETED" : isLive ? "LIVE CAMPAIGN" : isPaused ? "PAUSED" : session.status}
                         </Badge>
                       </div>
 
@@ -376,6 +432,30 @@ export function ImportHistoryWorkspace() {
                     className="flex items-center gap-1.5 shrink-0 self-end sm:self-center opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    {isLive && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleTogglePause(session)}
+                        className="h-7 px-2.5 text-xs font-semibold bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 hover:bg-amber-100 border-amber-200 rounded-lg gap-1"
+                      >
+                        <Pause className="h-3 w-3" />
+                        Pause
+                      </Button>
+                    )}
+
+                    {isPaused && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleTogglePause(session)}
+                        className="h-7 px-2.5 text-xs font-semibold bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 border-emerald-200 rounded-lg gap-1"
+                      >
+                        <Play className="h-3 w-3" />
+                        Resume
+                      </Button>
+                    )}
+
                     {isLive && (
                       <Button
                         variant="outline"
@@ -421,6 +501,12 @@ export function ImportHistoryWorkspace() {
                           <FileText className="h-3.5 w-3.5 mr-2" />
                           View Full Details
                         </DropdownMenuItem>
+                        {(isLive || isPaused) && (
+                          <DropdownMenuItem onClick={() => handleTogglePause(session)}>
+                            {isPaused ? <Play className="h-3.5 w-3.5 mr-2 text-emerald-600" /> : <Pause className="h-3.5 w-3.5 mr-2 text-amber-600" />}
+                            {isPaused ? "Resume Sending" : "Pause Sending"}
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => handleResume(session.sessionId)}>
                           <Play className="h-3.5 w-3.5 mr-2" />
                           Resume / Reload

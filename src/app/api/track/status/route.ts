@@ -110,27 +110,22 @@ export async function POST(req: NextRequest) {
     }) : [];
 
     const trackingByStepId = new Map(trackedEmails.filter(t => t.source_id).map(t => [t.source_id!, t]));
-    const trackingByEmail = new Map<string, typeof trackedEmails[0]>();
-    for (const t of trackedEmails) {
-      if (t.recipient_email) {
-        const em = t.recipient_email.toLowerCase();
-        if (!trackingByEmail.has(em)) {
-          trackingByEmail.set(em, t);
-        }
-      }
-    }
 
     // 3. Map everything back to the requested queueIds
     for (const step of sequenceSteps) {
       const prospectEmail = step.sequence?.prospect?.email?.toLowerCase();
       const prospectStatus = step.sequence?.prospect?.status;
-      const tracking = trackingByStepId.get(step.id) || (prospectEmail ? trackingByEmail.get(prospectEmail) : null);
-      const isReplied = prospectStatus === "REPLIED" || tracking?.status === "REPLIED" || Boolean(tracking?.replied_at);
+      const tracking = trackingByStepId.get(step.id);
       
-      let stepStatus = isReplied ? "REPLIED" : (tracking?.status || step.status);
+      const isStepReplied = tracking?.status === "REPLIED" || Boolean(tracking?.replied_at);
+      const isProspectReplied = prospectStatus === "REPLIED";
+      
+      let stepStatus = isStepReplied ? "REPLIED" : (tracking?.status || step.status);
       if (step.status === "CANCELLED" && step.sent_at == null) {
         stepStatus = "CANCELLED";
       }
+
+      const isReplied = isStepReplied || (isProspectReplied && step.sent_at != null);
 
       const trackingObj = {
         status: stepStatus,
@@ -187,29 +182,9 @@ export async function POST(req: NextRequest) {
       const found = statusMap.get(id);
       if (found) return found;
 
-      // Fallback: match by item recipient email only for already SENT items
-      if (item?.email) {
-        const em = item.email.toLowerCase().trim();
-        const emailTrack = trackingByEmail.get(em);
-        if (emailTrack) {
-          const isReplied = emailTrack.status === "REPLIED";
-          const isOpened = emailTrack.status === "OPENED" || emailTrack.open_count > 0;
-          const currentStatus = isReplied ? "REPLIED" : isOpened ? "OPENED" : emailTrack.status;
-          return {
-            stepId: id,
-            status: currentStatus,
-            openCount: emailTrack.open_count || (isOpened ? 1 : 0),
-            clickCount: emailTrack.click_count || 0,
-            lastOpenedAt: emailTrack.last_opened_at?.toISOString() || null,
-            bouncedAt: emailTrack.bounced_at?.toISOString() || null,
-            repliedAt: emailTrack.replied_at?.toISOString() || null,
-          };
-        }
-      }
-
       return {
         stepId: id,
-        status: "SCHEDULED",
+        status: item?.liveStatus || "SCHEDULED",
         openCount: 0,
         clickCount: 0,
         lastOpenedAt: null,

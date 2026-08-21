@@ -3,7 +3,7 @@ export interface ImportSessionMetadata {
   campaignName: string;
   fileName: string;
   importDate: string;
-  status: "DRAFT" | "COMPLETED" | "FAILED" | "ARCHIVED" | "EXECUTING";
+  status: "DRAFT" | "COMPLETED" | "FAILED" | "ARCHIVED" | "EXECUTING" | "PAUSED";
   lastCheckpoint: string;
   totalRecords: number;
   validRecords: number;

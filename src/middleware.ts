@@ -33,13 +33,9 @@ export default withAuth(
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl;
 
-        // Always allow public routes
+        // Always allow all /api/* routes (authenticated internally in their handlers) & public assets
         if (
-          pathname.startsWith("/api/auth") ||
-          pathname.startsWith("/api/track") ||
-          pathname.startsWith("/api/webhooks") ||
-          pathname.startsWith("/api/unsubscribe") ||
-          pathname.startsWith("/api/scheduler") ||
+          pathname.startsWith("/api/") ||
           pathname === "/login" ||
           pathname.startsWith("/_next") ||
           pathname === "/favicon.ico"

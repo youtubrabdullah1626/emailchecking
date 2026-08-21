@@ -15,6 +15,7 @@ model Campaign {
   created_at DateTime   @default(now())
   updated_at DateTime   @updatedAt
   user_id    String
+  last_dispatched_at DateTime?
   users      users      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   prospects  Prospect[]
 
@@ -94,13 +95,21 @@ model SequenceStep {
   last_retry_at        DateTime?
   delay_reason         String?
   retry_at             DateTime?
+  eligible_after_utc   DateTime?
+  soft_sla_deadline    DateTime?
+  claimed_at           DateTime?
+  priority_class       String?      @default("NORMAL")
   email_events         EmailEvent[]
+  send_attempts        SendAttempt[]
   sequence             Sequence     @relation(fields: [sequence_id], references: [id], onDelete: Cascade)
 
   @@unique([sequence_id, step_number])
   @@index([gmail_thread_id])
   @@index([status, scheduled_at_utc])
   @@index([status, retry_count])
+  @@index([eligible_after_utc, status])
+  @@index([claimed_at, status])
+  @@index([retry_at, status])
   @@map("sequence_steps")
 }
 
@@ -177,6 +186,7 @@ model EmailAccount {
   warmup_status     String    @default("COMPLETED")
   sent_today        Int       @default(0)
   sent_this_hour    Int       @default(0)
+  reserved_count    Int       @default(0)
   access_token      String?
   connection_status String    @default("CONNECTED")
   created_at        DateTime  @default(now())
@@ -623,6 +633,8 @@ enum StepStatus {
   SKIPPED
   CANCELLED
   DELAYED
+  RETRYABLE_FAILURE
+  UNCERTAIN
 }
 
 enum EmailEventType {
@@ -813,4 +825,27 @@ model feedbacks {
   @@index([status])
   @@index([created_at])
   @@map("feedbacks")
+}
+
+
+model SendAttempt {
+  id               String    @id @default(cuid())
+  step_id          String
+  attempt_number   Int
+  sender_email     String
+  recipient_email  String
+  status           String
+  gmail_message_id String?
+  gmail_thread_id  String?
+  error_code       String?
+  error_message    String?
+  reconcile_attempts Int @default(0)
+  attempted_at     DateTime  @default(now())
+  resolved_at      DateTime?
+  step             SequenceStep @relation(fields: [step_id], references: [id], onDelete: Cascade)
+
+  @@unique([step_id, attempt_number])
+  @@index([attempted_at, status])
+  @@index([step_id])
+  @@map("send_attempts")
 }

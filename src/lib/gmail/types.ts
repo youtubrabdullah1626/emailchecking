@@ -93,6 +93,7 @@ export type GmailLogEvent =
   | "gmail_send_success"
   | "gmail_send_failed"
   | "gmail_send_aborted_stale_step"
+  | "gmail_send_aborted_attempt_write_failed"
   | "gmail_send_db_update_failed"
   | "gmail_batch_started"
   | "gmail_batch_completed"
@@ -104,5 +105,6 @@ export type GmailLogEvent =
   | "gmail_tracking_pixel_disabled"
   | "gmail_human_delay"
   | "gmail_sticky_sender_unavailable"
-  | "gmail_sticky_lock_failed";
+  | "gmail_sticky_lock_failed"
+  | "gmail_send_attempt_record_skipped";
 

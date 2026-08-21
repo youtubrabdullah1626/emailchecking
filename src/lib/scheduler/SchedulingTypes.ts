@@ -5,6 +5,7 @@ export interface ExecutionQueueItem {
   campaignId: string;
   recordId: string;
   recipientEmail: string;
+  senderEmail?: string;
   sequenceStep: SequenceStep;
   scheduledDate: string; // YYYY-MM-DD (in campaign timezone)
   scheduledTime: string; // HH:MM (in campaign timezone)

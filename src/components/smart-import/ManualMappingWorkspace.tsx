@@ -1,30 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { useImport } from "@/components/providers/ImportProvider";
 import { useWarmup } from "@/components/providers/WarmupProvider";
 import { UNIVERSAL_SCHEMA } from "@/lib/import/schema/UniversalSchema";
-import { TemplateEngine } from "@/lib/import/engines/TemplateEngine";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ArrowRight, Save, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowRight, AlertCircle } from "lucide-react";
 
 export function ManualMappingWorkspace() {
-  const { parsedHeaders, mappingConfig, updateMapping, applyMappingConfig, setMappingConfig, startSequenceBuild, startScheduling, approveImport } = useImport() as any; 
-  const { status: warmupStatus, settings: warmupSettings } = useWarmup();
-  const [templateName, setTemplateName] = useState("");
-  const templateEngine = new TemplateEngine();
-
-  const handleSaveTemplate = () => {
-    if (templateName.trim()) {
-      templateEngine.saveTemplate(templateName, mappingConfig);
-      setTemplateName("");
-      // Could show a toast here
-    }
-  };
+  const { parsedHeaders, mappingConfig, updateMapping, applyMappingConfig } = useImport() as any; 
 
   // Check if email is mapped (required)
   const isEmailMapped = Object.values(mappingConfig).includes("email");
@@ -80,19 +67,7 @@ export function ManualMappingWorkspace() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2 w-full sm:max-w-xs">
-          <Input 
-            placeholder="Template Name..." 
-            className="h-9" 
-            value={templateName}
-            onChange={(e) => setTemplateName(e.target.value)}
-          />
-          <Button variant="outline" size="sm" onClick={handleSaveTemplate} className="gap-2 h-9">
-            <Save className="h-4 w-4" /> Save
-          </Button>
-        </div>
-        
+      <div className="flex items-center justify-end">
         <div className="flex flex-col items-end gap-2">
           {!isEmailMapped && (
             <div className="flex items-center gap-2 text-destructive text-sm font-medium">

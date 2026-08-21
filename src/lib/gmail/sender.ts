@@ -54,7 +54,7 @@ import type { StepSendResult, BatchSendResult, StepForSend } from "./types";
  * established by the Phase 4 scheduler.
  */
 
-export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSendResult> {
+export async function sendStepInternal(stepId: string, cachedAuth?: any): Promise<StepSendResult> {
   gmailLog("gmail_send_started", { stepId });
 
   // ── 1. Validate OAuth config ──────────────────────────────────────────────
@@ -242,7 +242,7 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
     await prisma.sequenceStep.update({
       where: { id: stepId },
       data: {
-        status: "DELAYED",
+        status: "RETRYABLE_FAILURE",
         delay_reason: reputationResult.reason,
         retry_at: reputationResult.retryAt
       }
@@ -339,17 +339,8 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
     (process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : "") ||
     "https://reachiq.up.railway.app"
   ).replace(/\/+$/, "");
-  const isPublicUrl = baseUrl.startsWith("https://") && !baseUrl.includes("localhost");
-  const trackingPixel = isPublicUrl
-    ? TrackingInjector.generatePixel(trackingId, baseUrl)
-    : undefined; // Disabled until app is deployed to a real public domain
+  const trackingPixel = TrackingInjector.generatePixel(trackingId, baseUrl);
 
-  if (!isPublicUrl) {
-    gmailLog("gmail_tracking_pixel_disabled", {
-      stepId,
-      detail: "Tracking pixel suppressed: NEXT_PUBLIC_APP_URL is not a public HTTPS URL. Set it to your deployed domain to enable open tracking."
-    });
-  }
 
   const messagePayload = buildGmailMessage({
     from: senderEmail,
@@ -362,6 +353,33 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
     trackingPixel,
     enableListUnsubscribe,
   });
+
+  // ── 5.5 Create send attempt record BEFORE calling Gmail ─────────────────
+  // Crash-safety anchor — used by reconciler to detect orphaned sends.
+  // If creation fails, we still proceed: a missing audit record is far less
+  // harmful than leaving a step stuck in PROCESSING indefinitely.
+  const prevAttempts = await prisma.sendAttempt.count({ where: { step_id: stepId } }).catch(() => 0);
+  let sendAttempt: { id: string } | null = null;
+  try {
+    sendAttempt = await prisma.sendAttempt.create({
+      data: {
+        step_id: stepId,
+        attempt_number: prevAttempts + 1,
+        sender_email: senderEmail,
+        recipient_email: step.sequence.prospect.email,
+        status: 'ATTEMPTING',
+      },
+      select: { id: true },
+    });
+  } catch (attemptErr) {
+    // IMPORTANT: Warn but DO NOT abort. A missing audit record is far less
+    // harmful than leaving a step permanently stuck in PROCESSING.
+    gmailLog('gmail_send_attempt_record_skipped', {
+      stepId,
+      detail: 'sendAttempt record creation failed — proceeding with send anyway.',
+    });
+    // sendAttempt stays null; downstream null checks handle this safely
+  }
 
   // ── 6. Send via Gmail API ─────────────────────────────────────────────────
   let gmailMessageId: string;
@@ -393,8 +411,8 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
         // Retry only on transient errors: 429 Too Many Requests, or 5xx Server Errors
         if (status === 429 || (status >= 500 && status < 600)) {
           if (attempt === MAX_API_RETRIES) throw err;
-          // Exponential backoff: 2s, 4s, etc.
-          await sleep(attempt * 2000);
+          // Fast backoff: 500ms, 1000ms — keeps interactive sends snappy
+          await sleep(attempt * 500);
           attempt++;
         } else {
           // Fatal error (e.g. 400 Bad Request, 403 Forbidden), do not retry
@@ -414,6 +432,13 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
     gmailMessageId = response.data.id;
     gmailThreadId = response.data.threadId;
 
+    if (sendAttempt) {
+      await prisma.sendAttempt.update({
+        where: { id: sendAttempt.id },
+        data: { status: 'SENT', gmail_message_id: gmailMessageId }
+      }).catch(() => {});
+    }
+
     // Tracking Engine: Map the identifiers and ingest SENT event
     await emailTrackingService.setProviderMapping(trackingId, gmailMessageId, gmailThreadId);
     await emailTrackingService.ingestEvent(trackingId, "SENT");
@@ -432,6 +457,9 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
                         msg.toLowerCase().includes("invalid credentials");
 
     if (isAuthError) {
+      if (sendAttempt) {
+        await prisma.sendAttempt.update({ where: { id: sendAttempt.id }, data: { status: 'FAILED', error_message: 'Auth error - needs reconnect' } }).catch(() => {});
+      }
       // Mark the mailbox as needing reconnection and gracefully delay the step
       if (prisma.emailAccount?.updateMany) {
         await prisma.emailAccount.updateMany({
@@ -444,9 +472,9 @@ export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSe
         await prisma.sequenceStep.update({
           where: { id: stepId },
           data: {
-            status: "DELAYED",
+            status: "PENDING",
             delay_reason: "NEEDS_RECONNECT",
-            retry_at: new Date(Date.now() + 24 * 60 * 60 * 1000)
+            retry_at: null
           }
         }).catch(() => {});
       }
@@ -753,4 +781,20 @@ function extractSafeErrorMessage(err: unknown): string {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function sendStep(stepId: string, cachedAuth?: any): Promise<StepSendResult> {
+  const step = await prisma.sequenceStep.findUnique({
+    where: { id: stepId },
+    select: { sequence: { select: { assigned_sender_email: true } } },
+  });
+  const wasReserved = !!step?.sequence?.assigned_sender_email;
+  const reservedEmail = step?.sequence?.assigned_sender_email;
+
+  const result = await sendStepInternal(stepId, cachedAuth);
+
+  if (wasReserved && reservedEmail) {
+    await prisma.$executeRaw`UPDATE email_accounts SET reserved_count = GREATEST(0, reserved_count - 1) WHERE email = ${reservedEmail.toLowerCase()}`.catch(() => {});
+  }
+  return result;
 }

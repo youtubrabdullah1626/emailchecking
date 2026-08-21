@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Card, CardContent } from "@/components/ui";
-import { LegacyBadge as Badge, LegacyButton as Button } from "@/components/ui/legacy-adapters";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { 
   DropdownMenu, 
@@ -11,7 +10,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Activity, Zap, ShieldAlert, Unlink, Link2, Trash2 } from "lucide-react";
+import { MoreHorizontal, RefreshCw, Unlink, Link2, Trash2, Mail } from "lucide-react";
 
 export interface ConnectedAccountProps {
   email: string;
@@ -45,6 +44,7 @@ function ConnectedAccountCardComponent({
   onAccountUpdated?: () => void;
 }) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
   const handleAction = async (action: "TEST_CONNECTION" | "RENEW_WATCH" | "SYNC_NOW" | "DISCONNECT" | "DELETE_ACCOUNT") => {
     setActionLoading(action);
     try {
@@ -66,63 +66,52 @@ function ConnectedAccountCardComponent({
     }
   };
 
-  const getStatusBadge = () => {
-    if (account.connectionStatus === "DISCONNECTED") return <Badge variant="neutral">⚫ Disconnected</Badge>;
-    if (account.healthStatus === "HEALTHY") return <Badge variant="success">🟢 Healthy</Badge>;
-    if (account.healthStatus === "EXPIRING_SOON") return <Badge variant="warning">🟡 Expiring Soon</Badge>;
-    return <Badge variant="danger">🔴 Needs Reconnect</Badge>;
-  };
-
   const maxLimit = account.dailyLimit || 50;
   const percentUsed = Math.min(100, Math.round((account.sentToday / maxLimit) * 100));
-
-  const getRampUpBadge = () => {
-    if (account.warmupStage === "DAY_1_3") {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-          🔥 Warmup Ramp: {maxLimit}/day (Days 1–3)
-        </span>
-      );
-    }
-    if (account.warmupStage === "DAY_4_7") {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-          📈 Growth Ramp: {maxLimit}/day (Days 4–7)
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-        ⚡ Full Capacity: {maxLimit}/day
-      </span>
-    );
-  };
+  const isHealthy = account.connectionStatus === "CONNECTED" && account.healthStatus === "HEALTHY";
 
   return (
-    <Card className="hover-elevate transition-all relative border border-border/70 shadow-sm bg-card">
-      <div className="absolute top-4 right-4 z-10">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-2xs hover:border-border/80 transition-all space-y-4">
+      {/* Top Header Row */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="h-9 w-9 rounded-lg bg-muted/60 border border-border/80 flex items-center justify-center shrink-0 text-foreground font-semibold">
+            <Mail className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-semibold text-sm text-foreground truncate">
+              {account.email}
+            </span>
+            <span className="relative flex h-2 w-2 shrink-0">
+              {isHealthy && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${isHealthy ? 'bg-emerald-500' : 'bg-destructive'}`} />
+            </span>
+          </div>
+        </div>
+
+        {/* 3-Dots Action Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={actionLoading !== null}>
-              <MoreVertical className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0" disabled={actionLoading !== null}>
+              <MoreHorizontal className="h-4 w-4" />
               <span className="sr-only">Open menu</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem onClick={() => handleAction("SYNC_NOW")} disabled={actionLoading !== null}>
-              <Zap className="mr-2 h-4 w-4" />
-              <span>Sync Now</span>
+          <DropdownMenuContent align="end" className="w-48 text-xs">
+            <DropdownMenuItem onClick={() => handleAction("SYNC_NOW")} disabled={actionLoading !== null} className="gap-2">
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span>Sync Mailbox Now</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {account.connectionStatus === "CONNECTED" ? (
-              <DropdownMenuItem onClick={() => handleAction("DISCONNECT")} disabled={actionLoading !== null}>
-                <Unlink className="mr-2 h-4 w-4" />
-                <span>Disconnect</span>
+              <DropdownMenuItem onClick={() => handleAction("DISCONNECT")} disabled={actionLoading !== null} className="gap-2">
+                <Unlink className="h-3.5 w-3.5" />
+                <span>Disconnect Inbox</span>
               </DropdownMenuItem>
             ) : (
-              <DropdownMenuItem asChild>
+              <DropdownMenuItem asChild className="gap-2">
                 <a href="/api/auth/gmail" className="cursor-pointer">
-                  <Link2 className="mr-2 h-4 w-4" />
+                  <Link2 className="h-3.5 w-3.5" />
                   <span>Reconnect Gmail</span>
                 </a>
               </DropdownMenuItem>
@@ -130,86 +119,46 @@ function ConnectedAccountCardComponent({
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={() => {
-                if (window.confirm(`⚠️ Are you sure you want to permanently delete ${account.email}? Active sequence follow-ups locked to this inbox will be automatically reassigned to your other active inboxes. This action cannot be undone.`)) {
+                if (window.confirm(`⚠️ Permanently remove ${account.email}? Active sequence follow-ups will safely fallback to your remaining active inboxes.`)) {
                   handleAction("DELETE_ACCOUNT");
                 }
               }}
               disabled={actionLoading !== null}
-              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+              className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="h-3.5 w-3.5" />
               <span>Delete Account</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      <CardContent className="p-6">
-        <div className="flex flex-col gap-5">
-          {/* Header Row */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pr-8">
-            <div className="flex items-center gap-4">
-              <div
-                className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center text-lg font-bold shadow-sm"
-              >
-                {account.email.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-lg font-bold text-foreground">
-                  {account.email}
-                </span>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    {account.connectionStatus === "CONNECTED" ? "OAuth 2.0 Connected" : "OAuth 2.0 Disconnected"}
-                  </span>
-                  {account.connectionStatus === "CONNECTED" && (
-                    <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                      🔄 Active in Rotation Pool
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2.5">
-              {getRampUpBadge()}
-              {getStatusBadge()}
-            </div>
-          </div>
-
-          {/* Capacity Progress Bar */}
-          <div className="space-y-2 bg-muted/30 p-3.5 rounded-xl border border-border/40">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-foreground flex items-center gap-1.5">
-                <Activity className="h-3.5 w-3.5 text-primary" /> Daily Sending Capacity
-              </span>
-              <span className="text-muted-foreground font-medium">
-                <strong className="text-foreground">{account.sentToday}</strong> / {maxLimit} sent today ({percentUsed}%)
-              </span>
-            </div>
-            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-              <div 
-                className={`h-full transition-all rounded-full ${percentUsed >= 90 ? 'bg-amber-500' : 'bg-primary'}`}
-                style={{ width: `${percentUsed}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Stats Footer Row */}
-          <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground border-t border-border/50 pt-3">
-            <div className="flex items-center gap-4">
-              <span>Health Score: <strong className="text-foreground">{account.healthScore}%</strong></span>
-              <span>•</span>
-              <span>Hourly Max: <strong className="text-foreground">15 / hr</strong></span>
-            </div>
-            <span className="text-[11px] text-muted-foreground/80">
-              Auto-resets at local midnight
-            </span>
-          </div>
-
+      {/* Sending Capacity Progress */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground font-medium">Daily Outbound Capacity</span>
+          <span className="font-mono text-xs text-foreground font-semibold">
+            {account.sentToday} / {maxLimit} sent today <span className="text-muted-foreground font-normal">({percentUsed}%)</span>
+          </span>
         </div>
-      </CardContent>
-    </Card>
+        <div className="w-full bg-muted/60 rounded-full h-1.5 overflow-hidden">
+          <div 
+            className={`h-full transition-all rounded-full ${percentUsed >= 90 ? 'bg-amber-500' : 'bg-primary'}`}
+            style={{ width: `${percentUsed}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Footer Metadata */}
+      <div className="flex items-center justify-between pt-3 border-t border-border/60 text-xs text-muted-foreground font-mono">
+        <div className="flex items-center gap-3 text-[11px]">
+          <span>Max Velocity: <strong className="text-foreground">15/hr</strong></span>
+        </div>
+        <span className="text-[11px] text-muted-foreground">
+          Auto-resets at midnight
+        </span>
+      </div>
+    </div>
   );
 }
 

@@ -14,9 +14,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Send, MailOpen, Reply, AlertCircle, Clock, Activity, Calendar as CalendarIcon, User, MoreHorizontal, Play, Loader2, ArrowLeft, Trash2, RefreshCw, Ban } from "lucide-react";
+import { Send, MailOpen, Reply, AlertCircle, Clock, Activity, Calendar as CalendarIcon, User, MoreHorizontal, Play, Pause, Loader2, ArrowLeft, Trash2, RefreshCw, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO, differenceInDays } from "date-fns";
+import { StorageEngine } from "@/lib/storage/StorageEngine";
 
 type LiveItem = ExecutionQueueItem & {
   liveStatus: "SCHEDULED" | "PROCESSING" | "SENT" | "OPENED" | "REPLIED" | "BOUNCED" | "CANCELLED";
@@ -25,8 +26,26 @@ type LiveItem = ExecutionQueueItem & {
 };
 
 export function LiveExecutionDashboard() {
-  const { getExecutionQueue, updateQueueItemState, closeSession, deleteQueueItem, rescheduleQueueItem } = useImport() as any;
+  const { getExecutionQueue, updateQueueItemState, closeSession, deleteQueueItem, rescheduleQueueItem, bulkProgress } = useImport() as any;
   const [liveItems, setLiveItems] = useState<LiveItem[]>([]);
+  const storage = useMemo(() => new StorageEngine(), []);
+  const [campaignStatus, setCampaignStatus] = useState<"ACTIVE" | "PAUSED">("ACTIVE");
+  const [currentSessionMeta, setCurrentSessionMeta] = useState<any>(null);
+
+  // Authoritative campaign ID: from bulkProgress, session meta, localStorage, or latest active campaign
+  const activeCampaignId: string = (bulkProgress as any)?.campaignId ?? currentSessionMeta?.campaignId ?? (typeof window !== "undefined" ? localStorage.getItem("silaer_active_campaign_id") : null) ?? "latest";
+
+  useEffect(() => {
+    const activeId = storage.getActiveSessionId();
+    if (activeId) {
+      const all = storage.getAllSessions();
+      const found = all.find(s => s.sessionId === activeId);
+      if (found) {
+        setCurrentSessionMeta(found);
+        setCampaignStatus(found.status === "PAUSED" ? "PAUSED" : "ACTIVE");
+      }
+    }
+  }, [storage]);
 
   // Real stats based on actual data
   const stats = useMemo(() => {
@@ -86,9 +105,107 @@ export function LiveExecutionDashboard() {
     }
   };
 
-  // Initialize Queue with honest data - run ONLY once on mount to prevent reset loops
+  // ── DB-authoritative live status fetch ────────────────────────────────────
+  // On every tick, fetch the real step statuses from the DB via campaign ID.
+  // This means the dashboard ALWAYS reflects truth — regardless of re-imports,
+  // retries, or any client-side state inconsistencies.
+  const [dbFetchError, setDbFetchError] = useState(false);
+
+  const fetchLiveStatusFromDb = React.useCallback(async () => {
+    const campaignId = activeCampaignId || "latest";
+
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}/live-status`);
+      if (!res.ok) { setDbFetchError(true); return; }
+      const data = await res.json();
+      setDbFetchError(false);
+
+      if (!data.items || data.items.length === 0) return;
+
+      const prevReplied = new Set<string>();
+      setLiveItems(prev => {
+        prev.forEach(i => { if (i.liveStatus === "REPLIED") prevReplied.add(i.recipientEmail.toLowerCase()); });
+        return prev;
+      });
+
+      // Build maps for both stepId and (recipientEmail + stepNumber)
+      const dbMap = new Map<string, typeof data.items[0]>();
+      const dbMapByEmailStep = new Map<string, typeof data.items[0]>();
+      for (const item of data.items) {
+        dbMap.set(item.stepId, item);
+        const emailKey = `${(item.recipientEmail || "").toLowerCase().trim()}_${item.stepNumber}`;
+        dbMapByEmailStep.set(emailKey, item);
+      }
+
+      setLiveItems(prev => {
+        // If we have existing items, merge DB status into them (preserving display fields)
+        if (prev.length > 0) {
+          return prev.map(item => {
+            const emailKey = `${(item.recipientEmail || "").toLowerCase().trim()}_${item.sequenceStep?.stepNumber || 1}`;
+            const dbItem = dbMap.get((item as any).realStepId || item.queueId) || dbMapByEmailStep.get(emailKey);
+            if (!dbItem) return item;
+
+            // Toast on status upgrades
+            if (dbItem.liveStatus === "SENT" && (item.liveStatus === "SCHEDULED" || item.liveStatus === "PROCESSING")) {
+              toast.success("Email Delivered!", { description: `Dispatched to ${item.recipientEmail}`, icon: <Send className="h-4 w-4 text-green-500" /> });
+            }
+            if (dbItem.liveStatus === "OPENED" && item.liveStatus !== "OPENED") {
+              toast.success("Email Opened!", { description: `${item.recipientEmail} opened your email`, icon: <MailOpen className="h-4 w-4 text-blue-500" /> });
+            }
+            if (dbItem.liveStatus === "REPLIED" && !prevReplied.has(item.recipientEmail.toLowerCase())) {
+              toast.success("New Reply!", { description: `${item.recipientEmail} replied`, icon: <Reply className="h-4 w-4 text-emerald-500" /> });
+            }
+
+            const cleanDate = dbItem.scheduledAt ? (dbItem.scheduledAt.includes("T") ? dbItem.scheduledAt.split("T")[0] : dbItem.scheduledAt) : item.scheduledDate;
+
+            return {
+              ...item,
+              realStepId: dbItem.stepId,
+              scheduledDate: cleanDate,
+              scheduledTime: dbItem.scheduledTimeLocal || item.scheduledTime,
+              liveStatus: (dbItem.liveStatus as any),
+              lastEventTime: dbItem.lastEventTime || (dbItem.liveStatus === "SENT" ? "Just now" : item.lastEventTime),
+              retryCount: dbItem.retryCount,
+            };
+          });
+        }
+
+        // First load: build items entirely from DB
+        initialized.current = true;
+        return data.items.map((dbItem: any) => ({
+          queueId: dbItem.stepId,
+          realStepId: dbItem.stepId,
+          recipientEmail: dbItem.recipientEmail,
+          recipientName: dbItem.recipientName,
+          sequenceStep: {
+            stepNumber: dbItem.stepNumber,
+            subject: dbItem.subject,
+            content: "",
+          },
+          scheduledDate: dbItem.scheduledAt ? (dbItem.scheduledAt.includes("T") ? dbItem.scheduledAt.split("T")[0] : dbItem.scheduledAt) : "",
+          liveStatus: dbItem.liveStatus,
+          lastEventTime: dbItem.lastEventTime || "-",
+          retryCount: dbItem.retryCount,
+        }));
+      });
+
+      // Sync campaign status from DB
+      if (data.campaignStatus === "PAUSED") setCampaignStatus("PAUSED");
+      else if (data.campaignStatus === "ACTIVE") setCampaignStatus("ACTIVE");
+
+    } catch (err) {
+      console.error("[LiveDashboard] Failed to fetch DB live status", err);
+      setDbFetchError(true);
+    }
+  }, [activeCampaignId]);
+
+  // Initialize Queue: try DB first, fall back to local queue
   const initialized = React.useRef(false);
   useEffect(() => {
+    // Try DB fetch immediately
+    fetchLiveStatusFromDb();
+
+    // If no campaignId yet, fall back to local queue for initial render
     if (!initialized.current) {
       const q = getExecutionQueue();
       if (q && q.length > 0) {
@@ -99,153 +216,56 @@ export function LiveExecutionDashboard() {
             lastEventTime: item.lastEventTime || "-",
           }))
         );
-        initialized.current = true;
       }
     }
-  }, [getExecutionQueue]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Keep a ref to the latest items for the interval to read without stale closures
+  // Keep a ref to the latest items for the interval
   const liveItemsRef = React.useRef(liveItems);
+  useEffect(() => { liveItemsRef.current = liveItems; }, [liveItems]);
+
+  // Main poller: fast 3s when processing, 8s otherwise — fetch DB truth + trigger scheduler + auto-scan replies
+  const pollCountRef = React.useRef(0);
+  const hasProcessingItems = useMemo(() => liveItems.some(i => i.liveStatus === "PROCESSING"), [liveItems]);
+
   useEffect(() => {
-    liveItemsRef.current = liveItems;
-  }, [liveItems]);
+    const pollInterval = hasProcessingItems ? 3000 : 8000;
+    const interval = setInterval(async () => {
+      pollCountRef.current++;
 
-  // Check for Replies Worker (Every 15s)
-  const checkLiveTrackingStatus = React.useCallback(async () => {
-    const currentItems = liveItemsRef.current;
-    if (currentItems.length === 0) return;
+      // 1. Always fetch real status from DB
+      await fetchLiveStatusFromDb();
 
-    const queryItems = currentItems.map(item => ({
-      queueId: item.queueId,
-      stepId: (item as any).realStepId,
-      email: item.recipientEmail,
-      importSequenceId: item.queueId.split('_s')[0],
-      stepNumber: item.sequenceStep?.stepNumber || 1,
-      liveStatus: item.liveStatus,
-    }));
-
-    try {
-      const res = await fetch("/api/track/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stepIds: currentItems.map(item => item.queueId),
-          items: queryItems,
-        })
-      });
-      const data = await res.json();
-
-      if (data.statuses && data.statuses.length > 0) {
-        const newTimeStr = new Date().toLocaleTimeString([], { hour12: false });
-
-        const STATUS_RANK: Record<string, number> = {
-          "SCHEDULED": 0,
-          "PROCESSING": 1,
-          "CANCELLED": 2,
-          "BOUNCED": 2,
-          "SENT": 3,
-          "OPENED": 4,
-          "CLICKED": 5,
-          "REPLIED": 6
-        };
-
-        // Collect all replied emails to cascade stop on subsequent steps
-        const newlyRepliedEmails = new Set<string>();
-
-        setLiveItems(prev => {
-          // Pass 1: Update individual item status from tracking API
-          const updatedItems = prev.map(item => {
-            const tracking = data.statuses.find((s: any) => s.stepId === item.queueId);
-            if (!tracking) return item;
-
-            // Never let tracking upgrade un-sent (SCHEDULED / PROCESSING) items
-            if (item.liveStatus === "SCHEDULED" || item.liveStatus === "PROCESSING") {
-              if (tracking.status === "REPLIED") {
-                newlyRepliedEmails.add(item.recipientEmail.toLowerCase());
-                if (updateQueueItemState) {
-                  updateQueueItemState(item.queueId, "REPLIED", newTimeStr);
-                }
-                return { ...item, liveStatus: "REPLIED" as const, lastEventTime: newTimeStr };
-              }
-              return item;
-            }
-
-            if (tracking.status && tracking.status !== item.liveStatus) {
-              const newRank = STATUS_RANK[tracking.status] || 0;
-              const currentRank = STATUS_RANK[item.liveStatus] || 0;
-
-              // If status is REPLIED, always allow upgrade
-              if (tracking.status === "REPLIED") {
-                newlyRepliedEmails.add(item.recipientEmail.toLowerCase());
-                if (updateQueueItemState) {
-                  updateQueueItemState(item.queueId, "REPLIED", newTimeStr);
-                }
-                if (item.liveStatus !== "REPLIED") {
-                  toast.success("New Reply Detected!", {
-                    description: `${item.recipientEmail} has replied.`,
-                    icon: <Reply className="h-4 w-4 text-emerald-500" />
-                  });
-                }
-                return { ...item, liveStatus: "REPLIED" as const, lastEventTime: newTimeStr };
-              }
-
-              // Prevent downgrading status (e.g., from SENT back to SCHEDULED) during race conditions
-              if (newRank < currentRank && !(item.liveStatus === "BOUNCED" && newRank >= 3)) {
-                return item;
-              }
-
-              if (updateQueueItemState) {
-                updateQueueItemState(item.queueId, tracking.status, newTimeStr);
-              }
-
-              if (tracking.status === "OPENED" && item.liveStatus === "SENT") {
-                toast.success("Email Opened!", {
-                  description: `${item.recipientEmail} just opened your email.`,
-                  icon: <MailOpen className="h-4 w-4 text-blue-500" />
-                });
-              }
-
-              return { ...item, liveStatus: tracking.status, lastEventTime: newTimeStr };
-            }
-
-            if (item.liveStatus === "REPLIED") {
-              newlyRepliedEmails.add(item.recipientEmail.toLowerCase());
-            }
-
-            return item;
-          });
-
-          // Pass 2: Cascade auto-stop on future scheduled steps for replied prospects
-          if (newlyRepliedEmails.size > 0) {
-            return updatedItems.map(item => {
-              if (
-                newlyRepliedEmails.has(item.recipientEmail.toLowerCase()) &&
-                item.liveStatus === "SCHEDULED"
-              ) {
-                if (updateQueueItemState) {
-                  updateQueueItemState(item.queueId, "CANCELLED", newTimeStr);
-                }
-                return { ...item, liveStatus: "CANCELLED" as const, lastEventTime: newTimeStr };
-              }
-              return item;
-            });
-          }
-
-          return updatedItems;
-        });
+      // 2. Trigger scheduler if campaign is active
+      if (campaignStatus === "ACTIVE") {
+        fetch("/api/scheduler/run", { method: "POST" }).catch(() => {});
       }
-    } catch (err) {
-      console.error("Failed to check tracking status", err);
-    }
-  }, [updateQueueItemState]);
 
-  useEffect(() => {
-    // Initial check
-    checkLiveTrackingStatus();
-    // Poll every 15 seconds
-    const interval = setInterval(checkLiveTrackingStatus, 15000);
+      // 3. Auto background reply scan every ~30s so user NEVER has to manually click sync
+      const scanFrequency = hasProcessingItems ? 10 : 4;
+      if (pollCountRef.current % scanFrequency === 0) {
+        fetch("/api/replies/scan", { method: "POST" }).then(async (res) => {
+          if (res.ok) {
+            const data = await res.json().catch(() => ({}));
+            if (data.realReplies > 0) {
+              fetchLiveStatusFromDb();
+            }
+          }
+        }).catch(() => {});
+      }
+    }, pollInterval);
+
     return () => clearInterval(interval);
-  }, [checkLiveTrackingStatus]);
+  }, [fetchLiveStatusFromDb, campaignStatus, hasProcessingItems]);
+
+  // Legacy reply scanner (kept for backwards compatibility)
+  const checkLiveTrackingStatus = React.useCallback(async () => {
+    // Now a no-op: DB fetch above handles all status updates
+    // Kept so existing callers (manual sync button) still work
+    await fetchLiveStatusFromDb();
+  }, [fetchLiveStatusFromDb]);
+
 
   const handleManualSyncReplies = async () => {
     try {
@@ -279,98 +299,46 @@ export function LiveExecutionDashboard() {
     }
   };
 
-  // Dispatch Worker (Simulates Backend Queue Processor)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date();
-      const currentItems = liveItemsRef.current;
+  const handleTogglePauseDashboard = async () => {
+    const isCurrentlyPaused = campaignStatus === "PAUSED";
+    const nextAction = isCurrentlyPaused ? "RESUME" : "PAUSE";
+    const nextStatus = isCurrentlyPaused ? "ACTIVE" : "PAUSED";
+    
+    setCampaignStatus(nextStatus);
+    toast.success(isCurrentlyPaused ? "Campaign resumed" : "Campaign paused");
 
-      // FIX: Burst Rate Limiting (Google API Protection)
-      // Gmail allows max 2-3 emails per second. If 100 emails are scheduled 
-      // for 09:00:00, firing 100 requests instantly will trigger 429 errors.
-      // We filter the ready items, then slice(0, 2) to only process 2 per second.
-      const readyItems = currentItems.filter(item => {
-        if (item.liveStatus !== "SCHEDULED") return false;
-          // Helper to get current time in target timezone
-          const targetTimezone = item.timezone || "UTC"; // fallback
-          let tzNowStr = "";
-          try {
-            const tzOptions = { timeZone: targetTimezone, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' } as const;
-            const parts = new Intl.DateTimeFormat('en-US', tzOptions).formatToParts(now);
-            const p = (type: string) => parts.find(p => p.type === type)?.value || "";
-            let h = parseInt(p('hour'), 10);
-            if (h === 24) h = 0;
-            tzNowStr = `${p('year')}-${p('month')}-${p('day')}T${h.toString().padStart(2, '0')}:${p('minute')}:${p('second')}`;
-          } catch (e) {
-            // fallback to local time if timezone is invalid
-            tzNowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-          }
+    try {
+      let targetId = currentSessionMeta?.sessionId || storage.getActiveSessionId();
+      let campaignName = currentSessionMeta?.campaignName;
 
-          const itemScheduledStr = `${item.scheduledDate}T${item.scheduledTime}:00`;
-          return tzNowStr >= itemScheduledStr;
-      });
+      try {
+        if (targetId) {
+          const dataset = await storage.loadHeavyDataset(targetId);
+          if (dataset?.campaignId) targetId = dataset.campaignId;
+        }
+      } catch (e) {}
 
-      // Take max 2 items per second to stay safely below Google API burst limits
-      readyItems.slice(0, 2).forEach(item => {
-            // 1. Immediately mark as PROCESSING in state to prevent next tick from picking it up
-            setLiveItems(prev => prev.map(i =>
-              i.queueId === item.queueId ? { ...i, liveStatus: "PROCESSING" as any } : i
-            ));
+      if (currentSessionMeta) {
+        currentSessionMeta.status = nextStatus === "PAUSED" ? "PAUSED" : "EXECUTING";
+        currentSessionMeta.lastCheckpoint = nextStatus === "PAUSED" ? "PAUSED" : "EXECUTION_STARTED";
+        storage.saveSessionMetadata(currentSessionMeta);
+      }
 
-            // 2. Fire the side-effect EXACTLY ONCE (outside of setState to avoid Strict Mode double-invocation)
-            sendEmailViaBackend(item).then(result => {
-              const timeStr = new Date().toLocaleTimeString([], { hour12: false });
-
-              if (result.ok) {
-                  setLiveItems(prev => prev.map(ci => {
-                    if (ci.queueId === item.queueId) {
-                      toast.success("Email Sent Automatically", { description: `Delivered to ${ci.recipientEmail}` });
-                      return { ...ci, liveStatus: "SENT", lastEventTime: timeStr, realStepId: result.stepId } as any;
-                    }
-                    return ci;
-                  }));
-                  if (updateQueueItemState) updateQueueItemState(item.queueId, "SENT", timeStr);
-              } else {
-                  const currentRetries = item.retryCount || 0;
-                  if (currentRetries < 2) {
-                     toast.error("Delivery Failed", { description: `Retrying ${item.recipientEmail} in 1 minute... (${currentRetries + 1}/2)` });
-                     
-                     // Calculate time 1 minute from now
-                     const nextMin = new Date(Date.now() + 60000);
-                     // Helper for local timezone formatting to match queue expectations
-                     const tzOptions = { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' } as const;
-                     const parts = new Intl.DateTimeFormat('en-US', tzOptions).formatToParts(nextMin);
-                     const p = (type: string) => parts.find(p => p.type === type)?.value || "";
-                     let h = parseInt(p('hour'), 10);
-                     if (h === 24) h = 0;
-                     const nextMinDateStr = `${p('year')}-${p('month')}-${p('day')}`;
-                     const nextMinTimeStr = `${h.toString().padStart(2, '0')}:${p('minute')}`;
-                     
-                     setLiveItems(prev => prev.map(ci => 
-                        ci.queueId === item.queueId ? { 
-                            ...ci, 
-                            liveStatus: "SCHEDULED", 
-                            retryCount: currentRetries + 1,
-                            scheduledDate: nextMinDateStr,
-                            scheduledTime: nextMinTimeStr,
-                            lastEventTime: timeStr
-                        } : ci
-                     ));
-                     
-                     if (rescheduleQueueItem) rescheduleQueueItem(item.queueId, nextMinDateStr, nextMinTimeStr);
-                  } else {
-                     setLiveItems(prev => prev.map(ci => 
-                        ci.queueId === item.queueId ? { ...ci, liveStatus: "BOUNCED", lastEventTime: timeStr } : ci
-                     ));
-                     if (updateQueueItemState) updateQueueItemState(item.queueId, "BOUNCED", timeStr);
-                  }
-              }
-            });
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [updateQueueItemState, rescheduleQueueItem]);
+      if (targetId) {
+        const res = await fetch(`/api/campaigns/${encodeURIComponent(targetId)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: nextAction, campaignName }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          toast.error(data.error || `Failed to ${nextAction.toLowerCase()} campaign`);
+        }
+      }
+    } catch (e) {
+      toast.error("Failed to update campaign state");
+    }
+  };
 
   // Lead Journey items
   const selectedLeadItems = useMemo(() => {
@@ -388,46 +356,53 @@ export function LiveExecutionDashboard() {
   const handleSendNow = async (e: React.MouseEvent, queueId: string) => {
     e.stopPropagation();
 
-    // Find the item
-    const targetItem = liveItems.find(i => i.queueId === queueId);
+    const targetItem = liveItems.find(i => i.queueId === queueId || (i as any).realStepId === queueId);
     if (!targetItem) return;
 
-    // Optimistically mark as sending/sent
     setLiveItems(prev => prev.map(item => {
-      if (item.queueId === queueId) {
-        return { ...item, liveStatus: "SENT", lastEventTime: "Sending..." };
+      if (item.queueId === targetItem.queueId || (item as any).realStepId === targetItem.queueId) {
+        return { ...item, liveStatus: "PROCESSING", lastEventTime: "In route to Gmail..." };
       }
       return item;
     }));
 
-    toast.loading("Sending email...", { id: queueId });
+    toast.loading("Sending email via Gmail...", { id: queueId });
 
-    const success = await sendEmailViaBackend(targetItem);
-    const statusStr = success ? "SENT" : "BOUNCED";
-    const nowObj = new Date();
-    const timeStr = nowObj.toLocaleTimeString([], { hour12: false });
-    const dateStr = nowObj.toISOString().split('T')[0];
-
-    setLiveItems(prev => prev.map(item => {
-      if (item.queueId === queueId) {
-        if (success) {
-          toast.success("Email Delivered!", { id: queueId, description: `Sent to ${item.recipientEmail}` });
-        } else {
-          toast.error("Failed to deliver", { id: queueId });
-        }
-        return {
-          ...item,
-          liveStatus: statusStr as any,
-          scheduledDate: dateStr,
-          scheduledTime: timeStr.substring(0, 5),
-          lastEventTime: timeStr
-        };
+    try {
+      const stepId = (targetItem as any).realStepId || targetItem.queueId;
+      const res = await fetch("/api/steps/send-now", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stepId,
+          queueId: targetItem.queueId,
+          recipientEmail: targetItem.recipientEmail,
+          stepNumber: targetItem.sequenceStep?.stepNumber || 1,
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      
+      if (res.ok && data.ok) {
+        toast.success("Email Delivered!", { id: queueId, description: `Sent to ${targetItem.recipientEmail}` });
+        setLiveItems(prev => prev.map(item => {
+          const isMatch =
+            item.queueId === targetItem.queueId ||
+            (item as any).realStepId === data.stepId ||
+            ((item.recipientEmail || "").toLowerCase().trim() === (targetItem.recipientEmail || "").toLowerCase().trim() &&
+             (item.sequenceStep?.stepNumber || 1) === (targetItem.sequenceStep?.stepNumber || 1));
+          if (isMatch) {
+            return { ...item, realStepId: data.stepId || (item as any).realStepId, liveStatus: "SENT" as any, lastEventTime: "Just now" };
+          }
+          return item;
+        }));
+        fetchLiveStatusFromDb();
+      } else {
+        toast.error("Delivery Failed", { id: queueId, description: data.detail || data.error || "Send failed" });
+        await fetchLiveStatusFromDb();
       }
-      return item;
-    }));
-
-    if (success && updateQueueItemState) {
-      updateQueueItemState(queueId, statusStr, timeStr);
+    } catch (err: any) {
+      toast.error("Network Error", { id: queueId, description: err.message || "Failed to reach backend." });
+      await fetchLiveStatusFromDb();
     }
   };
 
@@ -438,23 +413,137 @@ export function LiveExecutionDashboard() {
     setRescheduleTime(item.scheduledTime);
   };
 
-  const handleSaveReschedule = () => {
+  const handleSaveReschedule = async () => {
     if (!rescheduleItem) return;
+    
+    const targetItem = rescheduleItem;
+    const stepId = (targetItem as any).realStepId || targetItem.queueId;
+    const chosenDate = rescheduleDate;
+    const chosenTime = rescheduleTime;
+
+    // Immediately close modal so user is not blocked on the dialog
+    setRescheduleItem(null);
+
+    // Check if new scheduled time is due now / in past
+    let isDueNow = false;
+    try {
+      const targetUtc = new Date(`${chosenDate}T${chosenTime || "09:00"}:00`);
+      isDueNow = isNaN(targetUtc.getTime()) || targetUtc.getTime() <= (Date.now() + 60000);
+    } catch {
+      isDueNow = true;
+    }
+
+    // Optimistically update UI
     setLiveItems(prev => prev.map(item => {
-      if (item.queueId === rescheduleItem.queueId) {
+      const isMatch =
+        item.queueId === targetItem.queueId ||
+        (item as any).realStepId === targetItem.queueId ||
+        ((item.recipientEmail || "").toLowerCase().trim() === (targetItem.recipientEmail || "").toLowerCase().trim() &&
+         (item.sequenceStep?.stepNumber || 1) === (targetItem.sequenceStep?.stepNumber || 1));
+      if (isMatch) {
         return {
           ...item,
-          scheduledDate: rescheduleDate,
-          scheduledTime: rescheduleTime,
+          scheduledDate: chosenDate,
+          scheduledTime: chosenTime,
+          liveStatus: isDueNow ? "PROCESSING" : item.liveStatus,
+          lastEventTime: isDueNow ? "In route to Gmail..." : item.lastEventTime,
         };
       }
       return item;
     }));
-    if (rescheduleQueueItem) {
-      rescheduleQueueItem(rescheduleItem.queueId, rescheduleDate, rescheduleTime);
+
+    if (isDueNow) {
+      toast.loading("Sending email via Gmail...", { id: `reschedule-${targetItem.queueId}` });
+    } else {
+      toast.loading("Rescheduling in database...", { id: `reschedule-${targetItem.queueId}` });
     }
-    toast.success("Email Rescheduled");
-    setRescheduleItem(null);
+
+    try {
+      const res = await fetch("/api/steps/reschedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stepId,
+          queueId: targetItem.queueId,
+          recipientEmail: targetItem.recipientEmail,
+          stepNumber: targetItem.sequenceStep?.stepNumber || 1,
+          newDate: chosenDate,
+          newTime: chosenTime,
+          timezone: targetItem.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.ok) {
+        if (data.sentImmediately) {
+          toast.success("Email Delivered!", { id: `reschedule-${targetItem.queueId}`, description: `Dispatched to ${targetItem.recipientEmail}` });
+          setLiveItems(prev => prev.map(item => {
+            const isMatch =
+              item.queueId === targetItem.queueId ||
+              (item as any).realStepId === data.stepId ||
+              ((item.recipientEmail || "").toLowerCase().trim() === (targetItem.recipientEmail || "").toLowerCase().trim() &&
+               (item.sequenceStep?.stepNumber || 1) === (targetItem.sequenceStep?.stepNumber || 1));
+            if (isMatch) {
+              return { ...item, realStepId: data.stepId || (item as any).realStepId, liveStatus: "SENT" as any, lastEventTime: "Just now" };
+            }
+            return item;
+          }));
+          fetchLiveStatusFromDb();
+        } else {
+          toast.success("Email Rescheduled & Synced with Database", { id: `reschedule-${targetItem.queueId}` });
+          if (rescheduleQueueItem) {
+            rescheduleQueueItem(targetItem.queueId, chosenDate, chosenTime);
+          }
+          await fetchLiveStatusFromDb();
+        }
+      } else {
+        toast.error("Reschedule Failed", { id: `reschedule-${targetItem.queueId}`, description: data.detail || data.error || "Update failed" });
+        await fetchLiveStatusFromDb();
+      }
+    } catch (err: any) {
+      toast.error("Network Error", { id: `reschedule-${targetItem.queueId}`, description: err.message });
+      await fetchLiveStatusFromDb();
+    }
+  };
+
+  const formatEventTime = (val: string | null | undefined): string => {
+    if (!val || val === "-" || val === "null" || val === "undefined") return "—";
+    
+    if (val.includes("Sending") || val.includes("route") || val.includes("Queued") || val === "Just now") {
+      return val;
+    }
+
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return val;
+
+      const now = new Date();
+      const diffMs = now.getTime() - d.getTime();
+      
+      // Future or within last 45s
+      if (diffMs < 45000 && diffMs >= -10000) {
+        return "Just now";
+      }
+
+      const diffMins = Math.floor(diffMs / (60 * 1000));
+      if (diffMins < 60 && diffMins > 0) {
+        return `${diffMins}m ago`;
+      }
+
+      const diffHours = Math.floor(diffMs / (60 * 60 * 1000));
+      if (diffHours < 12 && diffHours > 0) {
+        return `${diffHours}h ago`;
+      }
+
+      const isToday = d.toDateString() === now.toDateString();
+      if (isToday) {
+        return format(d, "h:mm a"); // e.g. "10:30 PM"
+      }
+
+      return format(d, "MMM d, h:mm a"); // e.g. "Aug 21, 10:30 PM"
+    } catch {
+      return val;
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -470,11 +559,30 @@ export function LiveExecutionDashboard() {
     }
   };
 
-  const handleDeleteItem = (e: React.MouseEvent, queueId: string) => {
+  const handleDeleteItem = async (e: React.MouseEvent, queueId: string) => {
     e.stopPropagation();
+    const targetItem = liveItems.find(i => i.queueId === queueId);
+    const stepId = targetItem ? ((targetItem as any).realStepId || targetItem.queueId) : queueId;
+
     setLiveItems(prev => prev.filter(i => i.queueId !== queueId));
     if (deleteQueueItem) deleteQueueItem(queueId);
-    toast.success("Item removed from queue");
+
+    try {
+      await fetch("/api/steps/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stepId,
+          queueId,
+          recipientEmail: targetItem?.recipientEmail,
+          stepNumber: targetItem?.sequenceStep?.stepNumber || 1,
+        })
+      });
+      toast.success("Item removed from database and queue");
+      await fetchLiveStatusFromDb();
+    } catch {
+      toast.success("Item removed from queue");
+    }
   };
 
   return (
@@ -506,6 +614,29 @@ export function LiveExecutionDashboard() {
           <Button 
             variant="outline" 
             size="sm" 
+            onClick={handleTogglePauseDashboard}
+            className={`gap-1.5 font-semibold text-xs rounded-xl shadow-xs border ${
+              campaignStatus === "PAUSED"
+                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-300 hover:bg-emerald-100"
+                : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-300 hover:bg-amber-100"
+            }`}
+          >
+            {campaignStatus === "PAUSED" ? (
+              <>
+                <Play className="h-3.5 w-3.5 fill-current" />
+                Resume Sending
+              </>
+            ) : (
+              <>
+                <Pause className="h-3.5 w-3.5" />
+                Pause Campaign
+              </>
+            )}
+          </Button>
+
+          <Button 
+            variant="outline" 
+            size="sm" 
             onClick={handleManualSyncReplies}
             disabled={isSyncing}
             className="gap-2 border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium"
@@ -513,8 +644,16 @@ export function LiveExecutionDashboard() {
             <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
             {isSyncing ? "Scanning..." : "Sync & Check Replies"}
           </Button>
-          <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 shadow-sm">
-            🟢 ACTIVE
+
+          <Badge 
+            variant="default" 
+            className={`shadow-sm font-bold ${
+              campaignStatus === "PAUSED" 
+                ? "bg-amber-500 hover:bg-amber-600 text-white" 
+                : "bg-emerald-500 hover:bg-emerald-600 text-white"
+            }`}
+          >
+            {campaignStatus === "PAUSED" ? "⏸️ PAUSED" : "🟢 ACTIVE"}
           </Badge>
         </div>
       </div>
@@ -627,8 +766,8 @@ export function LiveExecutionDashboard() {
                     <TableCell className="py-3">
                       {getStatusBadge(item.liveStatus)}
                     </TableCell>
-                    <TableCell className="text-right text-xs font-mono text-muted-foreground py-3">
-                      {item.lastEventTime}
+                    <TableCell className="text-right text-xs font-mono text-muted-foreground py-3 whitespace-nowrap">
+                      {formatEventTime(item.lastEventTime)}
                     </TableCell>
                     <TableCell className="text-center py-3">
                       <DropdownMenu>
@@ -783,7 +922,7 @@ export function LiveExecutionDashboard() {
                         ) : (
                           <>
                             <Activity className="h-3 w-3" />
-                            <span className="capitalize">{item.liveStatus.toLowerCase()}</span> on {exactDate} at {item.lastEventTime}
+                            <span className="capitalize">{item.liveStatus.toLowerCase()}</span> • {formatEventTime(item.lastEventTime)}
                           </>
                         )}
                       </div>

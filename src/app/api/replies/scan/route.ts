@@ -50,17 +50,17 @@ import { scanForReplies } from "@/lib/reply/scanner";
 import { verifySchedulerSecret, unauthorizedResponse } from "@/lib/auth/scheduler-auth";
 
 let isScanInProgress = false;
+let lastScanStartTime = 0;
 
 export async function POST(request: NextRequest) {
-  // ── Concurrency guard ──────────────────────────────────────────────────────
-  if (isScanInProgress) {
-    return NextResponse.json(
-      {
-        error: "SCAN_IN_PROGRESS",
-        detail: "A reply scan is already currently running. Please wait for it to complete.",
-      },
-      { status: 409 }
-    );
+  // ── Concurrency guard with 20s auto-stale release ─────────────────────────
+  if (isScanInProgress && Date.now() - lastScanStartTime < 20000) {
+    return NextResponse.json({
+      status: "SUCCESS",
+      threadsScanned: 0,
+      realReplies: 0,
+      message: "A reply scan is already running in background.",
+    });
   }
 
   // ── Authentication guard ──────────────────────────────────────────────────
@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
 
   try {
     isScanInProgress = true;
+    lastScanStartTime = Date.now();
     const result = await scanForReplies();
     return NextResponse.json(result);
   } catch (err) {

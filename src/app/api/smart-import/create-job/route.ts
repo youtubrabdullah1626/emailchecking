@@ -24,11 +24,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { fileName, totalRows, campaignName, chunksTotal, importTag } = body;
 
-    if (!fileName || !totalRows || !chunksTotal) {
-      return NextResponse.json({ error: "Missing required fields: fileName, totalRows, chunksTotal" }, { status: 400 });
-    }
+    const safeFileName = fileName || "import-prospects.pdf";
+    const safeTotalRows = Math.max(1, Number(totalRows) || 1);
+    const safeChunksTotal = Math.max(1, Number(chunksTotal) || 1);
 
-    if (chunksTotal > 100) {
+    if (safeChunksTotal > 100) {
       return NextResponse.json({ error: "Import too large. Maximum 50,000 rows per session." }, { status: 400 });
     }
 
@@ -46,12 +46,12 @@ export async function POST(request: NextRequest) {
       data: {
         userId,
         status: "PROCESSING",
-        fileName,
-        totalRows: Number(totalRows),
+        fileName: safeFileName,
+        totalRows: safeTotalRows,
         campaignId: campaign.id,
         campaignName: campaign.name,
         importTag: importTag || null,
-        chunksTotal: Number(chunksTotal),
+        chunksTotal: safeChunksTotal,
         chunksLoaded: 0,
       }
     });

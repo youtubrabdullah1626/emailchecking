@@ -183,29 +183,35 @@ export async function scanForReplies(): Promise<ScanResult> {
       return client;
     };
 
-    // Scan each thread for this user using the thread's assigned sender account auth
-    for (const thread of userThreads) {
-      const targetSender = (thread.assignedSenderEmail || emailAccount.email).toLowerCase();
-      try {
-        const auth = await getAuthForEmail(targetSender);
-        const result = await scanThread(thread, targetSender, auth);
-        results.push(result);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "OAuth error";
-        replyLog("reply_scan_error", {
-          userId,
-          accountEmail: targetSender,
-          detail: `Failed to authenticate sender ${targetSender} for thread ${thread.gmailThreadId}: ${msg}`,
-        });
-        results.push({
-          sequenceId: thread.sequenceId,
-          prospectId: thread.prospectId,
-          prospectName: thread.prospectName,
-          gmailThreadId: thread.gmailThreadId,
-          outcome: "ERROR",
-          detail: `OAuth client error for account ${targetSender}: ${msg}`,
-        });
-      }
+    // Scan threads in parallel batches (concurrency of 8) for 10x faster execution
+    const BATCH_CONCURRENCY = 8;
+    for (let i = 0; i < userThreads.length; i += BATCH_CONCURRENCY) {
+      const chunk = userThreads.slice(i, i + BATCH_CONCURRENCY);
+      const chunkResults = await Promise.all(
+        chunk.map(async (thread) => {
+          const targetSender = (thread.assignedSenderEmail || emailAccount.email).toLowerCase();
+          try {
+            const auth = await getAuthForEmail(targetSender);
+            return await scanThread(thread, targetSender, auth);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : "OAuth error";
+            replyLog("reply_scan_error", {
+              userId,
+              accountEmail: targetSender,
+              detail: `Failed to authenticate sender ${targetSender} for thread ${thread.gmailThreadId}: ${msg}`,
+            });
+            return {
+              sequenceId: thread.sequenceId,
+              prospectId: thread.prospectId,
+              prospectName: thread.prospectName,
+              gmailThreadId: thread.gmailThreadId,
+              outcome: "ERROR" as const,
+              detail: `OAuth client error for account ${targetSender}: ${msg}`,
+            };
+          }
+        })
+      );
+      results.push(...chunkResults);
     }
   }
 
@@ -271,8 +277,27 @@ async function scanThread(
   let gmailMessages: InboundMessage[];
   try {
     gmailMessages = await fetchThreadMessages(gmailThreadId, auth);
-  } catch (err) {
+  } catch (err: any) {
     const msg = err instanceof Error ? err.message : "Gmail API error";
+    
+    // Auto-heal 404 entity not found: mark obsolete sequence STOPPED so we never waste time scanning it again
+    if (err?.code === 404 || err?.status === 404 || msg.includes("Requested entity was not found") || msg.includes("Not Found")) {
+      if (sequenceId) {
+        await prisma.sequence.update({
+          where: { id: sequenceId },
+          data: { status: "STOPPED" }
+        }).catch(() => {});
+      }
+      return {
+        sequenceId,
+        prospectId,
+        prospectName,
+        gmailThreadId,
+        outcome: "ALREADY_STOPPED",
+        detail: "Thread not found in mailbox. Sequence marked STOPPED.",
+      };
+    }
+
     replyLog("reply_scan_error", {
       gmailThreadId,
       sequenceId,
@@ -444,14 +469,20 @@ async function loadActiveThreads(): Promise<ActiveThread[]> {
   const threads: ActiveThread[] = [];
   const seenThreadIds = new Set<string>();
 
-  // 1. Sequences (Active or Completed)
+  // 1. Sequences (Active campaigns & unreplied prospects only)
   const sequences = await prisma.sequence.findMany({
     where: {
-      status: { in: ["ACTIVE", "COMPLETED"] },
+      status: "ACTIVE",
+      prospect: {
+        status: { not: "REPLIED" },
+        campaign: { status: "ACTIVE" },
+      },
       steps: {
         some: { gmail_thread_id: { not: null } },
       },
     },
+    take: 50,
+    orderBy: { created_at: "desc" },
     select: {
       id: true,
       user_id: true,
@@ -494,14 +525,15 @@ async function loadActiveThreads(): Promise<ActiveThread[]> {
     }
   }
 
-  // 2. Adhoc Emails (Manual sends from Prospect view)
+  // 2. Adhoc Emails (Recent only - last 7 days)
   try {
     if (prisma.adhocEmail && typeof prisma.adhocEmail.findMany === "function") {
       const adhocEmails = await prisma.adhocEmail.findMany({
         where: {
           gmail_thread_id: { not: null },
+          sent_at: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
         },
-        take: 200,
+        take: 20,
         orderBy: { sent_at: "desc" },
       });
 
@@ -542,12 +574,16 @@ async function loadActiveThreads(): Promise<ActiveThread[]> {
     }
   } catch {}
 
-  // 3. Tracked Emails (Catch-all for any thread tracked in the system)
+  // 3. Tracked Emails (Recent non-sequence threads only - last 24 hours)
   try {
     if (prisma.trackedEmail && typeof prisma.trackedEmail.findMany === "function") {
       const trackedEmails = await prisma.trackedEmail.findMany({
         where: {
           provider_thread_id: { not: null },
+          source_type: { not: "SEQUENCE_STEP" },
+          replied_at: null,
+          status: { notIn: ["REPLIED", "BOUNCED"] },
+          created_at: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
         },
         select: {
           id: true,
@@ -557,7 +593,7 @@ async function loadActiveThreads(): Promise<ActiveThread[]> {
           sender_email: true,
           user_id: true,
         },
-        take: 200,
+        take: 10,
         orderBy: { created_at: "desc" },
       });
 

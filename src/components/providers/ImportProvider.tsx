@@ -502,9 +502,9 @@ export function ImportProvider({ children }: { children: ReactNode }) {
   const approveImport = async () => {
     perfMonitor.startPhase();
     setStatus("EXECUTING");
-    const sequences = sequencesRef.current;
-    const executionQueue = queueRef.current;
-    const totalRows = sequences.length;
+    const sequences = sequencesRef.current || [];
+    const executionQueue = queueRef.current || [];
+    const totalRows = Math.max(1, sequences.length > 0 ? sequences.length : (recordsRef.current?.length || 1));
 
     // FIX 4: Dynamic chunk sizing — Vercel has a hard 4.5MB request body limit.
     // We measure actual byte size of a 5-row sample to compute a safe chunk size.
@@ -525,7 +525,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         dynamicChunkSize = Math.max(MIN_CHUNK_SIZE, Math.min(CHUNK_SIZE, calculated));
       } catch { dynamicChunkSize = 100; }
     }
-    const totalChunks = Math.ceil(totalRows / dynamicChunkSize);
+    const totalChunks = Math.max(1, Math.ceil(totalRows / dynamicChunkSize));
 
     try {
       // ── PHASE 1: Create the job + campaign in the DB ─────────────────────────
@@ -533,7 +533,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fileName: uploadedFile?.name || "bulk-import.csv",
+          fileName: uploadedFile?.name || "bulk-import.pdf",
           totalRows,
           campaignName: uploadedFile?.name?.replace(/\.[^/.]+$/, "") || "Smart Import Campaign",
           chunksTotal: totalChunks,
@@ -609,9 +609,14 @@ export function ImportProvider({ children }: { children: ReactNode }) {
       setBulkProgress(null);
       setStatus("EXECUTING");
       toast.success("Campaign launched successfully!", {
-        description: `${progress.successCount || totalRows} contacts saved and sequences scheduled.`,
+        description: `${progress.successCount || totalRows} contacts saved — dispatching emails now...`,
         duration: 5000,
       });
+
+      // ── PHASE 4: Immediately trigger scheduler so due steps go NOW ────────────
+      // Do NOT wait for the cron tick (which may be minutes away).
+      // Fire-and-forget: errors here are non-fatal.
+      fetch("/api/scheduler/run", { method: "POST" }).catch(() => {});
 
     } catch (error: any) {
       console.error("[approveImport] Failed:", error);
@@ -640,7 +645,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const rescheduleQueueItem = async (queueId: string, newDate: string, newTime: string) => {
+  const rescheduleQueueItem = async (queueId: string, newDate: string, newTime: string, stepId?: string) => {
     let updated = false;
     queueRef.current = queueRef.current.map(item => {
       if (item.queueId === queueId) {
@@ -655,6 +660,19 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         status: "EXECUTING",
         heavyData: { executionQueue: queueRef.current, queueSummary: queueSummary! }
       });
+
+      // Synchronize with backend database
+      fetch("/api/steps/reschedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stepId,
+          queueId,
+          newDate,
+          newTime,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        })
+      }).catch(() => {});
     }
   };
 
@@ -708,7 +726,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     // The UI should call startScheduling() after calling this.
   };
 
-  const deleteQueueItem = async (queueId: string) => {
+  const deleteQueueItem = async (queueId: string, stepId?: string) => {
     const itemIndex = queueRef.current.findIndex(item => item.queueId === queueId);
     if (itemIndex >= 0) {
       queueRef.current = queueRef.current.filter(item => item.queueId !== queueId);
@@ -716,6 +734,13 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         status: "EXECUTING",
         heavyData: { executionQueue: queueRef.current, queueSummary: queueSummary! }
       });
+
+      // Synchronize with backend database
+      fetch("/api/steps/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stepId, queueId })
+      }).catch(() => {});
     }
   };
 

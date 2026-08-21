@@ -129,7 +129,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               <span className="font-semibold text-foreground tracking-tight">System Live</span>
               <span className="text-muted-foreground">•</span>
               <span className="text-muted-foreground font-medium font-mono text-[11px]">
-                {mounted && globalStats ? `${globalStats.emailsSentToday || 0} Sent • ${globalStats.repliesToday || 0} Replies Today` : 'Syncing state...'}
+                {mounted && (accountStats || globalStats) ? `${accountStats?.emailsSentToday ?? globalStats?.emailsSentToday ?? 0} Sent • ${accountStats?.repliesToday ?? globalStats?.repliesToday ?? 0} Replies Today` : 'Syncing state...'}
               </span>
             </div>
           </div>

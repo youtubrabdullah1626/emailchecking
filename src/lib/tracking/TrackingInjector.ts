@@ -33,9 +33,9 @@ export class TrackingInjector {
     }
 
     const cleanBase = baseUrl.replace(/\/+$/, "");
-    const pixelUrl = `${cleanBase}/api/track/${trackingId}`;
+    const pixelUrl = `${cleanBase}/api/track/${trackingId}.gif`;
     
     // Standard 1x1 tracking pixel compatible with Gmail Google Image Proxy
-    return `<img src="${pixelUrl}" width="1" height="1" border="0" alt="" style="display:block;width:1px;min-width:1px;height:1px;min-height:1px;border:0;outline:none;" />`;
+    return `<img src="${pixelUrl}" width="1" height="1" border="0" alt="" loading="eager" style="display:block;width:1px;min-width:1px;height:1px;min-height:1px;border:0;outline:none;" />`;
   }
 }
