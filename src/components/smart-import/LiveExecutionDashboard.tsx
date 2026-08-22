@@ -433,8 +433,10 @@ export function LiveExecutionDashboard() {
           setTimeout(() => fetchLiveStatusFromDb(), 4000);
         }
       }
-    } catch (e) {
-      toast.error("Failed to update campaign state");
+    } catch (e: any) {
+      console.error("[executeTogglePause] Error:", e);
+      const errMsg = e?.message || "Failed to update campaign state";
+      toast.error(errMsg);
     } finally {
       setIsResumingCampaign(false);
     }

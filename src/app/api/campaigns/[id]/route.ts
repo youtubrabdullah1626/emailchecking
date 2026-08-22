@@ -102,6 +102,27 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       });
     }
 
+    const isOwnerOrAdmin = session.user.role === 'SUPER_ADMIN' || session.user.role === 'OWNER' || session.user.role === 'ADMIN';
+
+    if (!campaign && isOwnerOrAdmin) {
+      campaign = await prisma.campaign.findFirst({
+        where: {
+          OR: [
+            { id: params.id },
+            { name: params.id },
+          ]
+        },
+        select: { id: true, status: true },
+        orderBy: { updated_at: "desc" }
+      });
+      if (!campaign) {
+        campaign = await prisma.campaign.findFirst({
+          select: { id: true, status: true },
+          orderBy: { updated_at: "desc" }
+        });
+      }
+    }
+
     if (!campaign) {
       return NextResponse.json({ ok: false, error: "Campaign not found." }, { status: 404 });
     }

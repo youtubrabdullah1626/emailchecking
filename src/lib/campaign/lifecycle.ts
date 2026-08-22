@@ -17,12 +17,18 @@ export interface ActivationResult {
 }
 
 export async function activateCampaign(campaignId: string, userId: string): Promise<ActivationResult> {
+  const dbUser = await prisma.users.findUnique({ where: { id: userId }, select: { role: true, email: true } });
+  const isOwnerOrAdmin = dbUser?.role === 'SUPER_ADMIN' || dbUser?.role === 'OWNER' || dbUser?.role === 'ADMIN';
+
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
     select: { id: true, status: true, user_id: true }
   });
-  if (!campaign || campaign.user_id !== userId) {
+  if (!campaign) {
     return { success: false, error: 'CAMPAIGN_NOT_FOUND', message: 'Campaign not found.' };
+  }
+  if (campaign.user_id !== userId && !isOwnerOrAdmin) {
+    return { success: false, error: 'CAMPAIGN_NOT_FOUND', message: 'Unauthorized campaign access.' };
   }
   
   // Idempotent: If already ACTIVE, return success instantly
@@ -32,14 +38,11 @@ export async function activateCampaign(campaignId: string, userId: string): Prom
     return { success: false, error: 'INVALID_TRANSITION', message: `Cannot activate a ${campaign.status} campaign.` };
   }
 
-  // Derive plan limit based on user role (Owners/Admins get ENTERPRISE capacity)
-  const dbUser = await prisma.users.findUnique({ where: { id: userId }, select: { role: true } });
-  const isSuperOrAdmin = dbUser?.role === 'SUPER_ADMIN' || dbUser?.role === 'OWNER' || dbUser?.role === 'ADMIN';
-  const plan: PlanType = isSuperOrAdmin ? 'ENTERPRISE' : 'FREE';
+  const plan: PlanType = isOwnerOrAdmin ? 'ENTERPRISE' : 'FREE';
   const maxAllowed = PLAN_LIMITS[plan].MAX_ACTIVE_CAMPAIGNS;
   
   const activeCount = await prisma.campaign.count({ where: { user_id: userId, status: 'ACTIVE' } });
-  if (activeCount >= maxAllowed) {
+  if (activeCount >= maxAllowed && !isOwnerOrAdmin) {
     return {
       success: false,
       error: 'PLAN_LIMIT_REACHED',
@@ -68,8 +71,12 @@ export async function activateCampaign(campaignId: string, userId: string): Prom
 }
 
 export async function pauseCampaign(campaignId: string, userId: string): Promise<{ success: boolean; message?: string }> {
+  const dbUser = await prisma.users.findUnique({ where: { id: userId }, select: { role: true, email: true } });
+  const isOwnerOrAdmin = dbUser?.role === 'SUPER_ADMIN' || dbUser?.role === 'OWNER' || dbUser?.role === 'ADMIN';
+
   const campaign = await prisma.campaign.findUnique({ where: { id: campaignId }, select: { status: true, user_id: true } });
-  if (!campaign || campaign.user_id !== userId) return { success: false, message: 'Campaign not found.' };
+  if (!campaign) return { success: false, message: 'Campaign not found.' };
+  if (campaign.user_id !== userId && !isOwnerOrAdmin) return { success: false, message: 'Unauthorized campaign access.' };
   if (campaign.status === 'PAUSED') return { success: true }; // Idempotent
 
   // 1. Update Campaign & Sequences status to PAUSED
