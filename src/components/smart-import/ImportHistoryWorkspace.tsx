@@ -562,18 +562,6 @@ export function ImportHistoryWorkspace() {
                       View Details
                     </Button>
 
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        window.location.href = "/prospects";
-                      }}
-                      className="h-7 px-2 text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-lg gap-1"
-                    >
-                      <Eye className="h-3 w-3" />
-                      View Prospects
-                    </Button>
-
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg">
@@ -715,20 +703,7 @@ export function ImportHistoryWorkspace() {
               </div>
 
               {/* Action Buttons in Modal */}
-              <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setActiveDetailsSession(null);
-                    window.location.href = "/prospects";
-                  }}
-                  className="rounded-xl text-xs"
-                >
-                  <Users className="h-3.5 w-3.5 mr-1.5" />
-                  View in Prospects CRM
-                </Button>
-
+              <DialogFooter className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <Button
                   size="sm"
                   onClick={() => handleResume(activeDetailsSession.sessionId)}
