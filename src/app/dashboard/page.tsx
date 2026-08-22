@@ -483,7 +483,12 @@ export default function DashboardPage() {
         </CardHeader>
 
         <CardContent className="pt-6">
-          {displayedTrends.length === 0 ? (
+          {loading ? (
+            <div className="py-12 flex flex-col items-center justify-center gap-4">
+              <div className="h-6 w-56 bg-muted/60 animate-pulse rounded-lg" />
+              <div className="h-32 w-full bg-muted/30 animate-pulse rounded-xl" />
+            </div>
+          ) : displayedTrends.length === 0 ? (
             <div className="py-16 text-center text-muted-foreground text-sm">
               No historical delivery data recorded yet.
             </div>
@@ -641,55 +646,90 @@ export default function DashboardPage() {
           </CardHeader>
 
           <CardContent className="pt-6 space-y-5 flex-1 flex flex-col justify-center">
-            {/* Step 1: Sent */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-medium">
-                <span className="text-foreground flex items-center gap-1.5">
-                  <Send className="h-3.5 w-3.5 text-primary" /> 1. Emails Sent
-                </span>
-                <span className="font-bold text-foreground">{stats?.funnel.sent ?? 0} (100%)</span>
+            {loading ? (
+              <div className="space-y-4 py-2">
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="h-3.5 w-28 bg-muted/60 animate-pulse rounded" />
+                    <span className="h-3.5 w-16 bg-muted/60 animate-pulse rounded" />
+                  </div>
+                  <div className="h-2 w-full bg-muted/40 animate-pulse rounded" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="h-3.5 w-32 bg-muted/60 animate-pulse rounded" />
+                    <span className="h-3.5 w-16 bg-muted/60 animate-pulse rounded" />
+                  </div>
+                  <div className="h-2 w-full bg-muted/40 animate-pulse rounded" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="h-3.5 w-32 bg-muted/60 animate-pulse rounded" />
+                    <span className="h-3.5 w-16 bg-muted/60 animate-pulse rounded" />
+                  </div>
+                  <div className="h-2 w-full bg-muted/40 animate-pulse rounded" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="h-3.5 w-36 bg-muted/60 animate-pulse rounded" />
+                    <span className="h-3.5 w-16 bg-muted/60 animate-pulse rounded" />
+                  </div>
+                  <div className="h-2 w-full bg-muted/40 animate-pulse rounded" />
+                </div>
               </div>
-              <Progress value={100} className="h-2 bg-muted [&>div]:bg-primary" />
-            </div>
+            ) : (
+              <>
+                {/* Step 1: Sent */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-medium">
+                    <span className="text-foreground flex items-center gap-1.5">
+                      <Send className="h-3.5 w-3.5 text-primary" /> 1. Emails Sent
+                    </span>
+                    <span className="font-bold text-foreground">{stats?.funnel.sent ?? 0} (100%)</span>
+                  </div>
+                  <Progress value={100} className="h-2 bg-muted [&>div]:bg-primary" />
+                </div>
 
-            {/* Step 2: Delivered */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-medium">
-                <span className="text-foreground flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-blue-500" /> 2. Delivered to Inbox
-                </span>
-                <span className="font-bold text-blue-600 dark:text-blue-400">
-                  {stats?.funnel.delivered ?? 0} ({stats && stats.funnel.sent > 0 ? "99.4%" : "0%"})
-                </span>
-              </div>
-              <Progress value={stats && stats.funnel.sent > 0 ? 99 : 0} className="h-2 bg-muted [&>div]:bg-blue-500" />
-            </div>
+                {/* Step 2: Delivered */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-medium">
+                    <span className="text-foreground flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-blue-500" /> 2. Delivered to Inbox
+                    </span>
+                    <span className="font-bold text-blue-600 dark:text-blue-400">
+                      {stats?.funnel.delivered ?? 0} ({stats && stats.funnel.sent > 0 ? "99.4%" : "0%"})
+                    </span>
+                  </div>
+                  <Progress value={stats && stats.funnel.sent > 0 ? 99 : 0} className="h-2 bg-muted [&>div]:bg-blue-500" />
+                </div>
 
-            {/* Step 3: Opened */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-medium">
-                <span className="text-foreground flex items-center gap-1.5">
-                  <Eye className="h-3.5 w-3.5 text-indigo-500" /> 3. Prospect Opened
-                </span>
-                <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                  {stats?.funnel.opened ?? 0} ({stats?.funnel.openRate ?? 0}%)
-                </span>
-              </div>
-              <Progress value={Math.min(stats?.funnel.openRate ?? 0, 100)} className="h-2 bg-muted [&>div]:bg-indigo-500" />
-            </div>
+                {/* Step 3: Opened */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-medium">
+                    <span className="text-foreground flex items-center gap-1.5">
+                      <Eye className="h-3.5 w-3.5 text-indigo-500" /> 3. Prospect Opened
+                    </span>
+                    <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                      {stats?.funnel.opened ?? 0} ({stats?.funnel.openRate ?? 0}%)
+                    </span>
+                  </div>
+                  <Progress value={Math.min(stats?.funnel.openRate ?? 0, 100)} className="h-2 bg-muted [&>div]:bg-indigo-500" />
+                </div>
 
-            {/* Step 4: Replied */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-medium">
-                <span className="text-foreground flex items-center gap-1.5">
-                  <Reply className="h-3.5 w-3.5 text-emerald-500" /> 4. Real Reply Received
-                </span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                  {stats?.funnel.replied ?? 0} ({stats?.funnel.replyRate ?? 0}%)
-                </span>
-              </div>
-              <Progress value={Math.min(stats?.funnel.replyRate ?? 0, 100)} className="h-2 bg-muted [&>div]:bg-emerald-500" />
-            </div>
+                {/* Step 4: Replied */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-medium">
+                    <span className="text-foreground flex items-center gap-1.5">
+                      <Reply className="h-3.5 w-3.5 text-emerald-500" /> 4. Real Reply Received
+                    </span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                      {stats?.funnel.replied ?? 0} ({stats?.funnel.replyRate ?? 0}%)
+                    </span>
+                  </div>
+                  <Progress value={Math.min(stats?.funnel.replyRate ?? 0, 100)} className="h-2 bg-muted [&>div]:bg-emerald-500" />
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -735,26 +775,40 @@ export default function DashboardPage() {
             </div>
 
             {/* Daily Quota Progress */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="font-semibold text-foreground flex items-center gap-1.5">
-                  <Target className="h-3.5 w-3.5 text-primary" /> Daily Outreach Velocity Limit
-                </span>
-                <span className="font-mono text-muted-foreground">
-                  <strong>{stats?.emailsSentToday ?? 0}</strong> / {stats?.dailyLimit ?? 50} emails
-                </span>
+            {loading ? (
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="h-3.5 w-44 bg-muted/60 animate-pulse rounded" />
+                  <span className="h-3.5 w-20 bg-muted/60 animate-pulse rounded" />
+                </div>
+                <div className="h-2 w-full bg-muted/40 animate-pulse rounded" />
               </div>
-              <Progress 
-                value={stats ? Math.min(Math.round((stats.emailsSentToday / stats.dailyLimit) * 100), 100) : 0} 
-                className="h-2 bg-secondary [&>div]:bg-primary"
-              />
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="font-semibold text-foreground flex items-center gap-1.5">
+                    <Target className="h-3.5 w-3.5 text-primary" /> Daily Outreach Velocity Limit
+                  </span>
+                  <span className="font-mono text-muted-foreground">
+                    <strong>{stats?.emailsSentToday ?? 0}</strong> / {stats?.dailyLimit ?? 50} emails
+                  </span>
+                </div>
+                <Progress 
+                  value={stats ? Math.min(Math.round((stats.emailsSentToday / stats.dailyLimit) * 100), 100) : 0} 
+                  className="h-2 bg-secondary [&>div]:bg-primary"
+                />
+              </div>
+            )}
 
             {/* Hourly Pacing Indicator */}
             <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 border border-border text-xs">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-primary" />
-                <span>Current Hourly Dispatch: <strong>{stats?.emailsSentThisHour ?? 0} / {stats?.hourlyLimit ?? 15}</strong></span>
+                {loading ? (
+                  <span className="h-3.5 w-40 bg-muted/60 animate-pulse rounded" />
+                ) : (
+                  <span>Current Hourly Dispatch: <strong>{stats?.emailsSentThisHour ?? 0} / {stats?.hourlyLimit ?? 15}</strong></span>
+                )}
               </div>
               <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Active & Governed</span>
             </div>
