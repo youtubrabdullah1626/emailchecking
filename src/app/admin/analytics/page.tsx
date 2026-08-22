@@ -23,14 +23,33 @@ export default function GlobalAnalyticsDashboard() {
   const [timeRange, setTimeRange] = useState("Last 7 Days");
   const [isLive, setIsLive] = useState(true);
 
+  const [cachedAnalytics, setCachedAnalytics] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("silaer_cached_admin_analytics");
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return null;
+  });
+
   // Use SWR for intelligent polling and caching
   const { data, error, isLoading } = useSWR<GlobalAnalyticsPayload>(
     "/api/admin/analytics", 
     fetcher,
     {
-      refreshInterval: isLive ? 30000 : 0, // Poll every 30s if live
+      refreshInterval: isLive ? 30000 : 0,
       revalidateOnFocus: isLive,
-      dedupingInterval: 10000, // Dedupe calls within 10s
+      dedupingInterval: 5000,
+      keepPreviousData: true,
+      fallbackData: cachedAnalytics,
+      onSuccess: (resData) => {
+        if (resData && typeof window !== "undefined") {
+          try {
+            localStorage.setItem("silaer_cached_admin_analytics", JSON.stringify(resData));
+          } catch {}
+        }
+      },
     }
   );
 

@@ -6,19 +6,19 @@ import { apiClient } from "@/lib/api-client";
 // Mapping of routes to their primary API data endpoints for smart pre-warming
 export const ROUTE_API_PRELOAD_MAP: Record<string, string[]> = {
   "/dashboard": ["/api/dashboard/stats", "/api/dashboard/header-stats", "/api/notifications/important"],
-  "/prospects": ["/api/prospects"],
+  "/prospects": ["/api/prospects?limit=500"],
   "/sequences": ["/api/sequences"],
-  "/smart-import": ["/api/campaigns"],
+  "/smart-import": ["/api/campaigns", "/api/dashboard/header-stats"],
+  "/timeline": ["/api/timeline?search=&status=ALL&timeRange=all&page=1&limit=50"],
   "/replies": ["/api/replies"],
+  "/settings": ["/api/dashboard/header-stats"],
   "/admin/announcements": ["/api/admin/announcements"],
-  "/admin/import-history": ["/api/admin/campaigns"],
-  "/admin/platform": ["/api/admin/platform/config"],
-  "/admin/audit": ["/api/admin/audit"],
+  "/admin/import-history": ["/api/admin/import-history?page=1&limit=20"],
+  "/admin/platform": ["/api/admin/platform/configs?environment=production", "/api/admin/platform/flags?environment=production", "/api/admin/platform/providers?environment=production"],
+  "/admin/feedback": ["/api/admin/feedback"],
   "/admin/users": ["/api/admin/users"],
   "/admin/analytics": ["/api/admin/analytics"],
-  "/admin/database-maintenance": ["/api/admin/system/db-maintenance"],
-  "/system-health": ["/api/observability/diagnostics"],
-  "/admin/scheduler": ["/api/scheduler/stats"],
+  "/admin/database-cleanup": ["/api/admin/system/db-maintenance"],
 };
 
 // Set to avoid redundant preloads within short intervals

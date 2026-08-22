@@ -88,6 +88,13 @@ export default function SettingsPage() {
         if (storedName) {
           setDisplayName(storedName);
         }
+        try {
+          const cachedAcc = localStorage.getItem("silaer_cached_settings_accounts");
+          if (cachedAcc) {
+            setAccounts(JSON.parse(cachedAcc));
+            setLoading(false);
+          }
+        } catch {}
       }
 
       const [accountData, settingsData, profileData] = await Promise.all([
@@ -102,6 +109,11 @@ export default function SettingsPage() {
           ? accountData 
           : [];
       setAccounts(loadedAccounts);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("silaer_cached_settings_accounts", JSON.stringify(loadedAccounts));
+        } catch {}
+      }
 
       if (settingsData && !settingsData.error) {
         form.reset(settingsData);

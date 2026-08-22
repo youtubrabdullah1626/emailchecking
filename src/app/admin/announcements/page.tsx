@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import useSWR from "swr";
+import { apiClient } from "@/lib/api-client";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader } from "@/components/ui/page-header";
 import { AnimatedPage } from "@/components/ui/animated";
@@ -99,21 +101,42 @@ export default function AnnouncementsAdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"ALL" | "LIVE" | "SCHEDULED" | "EXPIRED" | "HIDDEN">("ALL");
 
-  const fetchAnnouncements = async () => {
-    try {
-      const res = await fetch("/api/admin/announcements");
-      const data = await res.json();
-      setAnnouncements(data.announcements || []);
-    } catch (e) {
-      toast.error("Failed to load announcements");
-    } finally {
-      setIsLoading(false);
+  const [cachedAnnouncements, setCachedAnnouncements] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("silaer_cached_admin_announcements");
+        if (raw) return JSON.parse(raw);
+      } catch {}
     }
-  };
+    return null;
+  });
 
-  useEffect(() => {
-    fetchAnnouncements();
-  }, []);
+  const { data: swrData, mutate: mutateAnnouncements } = useSWR<{ announcements: any[] }>(
+    "/api/admin/announcements",
+    (url: string) => apiClient<any>(url),
+    {
+      refreshInterval: 15000,
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
+      keepPreviousData: true,
+      fallbackData: cachedAnnouncements,
+      onSuccess: (resData) => {
+        if (resData && typeof window !== "undefined") {
+          try {
+            localStorage.setItem("silaer_cached_admin_announcements", JSON.stringify(resData));
+          } catch {}
+        }
+        if (resData?.announcements) {
+          setAnnouncements(resData.announcements);
+        }
+        setIsLoading(false);
+      },
+    }
+  );
+
+  const fetchAnnouncements = async () => {
+    await mutateAnnouncements();
+  };
 
   // Quick Preset Handlers
   const applyPreset = (preset: "24h" | "48h" | "7d" | "weekend") => {

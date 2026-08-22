@@ -49,14 +49,32 @@ export function useTimelineData() {
     limit: "50",
   });
 
+  const [cachedTimeline, setCachedTimeline] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("silaer_cached_timeline_data");
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return null;
+  });
+
   const { data, error, isLoading, isValidating, mutate } = useSWR<TimelineResponse>(
     `/api/timeline?${queryParams.toString()}`,
     fetcher,
     {
-      refreshInterval: isLiveSync ? 3000 : 0, // Auto-refresh every 3s if Live Sync enabled
+      refreshInterval: isLiveSync ? 3000 : 0,
       revalidateOnFocus: true,
       dedupingInterval: 1000,
       keepPreviousData: true,
+      fallbackData: cachedTimeline,
+      onSuccess: (resData) => {
+        if (resData && typeof window !== "undefined") {
+          try {
+            localStorage.setItem("silaer_cached_timeline_data", JSON.stringify(resData));
+          } catch {}
+        }
+      },
     }
   );
 

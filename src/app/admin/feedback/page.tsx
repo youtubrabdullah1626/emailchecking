@@ -81,11 +81,37 @@ export default function AdminFeedbackPage() {
   if (statusFilter !== "ALL") queryParams.set("status", statusFilter);
   if (searchQuery.trim()) queryParams.set("search", searchQuery.trim());
 
+  const [cachedFeedback, setCachedFeedback] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("silaer_cached_admin_feedback");
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return null;
+  });
+
   const { data, mutate, isLoading } = useSWR<{
     metrics: FeedbackMetrics;
     feedbacks: FeedbackItem[];
     pagination: { total: number; page: number; totalPages: number };
-  }>(`/api/admin/feedback?${queryParams.toString()}`, (url: string) => apiClient<any>(url));
+  }>(
+    `/api/admin/feedback?${queryParams.toString()}`,
+    (url: string) => apiClient<any>(url),
+    {
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
+      keepPreviousData: true,
+      fallbackData: cachedFeedback,
+      onSuccess: (resData) => {
+        if (resData && typeof window !== "undefined") {
+          try {
+            localStorage.setItem("silaer_cached_admin_feedback", JSON.stringify(resData));
+          } catch {}
+        }
+      },
+    }
+  );
 
   const metrics = data?.metrics;
   const feedbacks = data?.feedbacks || [];

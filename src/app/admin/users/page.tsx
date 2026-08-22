@@ -38,9 +38,29 @@ function UserManagementContent() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [healthFilter, setHealthFilter] = useState("all");
+  const [cachedUsers, setCachedUsers] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("silaer_cached_admin_users");
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return null;
+  });
+
   const { data, error, isLoading, mutate } = useSWR("/api/admin/users", fetcher, {
-    refreshInterval: 30000, // Refresh every 30s for live ops visibility
+    refreshInterval: 30000,
     revalidateOnFocus: true,
+    dedupingInterval: 2000,
+    keepPreviousData: true,
+    fallbackData: cachedUsers,
+    onSuccess: (resData) => {
+      if (resData && typeof window !== "undefined") {
+        try {
+          localStorage.setItem("silaer_cached_admin_users", JSON.stringify(resData));
+        } catch {}
+      }
+    },
   });
 
   const users: MockUser[] = data?.users || [];

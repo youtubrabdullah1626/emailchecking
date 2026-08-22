@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import useSWR from "swr";
+import { apiClient } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import { AnimatedPage } from "@/components/ui/animated";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -52,27 +54,48 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function ImportHistoryAdminPage() {
-  const [jobs, setJobs] = useState<ImportJob[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const [revertingId, setRevertingId] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
+
+  const [cachedJobs, setCachedJobs] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("silaer_cached_admin_import_history");
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return null;
+  });
+
+  const { data: swrData, isLoading, mutate } = useSWR<{
+    jobs: ImportJob[];
+    pagination: { page: number; total: number; totalPages: number };
+  }>(
+    `/api/admin/import-history?page=${currentPage}&limit=20`,
+    (url: string) => apiClient<any>(url),
+    {
+      refreshInterval: 15000,
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
+      keepPreviousData: true,
+      fallbackData: cachedJobs,
+      onSuccess: (resData) => {
+        if (resData && typeof window !== "undefined") {
+          try {
+            localStorage.setItem("silaer_cached_admin_import_history", JSON.stringify(resData));
+          } catch {}
+        }
+      },
+    }
+  );
+
+  const jobs = swrData?.jobs || [];
+  const pagination = swrData?.pagination || { page: currentPage, total: jobs.length, totalPages: 1 };
 
   const fetchJobs = async (page = 1) => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`/api/admin/import-history?page=${page}&limit=20`);
-      if (!res.ok) throw new Error("Failed to load");
-      const data = await res.json();
-      setJobs(data.jobs || []);
-      setPagination(data.pagination || { page: 1, total: 0, totalPages: 1 });
-    } catch {
-      toast.error("Failed to load import history");
-    } finally {
-      setIsLoading(false);
-    }
+    setCurrentPage(page);
+    await mutate();
   };
-
-  useEffect(() => { fetchJobs(); }, []);
 
   // FIX 1: Error download uses the dedicated API endpoint (not JSON blob from list query)
   const handleDownloadErrors = (job: ImportJob) => {
