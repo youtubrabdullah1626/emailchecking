@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { CalendarDays, Clock, Check, AlertTriangle, Layers, Calendar, ShieldCheck, Mail } from "lucide-react";
+import { CalendarDays, Clock, Check, AlertTriangle, Layers, Calendar, ShieldCheck, Mail, Play } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 import { SystemCertification } from "./SystemCertification";
@@ -153,6 +153,42 @@ export function SchedulingPreviewWorkspace() {
       warmupLimitsHit: []
     };
   })();
+
+  const allItems = getExecutionQueue();
+
+  if (allItems.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/50 rounded-2xl space-y-4 max-w-2xl mx-auto shadow-sm my-6 animate-in fade-in zoom-in-95 duration-300">
+        <div className="h-12 w-12 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-xs">
+          <AlertTriangle className="h-6 w-6" />
+        </div>
+        <div className="space-y-1.5">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+            Campaign Already Active & Running
+          </h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+            All leads in this file are already actively scheduled in your live campaign. The system prevents duplicate runs of the same active campaign.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <Button
+            onClick={() => setStatus("EXECUTING")}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 font-semibold shadow-sm px-6"
+          >
+            <Play className="h-4 w-4" />
+            Open Live Dashboard
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => startScheduling(warmupStatus, warmupSettings, undefined, true)}
+            className="border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold"
+          >
+            Force Re-Schedule Anyway
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!effectiveQueueSummary) {
     return (
