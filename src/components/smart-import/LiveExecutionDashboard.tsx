@@ -36,34 +36,37 @@ export function LiveExecutionDashboard() {
   const { getExecutionQueue, updateQueueItemState, closeSession, deleteQueueItem, rescheduleQueueItem, bulkProgress } = useImport() as any;
   const storage = useMemo(() => new StorageEngine(), []);
 
-  // Instant 0ms synchronous hydration from in-memory queue
-  const initialQueue = useMemo(() => {
-    try {
-      const q = typeof getExecutionQueue === "function" ? getExecutionQueue() : [];
-      if (q && q.length > 0) {
-        return q.map((item: any) => ({
-          ...item,
-          liveStatus: item.liveStatus || "SCHEDULED",
-          lastEventTime: item.lastEventTime || "—",
-        }));
-      }
-    } catch (_) {}
+  const [liveItems, setLiveItems] = useState<LiveItem[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("silaer_cached_live_items");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
     return [];
-  }, [getExecutionQueue]);
-
-  const [liveItems, setLiveItems] = useState<LiveItem[]>(initialQueue);
-  const [isLoading, setIsLoading] = useState(initialQueue.length === 0);
-  const [campaignStatus, setCampaignStatus] = useState<"ACTIVE" | "PAUSED">("ACTIVE");
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [campaignStatus, setCampaignStatus] = useState<"ACTIVE" | "PAUSED">(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("silaer_cached_campaign_status");
+      if (cached === "PAUSED" || cached === "ACTIVE") return cached;
+    }
+    return "ACTIVE";
+  });
   const [currentSessionMeta, setCurrentSessionMeta] = useState<any>(null);
 
-  const [cachedStats, setCachedStats] = useState<any>(null);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("silaer_cached_dashboard_stats");
-      if (raw) setCachedStats(JSON.parse(raw));
-    } catch {}
-  }, []);
+  const [cachedStats, setCachedStats] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("silaer_cached_dashboard_stats");
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return null;
+  });
 
   // Fetch real-time fleet capacity telemetry (SILAER 10X)
   const { data: statsData } = useSWR(
@@ -209,42 +212,50 @@ export function LiveExecutionDashboard() {
         }
       }
 
-      // Always render authoritative DB items with in-flight status preservation to prevent flicker
-      setLiveItems(prev => {
-        const prevMap = new Map(prev.map(p => [(p as any).realStepId || p.queueId, p]));
-        return data.items.map((dbItem: any) => {
-          const prevItem = prevMap.get(dbItem.stepId);
-          const cleanDate = dbItem.scheduledAt ? (dbItem.scheduledAt.includes("T") ? dbItem.scheduledAt.split("T")[0] : dbItem.scheduledAt) : "";
-          const isDispatched = ["SENT", "OPENED", "REPLIED", "BOUNCED"].includes(dbItem.liveStatus);
-          const resolvedEventTime = isDispatched
-            ? (dbItem.lastEventTime || (dbItem.liveStatus === "SENT" ? "Just now" : "—"))
-            : (prevItem?.lastEventTime || "—");
-          const resolvedStatus = dbItem.liveStatus;
+      // Format authoritative DB items
+      const formattedItems = data.items.map((dbItem: any) => {
+        const cleanDate = dbItem.scheduledAt ? (dbItem.scheduledAt.includes("T") ? dbItem.scheduledAt.split("T")[0] : dbItem.scheduledAt) : "";
+        const isDispatched = ["SENT", "OPENED", "REPLIED", "BOUNCED"].includes(dbItem.liveStatus);
+        const resolvedEventTime = isDispatched
+          ? (dbItem.lastEventTime || (dbItem.liveStatus === "SENT" ? "Just now" : "—"))
+          : "—";
 
-          return {
-            queueId: dbItem.stepId,
-            realStepId: dbItem.stepId,
-            recipientEmail: dbItem.recipientEmail,
-            recipientName: dbItem.recipientName,
-            sequenceStep: {
-              stepNumber: dbItem.stepNumber,
-              subject: dbItem.subject,
-              content: "",
-            },
-            scheduledDate: cleanDate,
-            scheduledTime: dbItem.scheduledTimeLocal || "09:00",
-            liveStatus: (resolvedStatus as any) || "SCHEDULED",
-            lastEventTime: resolvedEventTime,
-            retryCount: dbItem.retryCount ?? 0,
-          };
-        });
+        return {
+          queueId: dbItem.stepId,
+          realStepId: dbItem.stepId,
+          recipientEmail: dbItem.recipientEmail,
+          recipientName: dbItem.recipientName,
+          sequenceStep: {
+            stepNumber: dbItem.stepNumber,
+            subject: dbItem.subject,
+            content: "",
+          },
+          scheduledDate: cleanDate,
+          scheduledTime: dbItem.scheduledTimeLocal || "09:00",
+          liveStatus: (dbItem.liveStatus as any) || "SCHEDULED",
+          lastEventTime: resolvedEventTime,
+          retryCount: dbItem.retryCount ?? 0,
+        };
       });
+
+      setLiveItems(formattedItems);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("silaer_cached_live_items", JSON.stringify(formattedItems));
+        } catch {}
+      }
 
       initialized.current = true;
 
       // Sync campaign status from DB
-      if (data.campaignStatus === "PAUSED") setCampaignStatus("PAUSED");
-      else if (data.campaignStatus === "ACTIVE") setCampaignStatus("ACTIVE");
+      if (data.campaignStatus === "PAUSED" || data.campaignStatus === "ACTIVE") {
+        setCampaignStatus(data.campaignStatus);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("silaer_cached_campaign_status", data.campaignStatus);
+          } catch {}
+        }
+      }
 
     } catch (err) {
       console.error("[LiveDashboard] Failed to fetch DB live status", err);
