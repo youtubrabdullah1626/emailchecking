@@ -28,6 +28,7 @@ type LiveItem = ExecutionQueueItem & {
 export function LiveExecutionDashboard() {
   const { getExecutionQueue, updateQueueItemState, closeSession, deleteQueueItem, rescheduleQueueItem, bulkProgress } = useImport() as any;
   const [liveItems, setLiveItems] = useState<LiveItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const storage = useMemo(() => new StorageEngine(), []);
   const [campaignStatus, setCampaignStatus] = useState<"ACTIVE" | "PAUSED">("ACTIVE");
   const [currentSessionMeta, setCurrentSessionMeta] = useState<any>(null);
@@ -204,32 +205,15 @@ export function LiveExecutionDashboard() {
     } catch (err) {
       console.error("[LiveDashboard] Failed to fetch DB live status", err);
       setDbFetchError(true);
+    } finally {
+      setIsLoading(false);
     }
   }, [activeCampaignId]);
 
-  // Initialize Queue: try DB first, fall back to local queue
+  // Initialize Queue: DB is the authoritative single source of truth
   const initialized = React.useRef(false);
   useEffect(() => {
-    // Try DB fetch immediately
     fetchLiveStatusFromDb();
-
-    // If no campaignId yet, fall back to local queue for initial render
-    if (!initialized.current) {
-      const q = getExecutionQueue();
-      if (q && q.length > 0) {
-        setLiveItems(
-          q.map((item: ExecutionQueueItem) => {
-            const status = item.liveStatus || "SCHEDULED";
-            const isDispatched = ["SENT", "OPENED", "REPLIED", "BOUNCED"].includes(status);
-            return {
-              ...item,
-              liveStatus: status,
-              lastEventTime: isDispatched ? (item.lastEventTime || "-") : "-",
-            };
-          })
-        );
-      }
-    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -696,25 +680,41 @@ export function LiveExecutionDashboard() {
               <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Send className="h-4 w-4" /> Sent
               </p>
-              <p className="text-3xl font-bold">{stats.sent}</p>
+              {isLoading && liveItems.length === 0 ? (
+                <div className="h-9 w-12 bg-muted/60 animate-pulse rounded my-1" />
+              ) : (
+                <p className="text-3xl font-bold">{stats.sent}</p>
+              )}
             </div>
             <div className="space-y-1 border-r border-border/50 pr-4">
               <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <MailOpen className="h-4 w-4 text-blue-500" /> Opened
               </p>
-              <p className="text-3xl font-bold">{stats.opened}</p>
+              {isLoading && liveItems.length === 0 ? (
+                <div className="h-9 w-12 bg-muted/60 animate-pulse rounded my-1" />
+              ) : (
+                <p className="text-3xl font-bold">{stats.opened}</p>
+              )}
             </div>
             <div className="space-y-1 border-r border-border/50 pr-4">
               <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Reply className="h-4 w-4 text-emerald-500" /> Replied
               </p>
-              <p className="text-3xl font-bold text-emerald-600">{stats.replied}</p>
+              {isLoading && liveItems.length === 0 ? (
+                <div className="h-9 w-12 bg-muted/60 animate-pulse rounded my-1" />
+              ) : (
+                <p className="text-3xl font-bold text-emerald-600">{stats.replied}</p>
+              )}
             </div>
             <div className="space-y-1">
               <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-red-500" /> Failed
               </p>
-              <p className="text-3xl font-bold">{stats.bounced}</p>
+              {isLoading && liveItems.length === 0 ? (
+                <div className="h-9 w-12 bg-muted/60 animate-pulse rounded my-1" />
+              ) : (
+                <p className="text-3xl font-bold">{stats.bounced}</p>
+              )}
             </div>
           </div>
         </CardContent>
@@ -746,7 +746,31 @@ export function LiveExecutionDashboard() {
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-border/50">
-              {liveItems.length === 0 ? (
+              {isLoading && liveItems.length === 0 ? (
+                [1, 2, 3, 4].map((i) => (
+                  <TableRow key={`skeleton-${i}`}>
+                    <TableCell className="py-4 pl-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-muted/60 animate-pulse" />
+                        <div className="h-4 w-48 bg-muted/60 rounded animate-pulse" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="h-5 w-16 bg-muted/60 rounded animate-pulse" />
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="h-4 w-32 bg-muted/60 rounded animate-pulse" />
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="h-6 w-24 bg-muted/60 rounded-full animate-pulse" />
+                    </TableCell>
+                    <TableCell className="py-4 text-right">
+                      <div className="h-4 w-12 bg-muted/60 rounded animate-pulse ml-auto" />
+                    </TableCell>
+                    <TableCell className="py-4" />
+                  </TableRow>
+                ))
+              ) : liveItems.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center h-40 text-muted-foreground flex flex-col items-center justify-center space-y-3">
                     <Activity className="h-10 w-10 text-muted-foreground/30" />
