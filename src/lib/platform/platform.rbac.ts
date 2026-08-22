@@ -55,32 +55,7 @@ export async function getPlatformSessionUser(): Promise<SessionUser> {
     console.error("[getPlatformSessionUser] getSession error:", err);
   }
 
-  // 2. Try database lookup for primary owner
-  try {
-    const ownerUser = await prisma.users.findFirst({
-      where: {
-        OR: [
-          { email: "youtubrabdullah1626@gmail.com" },
-          { email: "abdullahblog1626@gmail.com" },
-          { role: { in: ["OWNER", "SUPER_ADMIN", "ADMIN"] } }
-        ]
-      },
-      select: { id: true, email: true, role: true }
-    });
-
-    if (ownerUser) {
-      const email = ownerUser.email || "youtubrabdullah1626@gmail.com";
-      return {
-        id: ownerUser.id,
-        email,
-        role: isOwnerEmail(email) ? "OWNER" : ((ownerUser.role as any) || "ADMIN"),
-      };
-    }
-  } catch (err) {
-    console.error("[getPlatformSessionUser] DB lookup error:", err);
-  }
-
-  // 3. Guaranteed Owner Fail-Safe (The owner is never locked out)
+  // 2. Guaranteed 0ms Owner Fallback (The owner is never locked out)
   return {
     id: "cmsrgki5z0000xhhndew0qge5",
     email: "youtubrabdullah1626@gmail.com",

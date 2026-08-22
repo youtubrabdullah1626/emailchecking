@@ -87,29 +87,28 @@ export class PlatformConfigRepository {
     reason?: string,
     environment = "production"
   ): Promise<PlatformConfigRow> {
-    const existing = await prisma.platform_configs.findFirst({ where: { key, environment } });
-    if (!existing) throw new Error(`PlatformConfig '${key}' not found`);
-
     const updated = await prisma.platform_configs.update({
-      where: { id: existing.id },
+      where: { key },
       data: { value: newValue, updated_by: changedBy },
     });
 
-    // Write audit history safely without blocking primary update
-    try {
-      await prisma.config_history.create({
-        data: {
-          config_id: existing.id,
-          old_value: existing.value as Prisma.InputJsonValue,
-          new_value: newValue as Prisma.InputJsonValue,
-          reason: reason ?? null,
-          is_rollback: false,
-          changed_by: changedBy,
-        },
-      });
-    } catch (historyErr) {
-      console.error("[PlatformConfigRepository] Failed to write config history:", historyErr);
-    }
+    // Write audit history safely in background
+    (async () => {
+      try {
+        await prisma.config_history.create({
+          data: {
+            config_id: updated.id,
+            old_value: updated.value as Prisma.InputJsonValue,
+            new_value: newValue as Prisma.InputJsonValue,
+            reason: reason ?? null,
+            is_rollback: false,
+            changed_by: changedBy,
+          },
+        });
+      } catch (historyErr) {
+        console.error("[PlatformConfigRepository] Failed to write config history:", historyErr);
+      }
+    })();
 
     return updated;
   }

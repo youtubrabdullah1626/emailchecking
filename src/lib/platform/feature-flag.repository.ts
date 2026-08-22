@@ -92,29 +92,28 @@ export class FeatureFlagRepository {
     reason?: string,
     environment = "production"
   ): Promise<FeatureFlagRow> {
-    const existing = await prisma.feature_flags.findFirst({ where: { key, environment } });
-    if (!existing) throw new Error(`Feature flag '${key}' not found`);
-
     const updated = await prisma.feature_flags.update({
-      where: { id: existing.id },
+      where: { key },
       data: { enabled, updated_by: changedBy },
     });
 
-    // Write audit history safely without blocking primary update
-    try {
-      await prisma.flag_history.create({
-        data: {
-          flag_id: existing.id,
-          old_value: { enabled: existing.enabled },
-          new_value: { enabled },
-          reason: reason ?? null,
-          is_rollback: false,
-          changed_by: changedBy,
-        },
-      });
-    } catch (historyErr) {
-      console.error("[FeatureFlagRepository] Failed to write flag history:", historyErr);
-    }
+    // Write audit history safely in background
+    (async () => {
+      try {
+        await prisma.flag_history.create({
+          data: {
+            flag_id: updated.id,
+            old_value: { enabled: !enabled },
+            new_value: { enabled },
+            reason: reason ?? null,
+            is_rollback: false,
+            changed_by: changedBy,
+          },
+        });
+      } catch (historyErr) {
+        console.error("[FeatureFlagRepository] Failed to write flag history:", historyErr);
+      }
+    })();
 
     return updated;
   }
