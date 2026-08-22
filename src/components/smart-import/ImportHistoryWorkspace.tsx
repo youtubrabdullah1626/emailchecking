@@ -32,11 +32,13 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow, format } from "date-fns";
 import { Input } from "@/components/ui/input";
+import { useSWRConfig } from "swr";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -68,6 +70,12 @@ export function ImportHistoryWorkspace() {
   const [activeDetailsSession, setActiveDetailsSession] = useState<ImportSessionMetadata | null>(null);
   const [activeDataset, setActiveDataset] = useState<any | null>(null);
   const [isLoadingDataset, setIsLoadingDataset] = useState(false);
+
+  // Clear History Modal & State
+  const { mutate } = useSWRConfig();
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [selectedTimeframe, setSelectedTimeframe] = useState<"24h" | "7d" | "30d" | "all">("all");
+  const [isClearing, setIsClearing] = useState(false);
 
   const loadSessions = useCallback(async () => {
     let all = storage.getAllSessions();
@@ -193,6 +201,49 @@ export function ImportHistoryWorkspace() {
       },
       duration: 5500
     });
+  };
+
+  const handleClearHistory = async (timeframe: "24h" | "7d" | "30d" | "all") => {
+    setIsClearing(true);
+    const labelMap = {
+      "24h": "past 24 hours",
+      "7d": "past 7 days",
+      "30d": "past 30 days",
+      "all": "all-time"
+    };
+
+    try {
+      const res = await fetch("/api/campaigns/clear-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timeframe })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to clear history");
+      }
+
+      // Compute local cutoff
+      let cutoffDate: Date | undefined;
+      const now = Date.now();
+      if (timeframe === "24h") cutoffDate = new Date(now - 24 * 60 * 60 * 1000);
+      else if (timeframe === "7d") cutoffDate = new Date(now - 7 * 24 * 60 * 60 * 1000);
+      else if (timeframe === "30d") cutoffDate = new Date(now - 30 * 24 * 60 * 60 * 1000);
+
+      await storage.clearAllSessions(cutoffDate);
+      await loadSessions();
+      await mutate(() => true, undefined, { revalidate: true });
+
+      toast.success(`Cleared ${labelMap[timeframe]} campaign data`, {
+        description: "Database records and local session caches have been wiped."
+      });
+      setClearDialogOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to clear data");
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const handleRename = (id: string, currentName: string) => {
@@ -334,15 +385,72 @@ export function ImportHistoryWorkspace() {
           </div>
         </div>
 
-        {/* Search Input */}
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <Input
-            placeholder="Search campaigns..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-8 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-          />
+        {/* Search & Clear Actions */}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-60">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              placeholder="Search campaigns..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-8 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+            />
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30 border-rose-200 dark:border-rose-900/50 rounded-xl gap-1.5 shrink-0 shadow-2xs"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Clear All</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800">
+              <div className="px-2 py-1.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                Clear Campaign Data
+              </div>
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedTimeframe("24h");
+                  setClearDialogOpen(true);
+                }}
+                className="text-xs cursor-pointer rounded-lg py-2 focus:bg-slate-100 dark:focus:bg-slate-800"
+              >
+                Past 24 Hours (Past Day)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedTimeframe("7d");
+                  setClearDialogOpen(true);
+                }}
+                className="text-xs cursor-pointer rounded-lg py-2 focus:bg-slate-100 dark:focus:bg-slate-800"
+              >
+                Past 7 Days (Past Week)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedTimeframe("30d");
+                  setClearDialogOpen(true);
+                }}
+                className="text-xs cursor-pointer rounded-lg py-2 focus:bg-slate-100 dark:focus:bg-slate-800"
+              >
+                Past 30 Days (Past Month)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedTimeframe("all");
+                  setClearDialogOpen(true);
+                }}
+                className="text-xs cursor-pointer text-rose-600 dark:text-rose-400 focus:text-rose-700 focus:bg-rose-50 dark:focus:bg-rose-950/50 rounded-lg py-2 font-semibold"
+              >
+                Clear All Data (Full)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -682,6 +790,43 @@ export function ImportHistoryWorkspace() {
               className="bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold"
             >
               Delete Campaign
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Clear Data Confirmation Dialog */}
+      <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <AlertDialogContent className="rounded-2xl max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-rose-600 dark:text-rose-400 text-base font-bold">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              Clear {selectedTimeframe === "24h" ? "Past 24 Hours" : selectedTimeframe === "7d" ? "Past 7 Days" : selectedTimeframe === "30d" ? "Past 30 Days" : "All"} Data?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-slate-600 dark:text-slate-400 space-y-2 pt-2 text-left leading-relaxed">
+              <span>
+                This will permanently delete campaigns, prospects, sequences, scheduled steps, and tracking events created within this timeframe from the database and session storage.
+              </span>
+              {selectedTimeframe === "all" && (
+                <span className="block font-semibold text-rose-600 dark:text-rose-400 mt-2">
+                  ⚠️ This will wipe all historical campaigns and reset daily counters for a fresh clean start.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel disabled={isClearing} className="rounded-xl text-xs">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isClearing}
+              onClick={(e) => {
+                e.preventDefault();
+                handleClearHistory(selectedTimeframe);
+              }}
+              className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold gap-1.5"
+            >
+              {isClearing ? "Clearing..." : "Yes, Clear Data"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

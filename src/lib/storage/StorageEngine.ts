@@ -232,4 +232,21 @@ export class StorageEngine {
       transaction.onerror = () => reject(new Error("Failed to delete heavy dataset transaction"));
     });
   }
+
+  public async clearAllSessions(cutoffDate?: Date): Promise<void> {
+    const all = this.getAllSessions();
+    const toDelete = cutoffDate
+      ? all.filter(s => new Date(s.importDate).getTime() >= cutoffDate.getTime())
+      : all;
+
+    for (const session of toDelete) {
+      await this.deleteSession(session.sessionId).catch(() => {});
+    }
+
+    if (!cutoffDate || toDelete.length === all.length) {
+      localStorage.removeItem("smart_import_sessions");
+      localStorage.removeItem("silaer_active_campaign_id");
+      this.clearActiveSession();
+    }
+  }
 }
