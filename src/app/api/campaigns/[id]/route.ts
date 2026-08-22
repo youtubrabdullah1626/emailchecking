@@ -112,3 +112,133 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     return NextResponse.json({ ok: false, error: error.message || "Failed to update campaign" }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> | { id: string } }
+) {
+  const session = await getSession();
+  let userId = session?.user?.id;
+  if (!userId) {
+    const connectedAccount = await prisma.emailAccount.findFirst({
+      where: { connection_status: "CONNECTED", refresh_token: { not: null } },
+      select: { user_id: true }
+    });
+    userId = connectedAccount?.user_id || (await prisma.users.findFirst({ select: { id: true } }))?.id;
+  }
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const resolvedParams = await Promise.resolve(params);
+  const targetId = resolvedParams?.id;
+
+  if (!targetId) {
+    return NextResponse.json({ ok: false, error: "Campaign ID required" }, { status: 400 });
+  }
+
+  try {
+    // 1. Resolve campaign
+    let campaign = await prisma.campaign.findFirst({
+      where: {
+        OR: [
+          { id: targetId, user_id: userId },
+          { name: targetId, user_id: userId },
+        ]
+      },
+      select: { id: true, name: true }
+    });
+
+    if (!campaign) {
+      // Check import job
+      const job = await prisma.importJob.findFirst({
+        where: { id: targetId, userId: userId },
+        select: { campaignId: true }
+      });
+      if (job?.campaignId) {
+        campaign = await prisma.campaign.findFirst({
+          where: { id: job.campaignId, user_id: userId },
+          select: { id: true, name: true }
+        });
+      }
+    }
+
+    if (!campaign) {
+      return NextResponse.json({ ok: false, error: "Campaign not found" }, { status: 404 });
+    }
+
+    const campaignId = campaign.id;
+
+    // 2. Resolve all related records
+    const prospects = await prisma.prospect.findMany({
+      where: { campaign_id: campaignId },
+      select: { id: true, email: true }
+    });
+    const prospectIds = prospects.map(p => p.id);
+    const prospectEmails = prospects.map(p => p.email.toLowerCase());
+
+    const sequences = await prisma.sequence.findMany({
+      where: { prospect_id: { in: prospectIds } },
+      select: { id: true }
+    });
+    const sequenceIds = sequences.map(s => s.id);
+
+    const steps = await prisma.sequenceStep.findMany({
+      where: { sequence_id: { in: sequenceIds } },
+      select: { id: true }
+    });
+    const stepIds = steps.map(s => s.id);
+
+    // 3. Atomically cascade delete in single transaction
+    await prisma.$transaction(async (tx) => {
+      if (stepIds.length > 0 || prospectEmails.length > 0) {
+        await tx.trackedEmail.deleteMany({
+          where: {
+            OR: [
+              ...(stepIds.length > 0 ? [{ source_id: { in: stepIds } }] : []),
+              ...(prospectEmails.length > 0 ? [{ recipient_email: { in: prospectEmails, mode: "insensitive" as any } }] : []),
+            ]
+          }
+        });
+      }
+
+      if (prospectIds.length > 0) {
+        await tx.replyClassification.deleteMany({
+          where: { prospect_id: { in: prospectIds } }
+        });
+        await tx.adhocEmail.deleteMany({
+          where: { prospect_id: { in: prospectIds } }
+        });
+      }
+
+      if (sequenceIds.length > 0) {
+        await tx.sequenceStep.deleteMany({
+          where: { sequence_id: { in: sequenceIds } }
+        });
+        await tx.sequence.deleteMany({
+          where: { id: { in: sequenceIds } }
+        });
+      }
+
+      if (prospectIds.length > 0) {
+        await tx.prospect.deleteMany({
+          where: { id: { in: prospectIds } }
+        });
+      }
+
+      await tx.campaign.delete({
+        where: { id: campaignId }
+      });
+    });
+
+    return NextResponse.json({
+      ok: true,
+      message: `Campaign "${campaign.name}" deleted successfully`,
+      deletedCampaignId: campaignId
+    });
+  } catch (error: any) {
+    console.error("[DELETE /api/campaigns/[id]] Error:", error);
+    return NextResponse.json({ ok: false, error: error.message || "Failed to delete campaign" }, { status: 500 });
+  }
+}

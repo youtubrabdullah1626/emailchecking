@@ -137,70 +137,46 @@ export function ImportHistoryWorkspace() {
     }
   };
 
-  const executeDelete = async (id: string, action: "CANCEL" | "DELETE") => {
-    try {
-      const dataset = await storage.loadHeavyDataset(id);
-      if (dataset && dataset.validatedRecords && dataset.validatedRecords.length > 0) {
-        const emails = dataset.validatedRecords.map((r: any) => r.email).filter(Boolean);
-        if (emails.length > 0) {
-          await fetch("/api/prospects/bulk-action", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ emails, action }),
-          });
-        }
-      }
-    } catch (err) {
-      console.error("Failed to perform prospect action", err);
-    }
-
-    await storage.deleteSession(id);
-    setHiddenSessions(prev => {
-      const next = new Set(prev);
-      return next;
-    });
-    loadSessions();
-  };
-
-  const confirmDeleteSession = () => {
+  const confirmDeleteSession = async () => {
     if (!sessionToDelete) return;
     const { id, name } = sessionToDelete;
-
     setSessionToDelete(null);
 
-    if (deleteTimers.current[id]) {
-      clearTimeout(deleteTimers.current[id]);
-    }
-
+    // Optimistically hide from UI
     setHiddenSessions(prev => new Set(prev).add(id));
 
-    const timer = setTimeout(async () => {
-      delete deleteTimers.current[id];
-      await executeDelete(id, "CANCEL");
-    }, 6000);
+    try {
+      // 1. Get campaignId if stored in dataset
+      const dataset = await storage.loadHeavyDataset(id).catch(() => null);
+      const targetCampaignId = dataset?.campaignId || id;
 
-    deleteTimers.current[id] = timer;
+      // 2. Call instant DB delete
+      await fetch(`/api/campaigns/${targetCampaignId}`, {
+        method: "DELETE",
+      }).catch(() => {});
 
-    toast.success(`Campaign "${name}" deleted`, {
-      description: "Scheduled emails will be cancelled.",
-      action: {
-        label: "Undo",
-        onClick: () => {
-          if (deleteTimers.current[id]) {
-            clearTimeout(deleteTimers.current[id]);
-            delete deleteTimers.current[id];
-          }
-          setHiddenSessions(prev => {
-            const next = new Set(prev);
-            next.delete(id);
-            return next;
-          });
-          loadSessions();
-          toast.info(`Campaign "${name}" restored`);
+      // 3. Delete session from local storage & IndexedDB
+      await storage.deleteSession(id);
+
+      // 4. Clean active session pointers if this campaign was active
+      if (typeof window !== "undefined") {
+        if (localStorage.getItem("silaer_active_campaign_id") === targetCampaignId) {
+          localStorage.removeItem("silaer_active_campaign_id");
         }
-      },
-      duration: 5500
-    });
+        if (sessionStorage.getItem("smart_import_active_session_id") === id) {
+          sessionStorage.removeItem("smart_import_active_session_id");
+        }
+      }
+
+      // 5. Instantly refresh sessions and SWR cache across entire app
+      await loadSessions();
+      await mutate(() => true, undefined, { revalidate: true });
+
+      toast.success(`Campaign "${name}" deleted successfully.`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete campaign");
+      await loadSessions();
+    }
   };
 
   const handleClearHistory = async (timeframe: "24h" | "7d" | "30d" | "all") => {

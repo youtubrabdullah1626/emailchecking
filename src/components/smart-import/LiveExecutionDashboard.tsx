@@ -124,79 +124,55 @@ export function LiveExecutionDashboard() {
       if (!data.items || data.items.length === 0) return;
 
       const prevReplied = new Set<string>();
-      setLiveItems(prev => {
-        prev.forEach(i => { if (i.liveStatus === "REPLIED") prevReplied.add(i.recipientEmail.toLowerCase()); });
-        return prev;
-      });
+      liveItems.forEach(i => { if (i.liveStatus === "REPLIED") prevReplied.add(i.recipientEmail.toLowerCase()); });
 
-      // Build maps for both stepId and (recipientEmail + stepNumber)
-      const dbMap = new Map<string, typeof data.items[0]>();
-      const dbMapByEmailStep = new Map<string, typeof data.items[0]>();
-      for (const item of data.items) {
-        dbMap.set(item.stepId, item);
-        const emailKey = `${(item.recipientEmail || "").toLowerCase().trim()}_${item.stepNumber}`;
-        dbMapByEmailStep.set(emailKey, item);
+      // Check for toast notifications on status transitions
+      if (liveItems.length > 0) {
+        const prevMap = new Map(liveItems.map(i => [(i as any).realStepId || i.queueId, i]));
+        for (const dbItem of data.items) {
+          const prev = prevMap.get(dbItem.stepId);
+          if (prev) {
+            if (dbItem.liveStatus === "SENT" && (prev.liveStatus === "SCHEDULED" || prev.liveStatus === "PROCESSING")) {
+              toast.success("Email Delivered!", { description: `Dispatched to ${dbItem.recipientEmail}`, icon: <Send className="h-4 w-4 text-green-500" /> });
+            }
+            if (dbItem.liveStatus === "OPENED" && prev.liveStatus !== "OPENED") {
+              toast.success("Email Opened!", { description: `${dbItem.recipientEmail} opened your email`, icon: <MailOpen className="h-4 w-4 text-blue-500" /> });
+            }
+            if (dbItem.liveStatus === "REPLIED" && !prevReplied.has(dbItem.recipientEmail.toLowerCase())) {
+              toast.success("New Reply!", { description: `${dbItem.recipientEmail} replied`, icon: <Reply className="h-4 w-4 text-emerald-500" /> });
+            }
+          }
+        }
       }
 
-      setLiveItems(prev => {
-        // If we have existing items, merge DB status into them (preserving display fields)
-        if (prev.length > 0) {
-          return prev.map(item => {
-            const emailKey = `${(item.recipientEmail || "").toLowerCase().trim()}_${item.sequenceStep?.stepNumber || 1}`;
-            const dbItem = dbMap.get((item as any).realStepId || item.queueId) || dbMapByEmailStep.get(emailKey);
-            if (!dbItem) return item;
+      // Always render authoritative DB items directly
+      const newItems: LiveItem[] = data.items.map((dbItem: any) => {
+        const cleanDate = dbItem.scheduledAt ? (dbItem.scheduledAt.includes("T") ? dbItem.scheduledAt.split("T")[0] : dbItem.scheduledAt) : "";
+        const isDispatched = ["SENT", "OPENED", "REPLIED", "BOUNCED"].includes(dbItem.liveStatus);
+        const resolvedEventTime = isDispatched
+          ? (dbItem.lastEventTime || (dbItem.liveStatus === "SENT" ? "Just now" : "—"))
+          : "—";
 
-            // Toast on status upgrades
-            if (dbItem.liveStatus === "SENT" && (item.liveStatus === "SCHEDULED" || item.liveStatus === "PROCESSING")) {
-              toast.success("Email Delivered!", { description: `Dispatched to ${item.recipientEmail}`, icon: <Send className="h-4 w-4 text-green-500" /> });
-            }
-            if (dbItem.liveStatus === "OPENED" && item.liveStatus !== "OPENED") {
-              toast.success("Email Opened!", { description: `${item.recipientEmail} opened your email`, icon: <MailOpen className="h-4 w-4 text-blue-500" /> });
-            }
-            if (dbItem.liveStatus === "REPLIED" && !prevReplied.has(item.recipientEmail.toLowerCase())) {
-              toast.success("New Reply!", { description: `${item.recipientEmail} replied`, icon: <Reply className="h-4 w-4 text-emerald-500" /> });
-            }
-
-            const cleanDate = dbItem.scheduledAt ? (dbItem.scheduledAt.includes("T") ? dbItem.scheduledAt.split("T")[0] : dbItem.scheduledAt) : item.scheduledDate;
-
-            const isDispatched = ["SENT", "OPENED", "REPLIED", "BOUNCED"].includes(dbItem.liveStatus);
-            const resolvedEventTime = isDispatched
-              ? (dbItem.lastEventTime || (dbItem.liveStatus === "SENT" ? "Just now" : "-"))
-              : "-";
-
-            return {
-              ...item,
-              realStepId: dbItem.stepId,
-              scheduledDate: cleanDate,
-              scheduledTime: dbItem.scheduledTimeLocal || item.scheduledTime,
-              liveStatus: (dbItem.liveStatus as any),
-              lastEventTime: resolvedEventTime,
-              retryCount: dbItem.retryCount,
-            };
-          });
-        }
-
-        // First load: build items entirely from DB
-        initialized.current = true;
-        return data.items.map((dbItem: any) => {
-          const isDispatched = ["SENT", "OPENED", "REPLIED", "BOUNCED"].includes(dbItem.liveStatus);
-          return {
-            queueId: dbItem.stepId,
-            realStepId: dbItem.stepId,
-            recipientEmail: dbItem.recipientEmail,
-            recipientName: dbItem.recipientName,
-            sequenceStep: {
-              stepNumber: dbItem.stepNumber,
-              subject: dbItem.subject,
-              content: "",
-            },
-            scheduledDate: dbItem.scheduledAt ? (dbItem.scheduledAt.includes("T") ? dbItem.scheduledAt.split("T")[0] : dbItem.scheduledAt) : "",
-            liveStatus: dbItem.liveStatus,
-            lastEventTime: isDispatched ? (dbItem.lastEventTime || "-") : "-",
-            retryCount: dbItem.retryCount,
-          };
-        });
+        return {
+          queueId: dbItem.stepId,
+          realStepId: dbItem.stepId,
+          recipientEmail: dbItem.recipientEmail,
+          recipientName: dbItem.recipientName,
+          sequenceStep: {
+            stepNumber: dbItem.stepNumber,
+            subject: dbItem.subject,
+            content: "",
+          },
+          scheduledDate: cleanDate,
+          scheduledTime: dbItem.scheduledTimeLocal || "09:00",
+          liveStatus: (dbItem.liveStatus as any),
+          lastEventTime: resolvedEventTime,
+          retryCount: dbItem.retryCount ?? 0,
+        };
       });
+
+      initialized.current = true;
+      setLiveItems(newItems);
 
       // Sync campaign status from DB
       if (data.campaignStatus === "PAUSED") setCampaignStatus("PAUSED");
