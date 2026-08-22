@@ -19,6 +19,11 @@ import { toast } from "sonner";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { StorageEngine } from "@/lib/storage/StorageEngine";
 import { ResumeConfirmationModal, OverdueEmailItem } from "./ResumeConfirmationModal";
+import { CapacitySentinelBadge } from "./CapacitySentinelBadge";
+import { DailyResetCountdown } from "./DailyResetCountdown";
+import { WhyNotSentModal } from "./WhyNotSentModal";
+import { resolveStepDiagnostic, StepDiagnosticContext } from "@/lib/capacity/state";
+import useSWR from "swr";
 
 type LiveItem = ExecutionQueueItem & {
   liveStatus: "SCHEDULED" | "PROCESSING" | "SENT" | "OPENED" | "REPLIED" | "BOUNCED" | "CANCELLED";
@@ -49,6 +54,30 @@ export function LiveExecutionDashboard() {
   const [isLoading, setIsLoading] = useState(initialQueue.length === 0);
   const [campaignStatus, setCampaignStatus] = useState<"ACTIVE" | "PAUSED">("ACTIVE");
   const [currentSessionMeta, setCurrentSessionMeta] = useState<any>(null);
+
+  // Fetch real-time fleet capacity telemetry (SILAER 10X)
+  const { data: statsData } = useSWR(
+    "/api/dashboard/stats",
+    async (url: string) => {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    {
+      refreshInterval: 4000,
+      revalidateOnFocus: true,
+      dedupingInterval: 1000,
+    }
+  );
+
+  const [diagnosticStep, setDiagnosticStep] = useState<StepDiagnosticContext | null>(null);
+  const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
+
+  const sentToday = statsData?.emailsSentToday ?? 0;
+  const dailyLimit = statsData?.dailyLimit ?? 4;
+  const sentThisHour = statsData?.emailsSentThisHour ?? 0;
+  const hourlyLimit = statsData?.hourlyLimit ?? 15;
+  const userTimezone = statsData?.userTimezone ?? "UTC";
 
   // Authoritative campaign ID: from bulkProgress, session meta, localStorage, or latest active campaign
   const activeCampaignId: string = (bulkProgress as any)?.campaignId ?? currentSessionMeta?.campaignId ?? (typeof window !== "undefined" ? localStorage.getItem("silaer_active_campaign_id") : null) ?? "latest";
@@ -642,7 +671,7 @@ export function LiveExecutionDashboard() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, item?: LiveItem) => {
     switch (status) {
       case "PROCESSING": return <Badge variant="secondary" className="bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/80 font-medium text-xs shadow-2xs"><Loader2 className="h-3 w-3 mr-1 animate-spin text-amber-500" /> Processing</Badge>;
       case "SENT": return <Badge variant="secondary" className="bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200/80 font-medium text-xs shadow-2xs"><Send className="h-3 w-3 mr-1 text-sky-500" /> Sent</Badge>;
@@ -652,6 +681,55 @@ export function LiveExecutionDashboard() {
       case "BOUNCED": return <Badge variant="secondary" className="bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 font-medium text-xs shadow-2xs"><AlertCircle className="h-3 w-3 mr-1 text-rose-500" /> Failed</Badge>;
       case "SCHEDULED":
       default:
+        if (item) {
+          const rawScheduled = `${item.scheduledDate}T${item.scheduledTime || "09:00"}:00`;
+          const openDiag = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            const diag = resolveStepDiagnostic(
+              {
+                id: (item as any).realStepId || item.queueId,
+                step_number: item.sequenceStep?.stepNumber || 1,
+                recipientEmail: item.recipientEmail,
+                scheduled_at_utc: rawScheduled,
+                status: item.liveStatus,
+              },
+              {
+                sentToday,
+                dailyLimit,
+                sentThisHour,
+                hourlyLimit,
+                connectedInboxesCount: 2,
+                inboxesList: [],
+                isCampaignActive: campaignStatus === "ACTIVE",
+                userTimezone,
+              },
+              liveItems.map(li => ({
+                id: (li as any).realStepId || li.queueId,
+                scheduled_at_utc: `${li.scheduledDate}T${li.scheduledTime || "09:00"}:00`,
+              }))
+            );
+            setDiagnosticStep(diag);
+            setIsDiagnosticOpen(true);
+          };
+
+          return (
+            <CapacitySentinelBadge
+              step={{
+                id: (item as any).realStepId || item.queueId,
+                step_number: item.sequenceStep?.stepNumber || 1,
+                status: item.liveStatus,
+                scheduled_at_utc: rawScheduled,
+              }}
+              sentToday={sentToday}
+              dailyLimit={dailyLimit}
+              sentThisHour={sentThisHour}
+              hourlyLimit={hourlyLimit}
+              isCampaignActive={campaignStatus === "ACTIVE"}
+              userTimezone={userTimezone}
+              onOpenDiagnostic={openDiag as any}
+            />
+          );
+        }
         return <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 font-medium text-xs"><Clock className="h-3 w-3 mr-1 text-slate-400" /> Scheduled</Badge>;
     }
   };
@@ -741,6 +819,42 @@ export function LiveExecutionDashboard() {
             <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
             {isSyncing ? "Scanning..." : "Sync & Check Replies"}
           </Button>
+
+          <DailyResetCountdown
+            sentToday={sentToday}
+            dailyLimit={dailyLimit}
+            sentThisHour={sentThisHour}
+            hourlyLimit={hourlyLimit}
+            userTimezone={userTimezone}
+            onOpenScaleModal={() => {
+              if (liveItems.length > 0) {
+                const firstPending = liveItems.find(i => i.liveStatus === "SCHEDULED");
+                if (firstPending) {
+                  const diag = resolveStepDiagnostic(
+                    {
+                      id: (firstPending as any).realStepId || firstPending.queueId,
+                      step_number: firstPending.sequenceStep?.stepNumber || 1,
+                      recipientEmail: firstPending.recipientEmail,
+                      scheduled_at_utc: `${firstPending.scheduledDate}T${firstPending.scheduledTime || "09:00"}:00`,
+                      status: firstPending.liveStatus,
+                    },
+                    {
+                      sentToday,
+                      dailyLimit,
+                      sentThisHour,
+                      hourlyLimit,
+                      connectedInboxesCount: 2,
+                      inboxesList: [],
+                      isCampaignActive: campaignStatus === "ACTIVE",
+                      userTimezone,
+                    }
+                  );
+                  setDiagnosticStep(diag);
+                  setIsDiagnosticOpen(true);
+                }
+              }
+            }}
+          />
 
           <Badge 
             variant="default" 
@@ -901,7 +1015,7 @@ export function LiveExecutionDashboard() {
                       {item.scheduledDate} <span className="mx-1.5 text-border">•</span> {item.scheduledTime}
                     </TableCell>
                     <TableCell className="py-3">
-                      {getStatusBadge(item.liveStatus)}
+                      {getStatusBadge(item.liveStatus, item)}
                     </TableCell>
                     <TableCell className="text-right text-xs font-mono text-muted-foreground py-3 whitespace-nowrap">
                       {item.liveStatus === "SCHEDULED" ? "—" : formatEventTime(item.lastEventTime)}
@@ -1042,7 +1156,7 @@ export function LiveExecutionDashboard() {
                           </span>
                         </div>
                         <div className="scale-[0.85] origin-right">
-                          {getStatusBadge(item.liveStatus)}
+                          {getStatusBadge(item.liveStatus, item)}
                         </div>
                       </div>
 
@@ -1086,6 +1200,16 @@ export function LiveExecutionDashboard() {
         overdueItems={overdueItemsForResume}
         onConfirmResume={() => executeTogglePause("RESUME")}
         isResuming={isResumingCampaign}
+      />
+
+      {/* 1-Click Forensic Diagnostic & Capacity Sentinel Modal (SILAER 10X) */}
+      <WhyNotSentModal
+        diagnostic={diagnosticStep}
+        isOpen={isDiagnosticOpen}
+        onClose={() => {
+          setIsDiagnosticOpen(false);
+          setDiagnosticStep(null);
+        }}
       />
     </div>
   );

@@ -788,6 +788,11 @@ export default function DashboardPage() {
                 <div className="flex justify-between text-xs">
                   <span className="font-semibold text-foreground flex items-center gap-1.5">
                     <Target className="h-3.5 w-3.5 text-primary" /> Daily Outreach Velocity Limit
+                    {stats && stats.emailsSentToday >= stats.dailyLimit && (
+                      <span className="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium">
+                        Cap Reached
+                      </span>
+                    )}
                   </span>
                   <span className="font-mono text-muted-foreground">
                     <strong>{stats?.emailsSentToday ?? 0}</strong> / {stats?.dailyLimit ?? 50} emails
