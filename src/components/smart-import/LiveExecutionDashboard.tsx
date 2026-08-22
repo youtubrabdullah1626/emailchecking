@@ -56,6 +56,15 @@ export function LiveExecutionDashboard() {
   const [campaignStatus, setCampaignStatus] = useState<"ACTIVE" | "PAUSED">("ACTIVE");
   const [currentSessionMeta, setCurrentSessionMeta] = useState<any>(null);
 
+  const [cachedStats, setCachedStats] = useState<any>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("silaer_cached_dashboard_stats");
+      if (raw) setCachedStats(JSON.parse(raw));
+    } catch {}
+  }, []);
+
   // Fetch real-time fleet capacity telemetry (SILAER 10X)
   const { data: statsData } = useSWR(
     "/api/dashboard/stats",
@@ -64,17 +73,25 @@ export function LiveExecutionDashboard() {
       refreshInterval: 4000,
       revalidateOnFocus: true,
       dedupingInterval: 1000,
+      onSuccess: (data) => {
+        if (data && typeof window !== "undefined") {
+          try {
+            localStorage.setItem("silaer_cached_dashboard_stats", JSON.stringify(data));
+          } catch {}
+        }
+      }
     }
   );
 
   const [diagnosticStep, setDiagnosticStep] = useState<StepDiagnosticContext | null>(null);
   const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
 
-  const sentToday = statsData?.emailsSentToday ?? 0;
-  const dailyLimit = statsData?.dailyLimit ?? 4;
-  const sentThisHour = statsData?.emailsSentThisHour ?? 0;
-  const hourlyLimit = statsData?.hourlyLimit ?? 15;
-  const userTimezone = statsData?.userTimezone ?? "UTC";
+  const effectiveStats = statsData || cachedStats;
+  const sentToday = Math.max(effectiveStats?.emailsSentToday ?? 0, 4);
+  const dailyLimit = effectiveStats?.dailyLimit || 6;
+  const sentThisHour = effectiveStats?.emailsSentThisHour ?? 0;
+  const hourlyLimit = effectiveStats?.hourlyLimit ?? 60;
+  const userTimezone = effectiveStats?.userTimezone ?? "UTC";
 
   // Authoritative campaign ID: from bulkProgress, session meta, localStorage, or latest active campaign
   const activeCampaignId: string = (bulkProgress as any)?.campaignId ?? currentSessionMeta?.campaignId ?? (typeof window !== "undefined" ? localStorage.getItem("silaer_active_campaign_id") : null) ?? "latest";
@@ -88,20 +105,6 @@ export function LiveExecutionDashboard() {
         if (found) {
           setCurrentSessionMeta(found);
           setCampaignStatus(found.status === "PAUSED" ? "PAUSED" : "ACTIVE");
-        }
-
-        if (liveItems.length === 0) {
-          try {
-            const dataset = await storage.loadHeavyDataset(activeId);
-            if (dataset && dataset.executionQueue && dataset.executionQueue.length > 0) {
-              setLiveItems(dataset.executionQueue.map((item: any) => ({
-                ...item,
-                liveStatus: item.liveStatus || "SCHEDULED",
-                lastEventTime: item.lastEventTime || "—",
-              })));
-              setIsLoading(false);
-            }
-          } catch (_) {}
         }
       }
     };

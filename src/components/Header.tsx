@@ -177,7 +177,9 @@ export function Header({ onMenuClick }: HeaderProps) {
               <span className="font-semibold text-foreground tracking-tight">System Live</span>
               <span className="text-muted-foreground">•</span>
               <span className="text-muted-foreground font-medium font-mono text-[11px]">
-                {mounted && (accountStats || globalStats) ? `${accountStats?.emailsSentToday ?? globalStats?.emailsSentToday ?? 0} Sent • ${accountStats?.repliesToday ?? globalStats?.repliesToday ?? 0} Replies Today` : 'Syncing state...'}
+                {mounted
+                  ? `${Math.max(rawAccountStats?.emailsSentToday ?? 0, globalStats?.emailsSentToday ?? 0, cachedHeader?.emailsSentToday ?? 0)} Sent • ${Math.max(rawAccountStats?.repliesToday ?? 0, globalStats?.repliesToday ?? 0, cachedHeader?.repliesToday ?? 0)} Replies Today`
+                  : 'Syncing state...'}
               </span>
             </div>
           </div>
@@ -187,17 +189,17 @@ export function Header({ onMenuClick }: HeaderProps) {
       <div className="flex items-center gap-2 md:gap-3">
         <div className="hidden md:flex items-center gap-2 text-xs">
           <span className="text-muted-foreground font-medium">
-            {accountStats?.inboxCount && accountStats.inboxCount > 1 ? "Active Fleet:" : "Sending Account:"}
+            {((rawAccountStats?.inboxCount ?? cachedHeader?.inboxCount ?? 2) > 1) ? "Active Fleet:" : "Sending Account:"}
           </span>
           <div>
-            {!mounted || accountStats === undefined ? (
+            {!mounted ? (
               <span className="animate-pulse bg-muted text-transparent rounded px-2 py-0.5 text-xs font-mono">loading...</span>
-            ) : accountStats?.inboxCount && accountStats.inboxCount > 1 ? (
+            ) : ((rawAccountStats?.inboxCount ?? cachedHeader?.inboxCount ?? 2) > 1) ? (
               <FastLink 
                 href="/settings" 
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
               >
-                <Sparkles className="h-3 w-3" /> {accountStats.connectedGmail}
+                <Sparkles className="h-3 w-3" /> {rawAccountStats?.connectedGmail || cachedHeader?.connectedGmail || "2 Inboxes Rotating"}
               </FastLink>
             ) : accountStats?.connectedGmail ? (
               accountStats.connectionStatus === 'CONNECTED' ? (
