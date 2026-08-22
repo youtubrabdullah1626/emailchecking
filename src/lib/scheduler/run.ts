@@ -54,6 +54,7 @@ export async function runScheduler(
   const claimedStepIds: string[] = [];
   const errors: string[] = [];
   let staleProcessingSteps: StaleStepInfo[] = [];
+  let lockAcquired = false;
 
   let maxDaily = 500;
   let maxHourly = 50;
@@ -113,13 +114,13 @@ export async function runScheduler(
 
   try {
     const SCHEDULER_LOCK_KEY = 'main_scheduler';
-    let lockAcquired = true;
+    lockAcquired = true;
     try {
       const lockResult = await prisma.$executeRaw`
         INSERT INTO scheduler_locks (lock_name, locked_at, locked_until, run_id)
-        VALUES (${SCHEDULER_LOCK_KEY}, NOW(), NOW() + INTERVAL '2 minutes', ${runId})
+        VALUES (${SCHEDULER_LOCK_KEY}, NOW(), NOW() + INTERVAL '15 seconds', ${runId})
         ON CONFLICT (lock_name) DO UPDATE
-          SET locked_at = NOW(), locked_until = NOW() + INTERVAL '2 minutes', run_id = ${runId}
+          SET locked_at = NOW(), locked_until = NOW() + INTERVAL '15 seconds', run_id = ${runId}
           WHERE scheduler_locks.locked_until < NOW()
       `;
       if (lockResult === 0) {
@@ -331,7 +332,9 @@ export async function runScheduler(
       staleProcessingSteps,
     };
   } finally {
-    await prisma.$executeRaw`DELETE FROM scheduler_locks WHERE lock_name = 'main_scheduler' AND run_id = ${runId}`.catch(() => {});
+    if (lockAcquired) {
+      await prisma.$executeRaw`DELETE FROM scheduler_locks WHERE lock_name = 'main_scheduler' AND run_id = ${runId}`.catch(() => {});
+    }
   }
 }
 

@@ -55,7 +55,16 @@ export async function activateCampaign(campaignId: string, userId: string): Prom
   // 1. Activate Campaign
   await prisma.campaign.update({ where: { id: campaignId }, data: { status: 'ACTIVE' } });
 
-  // 2. Also ensure all campaign sequences that have not replied are set to ACTIVE
+  // 2. Also ensure all campaign prospects that have not replied are set to ACTIVE
+  await prisma.prospect.updateMany({
+    where: {
+      campaign_id: campaignId,
+      status: { notIn: ['REPLIED', 'STOPPED', 'COMPLETED'] }
+    },
+    data: { status: 'ACTIVE' }
+  });
+
+  // 3. Also ensure all campaign sequences that have not replied are set to ACTIVE
   await prisma.sequence.updateMany({
     where: {
       prospect: {

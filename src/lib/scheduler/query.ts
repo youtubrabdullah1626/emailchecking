@@ -39,7 +39,7 @@ export async function findCandidateSteps(
       sequence: {
         status: "ACTIVE",
         prospect: {
-          status: "ACTIVE",
+          status: { notIn: ["REPLIED", "STOPPED", "COMPLETED"] },
           OR: [
             { campaign: { status: "ACTIVE" } },
             { campaign: null }
