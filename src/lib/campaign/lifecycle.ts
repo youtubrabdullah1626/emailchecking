@@ -28,7 +28,7 @@ export async function activateCampaign(campaignId: string, userId: string): Prom
   // Idempotent: If already ACTIVE, return success instantly
   if (campaign.status === 'ACTIVE') return { success: true };
 
-  if (!['DRAFT', 'PAUSED'].includes(campaign.status)) {
+  if (['COMPLETED', 'ARCHIVED'].includes(campaign.status)) {
     return { success: false, error: 'INVALID_TRANSITION', message: `Cannot activate a ${campaign.status} campaign.` };
   }
 
@@ -59,7 +59,7 @@ export async function activateCampaign(campaignId: string, userId: string): Prom
         campaign_id: campaignId,
         status: { not: 'REPLIED' }
       },
-      status: { in: ['DRAFT', 'STOPPED', 'PAUSED'] }
+      status: { not: 'COMPLETED' }
     },
     data: { status: 'ACTIVE', stopped_at: null }
   });
@@ -71,14 +71,13 @@ export async function pauseCampaign(campaignId: string, userId: string): Promise
   const campaign = await prisma.campaign.findUnique({ where: { id: campaignId }, select: { status: true, user_id: true } });
   if (!campaign || campaign.user_id !== userId) return { success: false, message: 'Campaign not found.' };
   if (campaign.status === 'PAUSED') return { success: true }; // Idempotent
-  if (campaign.status !== 'ACTIVE') return { success: false, message: 'Only ACTIVE campaigns can be paused.' };
 
   // 1. Update Campaign & Sequences status to PAUSED
   await prisma.campaign.update({ where: { id: campaignId }, data: { status: 'PAUSED' } });
   await prisma.sequence.updateMany({
     where: {
       prospect: { campaign_id: campaignId },
-      status: 'ACTIVE'
+      status: { not: 'COMPLETED' }
     },
     data: { status: 'PAUSED' }
   });
