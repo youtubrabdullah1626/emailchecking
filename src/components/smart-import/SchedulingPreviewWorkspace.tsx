@@ -77,33 +77,20 @@ export function SchedulingPreviewWorkspace() {
   }, [getSequences, appendTargetSessionId]);
 
   const handleExecuteStrategy = async () => {
-    // Instant 0ms response if pre-check finished in background
-    if (precomputedDuplicatesRef.current.done) {
-      const dups = precomputedDuplicatesRef.current.duplicates;
-      if (dups.length > 0) {
-        setDuplicateList(dups);
-        setShowDuplicateModal(true);
-        return;
-      }
-      await approveImport();
-      return;
-    }
-
     setIsCheckingDuplicates(true);
     try {
-      let dups: any[] = [];
-      if (duplicateCheckPromiseRef.current) {
-        dups = await duplicateCheckPromiseRef.current;
-      } else {
-        const sequences = getSequences();
-        const res = await fetch("/api/smart-import/check-duplicates", {
+      const sequences = getSequences();
+      const [res] = await Promise.all([
+        fetch("/api/smart-import/check-duplicates", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sequences, targetCampaignId: appendTargetSessionId || null })
-        });
-        const data = await res.json().catch(() => ({}));
-        dups = data.duplicates || [];
-      }
+        }),
+        new Promise((resolve) => setTimeout(resolve, 500)) // smooth visual feedback
+      ]);
+
+      const data = await res.json().catch(() => ({}));
+      const dups = data.duplicates || [];
 
       if (dups.length > 0) {
         setDuplicateList(dups);
