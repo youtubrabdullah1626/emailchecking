@@ -571,13 +571,13 @@ export function LiveExecutionDashboard() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "SCHEDULED": return <Badge variant="secondary" className="bg-muted text-muted-foreground font-normal"><Clock className="h-3 w-3 mr-1" /> Scheduled</Badge>;
-      case "PROCESSING": return <Badge variant="secondary" className="bg-orange-50 text-orange-600 border-orange-200 font-normal"><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Processing</Badge>;
-      case "SENT": return <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-200 font-normal"><Send className="h-3 w-3 mr-1" /> Sent</Badge>;
-      case "OPENED": return <Badge variant="secondary" className="bg-purple-50 text-purple-600 border-purple-200 font-normal"><MailOpen className="h-3 w-3 mr-1" /> Opened</Badge>;
-      case "REPLIED": return <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-medium"><Reply className="h-3 w-3 mr-1" /> Replied</Badge>;
-      case "CANCELLED": return <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 font-normal"><Ban className="h-3 w-3 mr-1" /> Stopped (Replied)</Badge>;
-      case "BOUNCED": return <Badge variant="secondary" className="bg-red-50 text-red-600 border-red-200 font-normal"><AlertCircle className="h-3 w-3 mr-1" /> Failed</Badge>;
+      case "SCHEDULED": return <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 font-medium text-xs"><Clock className="h-3 w-3 mr-1 text-slate-400" /> Scheduled</Badge>;
+      case "PROCESSING": return <Badge variant="secondary" className="bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/80 font-medium text-xs shadow-2xs"><Loader2 className="h-3 w-3 mr-1 animate-spin text-amber-500" /> Processing</Badge>;
+      case "SENT": return <Badge variant="secondary" className="bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200/80 font-medium text-xs shadow-2xs"><Send className="h-3 w-3 mr-1 text-sky-500" /> Sent</Badge>;
+      case "OPENED": return <Badge variant="secondary" className="bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/80 font-medium text-xs shadow-2xs"><MailOpen className="h-3 w-3 mr-1 text-purple-500" /> Opened</Badge>;
+      case "REPLIED": return <Badge variant="secondary" className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300/80 font-semibold text-xs shadow-2xs"><Reply className="h-3 w-3 mr-1 text-emerald-600" /> Replied</Badge>;
+      case "CANCELLED": return <Badge variant="secondary" className="bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 font-medium text-xs"><Ban className="h-3 w-3 mr-1 text-zinc-400" /> Stopped (Replied)</Badge>;
+      case "BOUNCED": return <Badge variant="secondary" className="bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 font-medium text-xs shadow-2xs"><AlertCircle className="h-3 w-3 mr-1 text-rose-500" /> Failed</Badge>;
       default: return null;
     }
   };
