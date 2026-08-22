@@ -807,11 +807,9 @@ export function ImportHistoryWorkspace() {
               <span>
                 This will permanently delete campaigns, prospects, sequences, scheduled steps, and tracking events created within this timeframe from the database and session storage.
               </span>
-              {selectedTimeframe === "all" && (
-                <span className="block font-semibold text-rose-600 dark:text-rose-400 mt-2">
-                  ⚠️ This will wipe all historical campaigns and reset daily counters for a fresh clean start.
-                </span>
-              )}
+              <span className="block text-slate-500 dark:text-slate-400 pt-1">
+                Note: Real inbox sending metrics and daily account safety limits are preserved.
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0">

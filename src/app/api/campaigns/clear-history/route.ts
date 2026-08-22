@@ -138,14 +138,6 @@ export async function POST(req: NextRequest) {
           where: { id: { in: campaignIds } }
         });
       }
-
-      // If full wipe requested, reset daily sending counters for a clean fresh slate
-      if (timeframe === "all") {
-        await tx.emailAccount.updateMany({
-          where: { user_id: userId },
-          data: { sent_today: 0, reserved_count: 0 }
-        });
-      }
     });
 
     return NextResponse.json({
