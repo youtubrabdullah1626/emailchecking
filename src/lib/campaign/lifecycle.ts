@@ -66,6 +66,19 @@ export async function activateCampaign(campaignId: string, userId: string): Prom
     }
     
     await tx.campaign.update({ where: { id: campaignId }, data: { status: 'ACTIVE' } });
+
+    // Also ensure all campaign sequences that have not replied are set to ACTIVE
+    await tx.sequence.updateMany({
+      where: {
+        prospect: {
+          campaign_id: campaignId,
+          status: { not: 'REPLIED' }
+        },
+        status: { in: ['DRAFT', 'STOPPED'] }
+      },
+      data: { status: 'ACTIVE', stopped_at: null }
+    });
+
     return { success: true, activeCount: activeCount + 1, limit: maxAllowed };
   });
 }

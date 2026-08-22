@@ -280,21 +280,15 @@ async function scanThread(
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : "Gmail API error";
     
-    // Auto-heal 404 entity not found: mark obsolete sequence STOPPED so we never waste time scanning it again
+    // Thread not found yet (e.g. slight Gmail propagation latency or alternate inbox): skip this scan cycle safely without stopping sequence
     if (err?.code === 404 || err?.status === 404 || msg.includes("Requested entity was not found") || msg.includes("Not Found")) {
-      if (sequenceId) {
-        await prisma.sequence.update({
-          where: { id: sequenceId },
-          data: { status: "STOPPED" }
-        }).catch(() => {});
-      }
       return {
         sequenceId,
         prospectId,
         prospectName,
         gmailThreadId,
-        outcome: "ALREADY_STOPPED",
-        detail: "Thread not found in mailbox. Sequence marked STOPPED.",
+        outcome: "NO_REPLIES",
+        detail: "Thread not found in this mailbox pass — skipped safely.",
       };
     }
 
