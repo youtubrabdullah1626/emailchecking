@@ -316,6 +316,7 @@ export function LiveExecutionDashboard() {
 
   const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
   const [overdueItemsForResume, setOverdueItemsForResume] = useState<OverdueEmailItem[]>([]);
+  const [isResumingCampaign, setIsResumingCampaign] = useState(false);
 
   const handleTogglePauseDashboard = async () => {
     const isCurrentlyPaused = campaignStatus === "PAUSED";
@@ -354,6 +355,21 @@ export function LiveExecutionDashboard() {
   const executeTogglePause = async (action: "RESUME" | "PAUSE") => {
     const nextStatus = action === "RESUME" ? "ACTIVE" : "PAUSED";
     setCampaignStatus(nextStatus);
+
+    if (action === "RESUME") {
+      setIsResumingCampaign(true);
+      // 10X Smart Optimistic Update: Immediately flip overdue items to PROCESSING in local UI
+      const overdueIds = new Set(overdueItemsForResume.map(o => o.id));
+      if (overdueIds.size > 0) {
+        setLiveItems(prev => prev.map(item => {
+          if (overdueIds.has(item.queueId)) {
+            return { ...item, liveStatus: "PROCESSING" as const, lastEventTime: new Date().toISOString() };
+          }
+          return item;
+        }));
+      }
+    }
+
     toast.success(action === "RESUME" ? "Campaign resumed — sending due emails!" : "Campaign paused");
 
     try {
@@ -386,15 +402,19 @@ export function LiveExecutionDashboard() {
           if (action === "RESUME") {
             // Immediately trigger the scheduler from the client as well
             fetch("/api/scheduler/run", { method: "POST" }).catch(() => {});
-            // Immediately refresh live status to reflect newly dispatched emails
-            setTimeout(() => fetchLiveStatusFromDb(), 500);
-            setTimeout(() => fetchLiveStatusFromDb(), 1800);
-            setTimeout(() => fetchLiveStatusFromDb(), 3500);
+            // Fast cascade refreshes to guarantee instant UI sync
+            setTimeout(() => fetchLiveStatusFromDb(), 400);
+            setTimeout(() => fetchLiveStatusFromDb(), 1200);
+            setTimeout(() => fetchLiveStatusFromDb(), 2500);
+            setTimeout(() => fetchLiveStatusFromDb(), 4000);
           }
         }
       }
     } catch (e) {
       toast.error("Failed to update campaign state");
+    } finally {
+      setIsResumingCampaign(false);
+      setIsResumeModalOpen(false);
     }
   };
 
@@ -1065,6 +1085,7 @@ export function LiveExecutionDashboard() {
         onOpenChange={setIsResumeModalOpen}
         overdueItems={overdueItemsForResume}
         onConfirmResume={() => executeTogglePause("RESUME")}
+        isResuming={isResumingCampaign}
       />
     </div>
   );

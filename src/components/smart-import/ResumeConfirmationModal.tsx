@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Clock, Play } from "lucide-react";
+import { Clock, Play, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export interface OverdueEmailItem {
@@ -28,6 +28,7 @@ interface ResumeConfirmationModalProps {
   onOpenChange: (open: boolean) => void;
   overdueItems: OverdueEmailItem[];
   onConfirmResume: () => void;
+  isResuming?: boolean;
 }
 
 export function ResumeConfirmationModal({
@@ -35,14 +36,14 @@ export function ResumeConfirmationModal({
   onOpenChange,
   overdueItems,
   onConfirmResume,
+  isResuming = false,
 }: ResumeConfirmationModalProps) {
   const handleConfirm = () => {
     onConfirmResume();
-    onOpenChange(false);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!isResuming) onOpenChange(open); }}>
       <DialogContent className="max-w-lg rounded-2xl shadow-2xl border-slate-200 dark:border-slate-800">
         <DialogHeader className="space-y-2">
           <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100 text-lg font-bold">
@@ -102,6 +103,7 @@ export function ResumeConfirmationModal({
           <Button
             type="button"
             variant="ghost"
+            disabled={isResuming}
             onClick={() => onOpenChange(false)}
             className="rounded-xl text-xs h-9"
           >
@@ -109,11 +111,21 @@ export function ResumeConfirmationModal({
           </Button>
           <Button
             type="button"
+            disabled={isResuming}
             onClick={handleConfirm}
-            className="rounded-xl text-xs h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold gap-1.5 shadow-sm"
+            className="rounded-xl text-xs h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold gap-1.5 shadow-sm min-w-[150px]"
           >
-            <Play className="h-3.5 w-3.5 fill-current" />
-            Resume & Send Now
+            {isResuming ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Dispatching Now...
+              </>
+            ) : (
+              <>
+                <Play className="h-3.5 w-3.5 fill-current" />
+                Resume & Send Now
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
