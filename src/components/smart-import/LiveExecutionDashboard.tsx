@@ -395,7 +395,15 @@ export function LiveExecutionDashboard() {
     const nextStatus = action === "RESUME" ? "ACTIVE" : "PAUSED";
     setCampaignStatus(nextStatus);
 
-    if (action === "PAUSE") {
+    if (action === "RESUME") {
+      setLiveItems(prev => prev.map(item => {
+        const s = item.liveStatus as string;
+        if (s === "PAUSED" || s === "SCHEDULED") {
+          return { ...item, liveStatus: "PROCESSING" as any, lastEventTime: "Just now" };
+        }
+        return item;
+      }));
+    } else if (action === "PAUSE") {
       setLiveItems(prev => prev.map(i => {
         const s = i.liveStatus as string;
         if (s === "PROCESSING" || s === "SCHEDULED") {
@@ -422,12 +430,13 @@ export function LiveExecutionDashboard() {
           body: JSON.stringify({ action, campaignName }),
         });
 
-        toast.success(action === "PAUSE" ? "Campaign Paused — All sending stopped" : "Campaign Resumed");
+        toast.success(action === "PAUSE" ? "Campaign Paused — All sending stopped" : "Campaign Resumed — Dispatching due emails");
         await fetchLiveStatusFromDb();
         if (action === "RESUME") {
-          setTimeout(() => fetchLiveStatusFromDb(), 800);
-          setTimeout(() => fetchLiveStatusFromDb(), 2000);
-          setTimeout(() => fetchLiveStatusFromDb(), 4000);
+          setTimeout(() => fetchLiveStatusFromDb(), 600);
+          setTimeout(() => fetchLiveStatusFromDb(), 1500);
+          setTimeout(() => fetchLiveStatusFromDb(), 3000);
+          setTimeout(() => fetchLiveStatusFromDb(), 5000);
         }
       }
     } catch (e: any) {

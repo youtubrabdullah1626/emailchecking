@@ -15,7 +15,7 @@ interface FetchOptions extends RequestInit {
 }
 
 export async function apiClient<T>(url: string, options: FetchOptions = {}): Promise<T> {
-  const { timeoutMs = 15000, ...fetchOptions } = options;
+  const { timeoutMs = 30000, ...fetchOptions } = options;
 
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);

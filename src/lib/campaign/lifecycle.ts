@@ -67,6 +67,17 @@ export async function activateCampaign(campaignId: string, userId: string): Prom
     data: { status: 'ACTIVE', stopped_at: null }
   });
 
+  // 3. For any steps scheduled in the past or due, set eligible_after_utc = now so they can be dispatched immediately
+  const now = new Date();
+  await prisma.sequenceStep.updateMany({
+    where: {
+      sequence: { prospect: { campaign_id: campaignId } },
+      status: 'PENDING',
+      scheduled_at_utc: { lte: now }
+    },
+    data: { eligible_after_utc: now }
+  });
+
   return { success: true, activeCount: activeCount + 1, limit: maxAllowed };
 }
 
