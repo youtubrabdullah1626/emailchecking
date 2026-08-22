@@ -37,6 +37,8 @@ export const dynamic = "force-dynamic";
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/nextauth";
 import { runScheduler } from "@/lib/scheduler/run";
 import { verifySchedulerSecret, unauthorizedResponse } from "@/lib/auth/scheduler-auth";
 import { withObservability } from "@/lib/observability/middleware";
@@ -45,11 +47,26 @@ import prisma from "@/lib/prisma";
 
 export const POST = withObservability(async (request: NextRequest) => {
   // ── Authentication guard ──────────────────────────────────────────────────
-  const isSameOrigin = request.headers.get("sec-fetch-site") === "same-origin" ||
-                       request.headers.get("sec-fetch-site") === "same-site" ||
-                       process.env.NODE_ENV === "development";
+  const host = request.headers.get("host");
+  const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
+  const secFetchSite = request.headers.get("sec-fetch-site");
 
-  if (!isSameOrigin) {
+  const isBrowserRequest = (origin && host && origin.includes(host)) || 
+                           (referer && host && referer.includes(host)) ||
+                           secFetchSite === "same-origin" || 
+                           secFetchSite === "same-site" ||
+                           process.env.NODE_ENV === "development";
+
+  let isAuthorized = isBrowserRequest;
+  if (!isAuthorized) {
+    const session = await getServerSession(authOptions).catch(() => null);
+    if (session?.user) {
+      isAuthorized = true;
+    }
+  }
+
+  if (!isAuthorized) {
     const auth = verifySchedulerSecret(request);
     if (!auth.authorized) return unauthorizedResponse(auth.reason);
   }

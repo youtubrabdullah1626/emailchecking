@@ -348,9 +348,14 @@ export function LiveExecutionDashboard() {
           const data = await res.json().catch(() => ({}));
           toast.error(data.error || `Failed to ${nextAction.toLowerCase()} campaign`);
         } else {
-          // Immediately refresh live status to reflect newly dispatched emails
-          setTimeout(() => fetchLiveStatusFromDb(), 1000);
-          setTimeout(() => fetchLiveStatusFromDb(), 3500);
+          if (nextAction === "RESUME") {
+            // Immediately trigger the scheduler from the client as well
+            fetch("/api/scheduler/run", { method: "POST" }).catch(() => {});
+            // Immediately refresh live status to reflect newly dispatched emails
+            setTimeout(() => fetchLiveStatusFromDb(), 500);
+            setTimeout(() => fetchLiveStatusFromDb(), 1800);
+            setTimeout(() => fetchLiveStatusFromDb(), 3500);
+          }
         }
       }
     } catch (e) {
