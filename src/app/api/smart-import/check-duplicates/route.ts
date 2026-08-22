@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ duplicates: [], hasDuplicates: false });
     }
 
-    // 1. Direct indexed lookup using Prisma.join for optimal Postgres query plan
+    // 1. Direct indexed lookup using lower-case trimmed matching across sequence_steps
     const historicalSteps: Array<{
       email: string;
       subject: string | null;
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       body_snippet: string | null;
     }> = await prisma.$queryRaw`
       SELECT 
-        p.email,
+        LOWER(TRIM(p.email)) as email,
         ss.subject,
         ss.scheduled_at_utc,
         ss.sent_at,
@@ -51,20 +51,33 @@ export async function POST(req: NextRequest) {
       FROM prospects p
       JOIN sequences s ON s.prospect_id = p.id
       JOIN sequence_steps ss ON ss.sequence_id = s.id
-      WHERE p.email IN (${Prisma.join(emails)})
-        AND (ss.status = 'SENT' OR ss.gmail_message_id IS NOT NULL OR s.status = 'ACTIVE')
+      WHERE LOWER(TRIM(p.email)) IN (${Prisma.join(emails)})
+        AND (ss.status IN ('SENT', 'PROCESSING', 'SCHEDULED', 'PENDING', 'COMPLETED') OR ss.gmail_message_id IS NOT NULL OR s.status IN ('ACTIVE', 'COMPLETED', 'PAUSED', 'STOPPED'))
       ORDER BY COALESCE(ss.sent_at, ss.scheduled_at_utc) DESC
       LIMIT 1000;
-    `;
+    `.catch(() => []);
 
-    if (!historicalSteps || historicalSteps.length === 0) {
-      return NextResponse.json({ duplicates: [], hasDuplicates: false });
-    }
+    // 2. Also check tracked_emails table for historical dispatches
+    const trackedList: Array<{
+      recipient_email: string;
+      subject: string | null;
+      created_at: Date;
+    }> = await prisma.$queryRaw`
+      SELECT 
+        LOWER(TRIM(recipient_email)) as recipient_email,
+        subject,
+        created_at
+      FROM tracked_emails
+      WHERE LOWER(TRIM(recipient_email)) IN (${Prisma.join(emails)})
+      ORDER BY created_at DESC
+      LIMIT 1000;
+    `.catch(() => []);
 
-    // 2. Build fast lookup map: email -> array of past subjects
+    // 3. Build fast lookup map: email -> array of past subjects & dates
     const historyByEmail = new Map<string, Array<{ subject: string; sentAt: string | null; bodySnippet: string }>>();
+    
     for (const row of historicalSteps) {
-      const email = row.email?.toLowerCase();
+      const email = row.email?.toLowerCase().trim();
       if (!email || !row.subject) continue;
       const list = historyByEmail.get(email) || [];
       list.push({
@@ -75,7 +88,23 @@ export async function POST(req: NextRequest) {
       historyByEmail.set(email, list);
     }
 
-    // 3. Fast duplicate check
+    for (const row of trackedList) {
+      const email = row.recipient_email?.toLowerCase().trim();
+      if (!email || !row.subject) continue;
+      const list = historyByEmail.get(email) || [];
+      list.push({
+        subject: row.subject,
+        sentAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+        bodySnippet: "",
+      });
+      historyByEmail.set(email, list);
+    }
+
+    if (historyByEmail.size === 0) {
+      return NextResponse.json({ duplicates: [], hasDuplicates: false });
+    }
+
+    // 4. Smart duplicate detection
     const duplicates: { email: string; subject: string; lastSentAt: string | null }[] = [];
     const duplicateEmailsFound = new Set<string>();
 
@@ -99,8 +128,8 @@ export async function POST(req: NextRequest) {
           const pastSubjectNorm = normalizeString(past.subject);
           
           if (
-            (proposedSubjectNorm.length > 3 && pastSubjectNorm === proposedSubjectNorm) ||
-            (proposedSnippet.length > 15 && past.bodySnippet.includes(proposedSnippet.slice(0, 40)))
+            (proposedSubjectNorm.length > 3 && (pastSubjectNorm === proposedSubjectNorm || pastSubjectNorm.includes(proposedSubjectNorm) || proposedSubjectNorm.includes(pastSubjectNorm))) ||
+            (proposedSnippet.length > 15 && past.bodySnippet && past.bodySnippet.includes(proposedSnippet.slice(0, 40)))
           ) {
             isDuplicate = true;
             duplicateSubject = past.subject;
@@ -108,6 +137,13 @@ export async function POST(req: NextRequest) {
             break;
           }
         }
+      }
+
+      // If exact subject match wasn't found but prospect already has an active past sequence
+      if (!isDuplicate && pastList.length > 0) {
+        isDuplicate = true;
+        duplicateSubject = pastList[0].subject;
+        duplicateDate = pastList[0].sentAt;
       }
 
       if (isDuplicate) {
