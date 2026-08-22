@@ -72,9 +72,21 @@ export async function getSession(): Promise<{ user: SessionUser } | null> {
       }).catch(() => {});
     }
 
+    // Resolve primary workspace owner ID so all connected inboxes share the unified workspace
+    let primaryUserId = dbUser.id || user.id;
+    if (isOwner) {
+      const primaryOwner = await prisma.users.findFirst({
+        where: { email: "youtubrabdullah1626@gmail.com" },
+        select: { id: true }
+      });
+      if (primaryOwner) {
+        primaryUserId = primaryOwner.id;
+      }
+    }
+
     return {
       user: {
-        id: dbUser.id || user.id,
+        id: primaryUserId,
         email,
         name: dbUser.name || user.name || undefined,
         role: isOwner ? "OWNER" : (dbUser.role || "USER"),

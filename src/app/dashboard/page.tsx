@@ -183,7 +183,8 @@ export default function DashboardPage() {
     return (repliesData?.replies ?? []).slice(0, 6);
   }, [repliesData?.replies]);
 
-  const loading = statsLoading || repliesLoading;
+  const isStatsLoading = statsLoading && !statsData;
+  const isRepliesLoading = repliesLoading && !repliesData;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -358,7 +359,7 @@ export default function DashboardPage() {
 
             <div className="my-2 flex items-baseline justify-between">
               <div className="text-3xl font-extrabold tracking-tight text-foreground">
-                {loading ? "—" : stats?.activeSequences ?? 0}
+                {isStatsLoading ? "—" : stats?.activeSequences ?? 0}
               </div>
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -389,7 +390,7 @@ export default function DashboardPage() {
 
             <div className="my-2 flex items-baseline justify-between">
               <div className="text-3xl font-extrabold tracking-tight text-foreground">
-                {loading ? "—" : timeframeStats.sent.toLocaleString()}
+                {isStatsLoading ? "—" : timeframeStats.sent.toLocaleString()}
               </div>
               <span className="text-xs font-mono font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-md border border-border">
                 Cap: {stats?.dailyLimit ?? 50}/day
@@ -424,7 +425,7 @@ export default function DashboardPage() {
 
             <div className="my-2 flex items-baseline justify-between">
               <div className="text-3xl font-extrabold tracking-tight text-foreground">
-                {loading ? "—" : timeframeStats.opened.toLocaleString()}
+                {isStatsLoading ? "—" : timeframeStats.opened.toLocaleString()}
               </div>
               <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20">
                 {timeframeStats.openRate}% open rate
@@ -454,7 +455,7 @@ export default function DashboardPage() {
 
             <div className="my-2 flex items-baseline justify-between">
               <div className="text-3xl font-extrabold tracking-tight text-foreground">
-                {loading ? "—" : timeframeStats.replies.toLocaleString()}
+                {isStatsLoading ? "—" : timeframeStats.replies.toLocaleString()}
               </div>
               <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
                 {timeframeStats.replyRate}% reply rate
@@ -509,7 +510,7 @@ export default function DashboardPage() {
         </CardHeader>
 
         <CardContent className="pt-6">
-          {loading ? (
+          {isStatsLoading ? (
             <div className="py-12 flex flex-col items-center justify-center gap-4">
               <div className="h-6 w-56 bg-muted/60 animate-pulse rounded-lg" />
               <div className="h-32 w-full bg-muted/30 animate-pulse rounded-xl" />
@@ -672,7 +673,7 @@ export default function DashboardPage() {
           </CardHeader>
 
           <CardContent className="pt-6 space-y-5 flex-1 flex flex-col justify-center">
-            {loading ? (
+            {isStatsLoading ? (
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
                   <div className="flex justify-between">
@@ -759,49 +760,42 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Mailbox Deliverability Sentinel & Capacity */}
-        <Card className="border border-border shadow-xs bg-card flex flex-col justify-between">
+        {/* Deliverability Sentinel */}
+        <Card className="shadow-xs border border-border bg-card flex flex-col justify-between">
           <CardHeader className="pb-3 border-b border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                  Mailbox Deliverability Sentinel
-                </CardTitle>
-                <CardDescription className="text-xs mt-0.5">
-                  Real-time SPF/DKIM health, velocity governor, and sender reputation score
-                </CardDescription>
-              </div>
-              {stats?.userTimezone && (
-                <span className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-secondary text-muted-foreground border border-border flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  {stats.userTimezone.split("/").pop()?.replace("_", " ")}
-                </span>
-              )}
-            </div>
+            <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-500" />
+              Mailbox Deliverability Sentinel
+            </CardTitle>
+            <CardDescription className="text-xs mt-0.5">
+              Real-time SPF/DKIM health, velocity governor, and sender reputation score
+            </CardDescription>
           </CardHeader>
 
-          <CardContent className="pt-6 space-y-6 flex-1">
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="p-3 rounded-xl bg-secondary/40 border border-border">
-                <div className="text-[10px] font-semibold text-muted-foreground uppercase">Reputation</div>
-                <div className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">99.4%</div>
-                <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Optimal</div>
+          <CardContent className="pt-6 space-y-6 flex-1 flex flex-col justify-between">
+            {/* Health Indicators Grid */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-3 rounded-xl bg-secondary/50 border border-border text-center">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Reputation</div>
+                <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono">99.4%</div>
+                <div className="text-[10px] text-muted-foreground">Optimal</div>
               </div>
-              <div className="p-3 rounded-xl bg-secondary/40 border border-border">
-                <div className="text-[10px] font-semibold text-muted-foreground uppercase">SPF / DKIM</div>
-                <div className="text-lg font-extrabold text-foreground mt-0.5 font-mono">Verified</div>
+
+              <div className="p-3 rounded-xl bg-secondary/50 border border-border text-center">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">SPF / DKIM</div>
+                <div className="text-sm font-bold text-foreground mt-0.5">Verified</div>
                 <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Pass 100%</div>
               </div>
-              <div className="p-3 rounded-xl bg-secondary/40 border border-border">
-                <div className="text-[10px] font-semibold text-muted-foreground uppercase">Spam Guard</div>
-                <div className="text-lg font-extrabold text-foreground mt-0.5 font-mono">0.0%</div>
+
+              <div className="p-3 rounded-xl bg-secondary/50 border border-border text-center">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Spam Guard</div>
+                <div className="text-lg font-bold text-foreground font-mono">0.0%</div>
                 <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Protected</div>
               </div>
             </div>
 
             {/* Daily Quota Progress */}
-            {loading ? (
+            {isStatsLoading ? (
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="h-3.5 w-44 bg-muted/60 animate-pulse rounded" />
@@ -835,7 +829,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 border border-border text-xs">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-primary" />
-                {loading ? (
+                {isStatsLoading ? (
                   <span className="h-3.5 w-40 bg-muted/60 animate-pulse rounded" />
                 ) : (
                   <span>Current Hourly Dispatch: <strong>{stats?.emailsSentThisHour ?? 0} / {stats?.hourlyLimit ?? 15}</strong></span>
@@ -868,7 +862,7 @@ export default function DashboardPage() {
           </CardHeader>
 
           <CardContent className="p-0 flex-1 flex flex-col justify-center">
-            {loading ? (
+            {isStatsLoading ? (
               <div className="space-y-2 p-4">
                 {[1, 2, 3].map(i => <div key={i} className="h-14 bg-secondary/60 rounded-lg animate-pulse" />)}
               </div>
@@ -878,7 +872,7 @@ export default function DashboardPage() {
                 <p className="font-semibold text-foreground">No active campaigns</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Dispatched sequence pipelines will track here automatically.</p>
                 <Button asChild size="sm" variant="outline" className="mt-3 text-xs">
-                  <Link href="/smart-import">Launch New Campaign</Link>
+                  <Link href="/smart-import">+ Start New Sequence</Link>
                 </Button>
               </div>
             ) : (
@@ -942,7 +936,7 @@ export default function DashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border">
             <div>
               <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-                <Reply className="h-4 w-4 text-primary" />
+                <Reply className="h-4 w-4 text-emerald-500" />
                 Priority Replies
               </CardTitle>
               <CardDescription className="text-xs mt-0.5">
@@ -960,7 +954,7 @@ export default function DashboardPage() {
           </CardHeader>
 
           <CardContent className="p-0 flex-1 flex flex-col justify-center">
-            {loading ? (
+            {isRepliesLoading ? (
               <div className="space-y-2 p-4">
                 {[1, 2, 3].map(i => <div key={i} className="h-14 bg-secondary/60 rounded-lg animate-pulse" />)}
               </div>

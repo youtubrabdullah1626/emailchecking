@@ -41,7 +41,10 @@ export function Header({ onMenuClick }: HeaderProps) {
     if (typeof window !== "undefined") {
       try {
         const raw = localStorage.getItem("silaer_cached_header_stats");
-        if (raw) return JSON.parse(raw);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && (parsed.inboxCount > 0 || parsed.connectedGmail)) return parsed;
+        }
       } catch {}
     }
     return null;
@@ -56,7 +59,7 @@ export function Header({ onMenuClick }: HeaderProps) {
       dedupingInterval: 2000,
       fallbackData: cachedHeader,
       onSuccess: (data) => {
-        if (data && typeof window !== "undefined") {
+        if (data && (data.inboxCount > 0 || data.connectedGmail) && typeof window !== "undefined") {
           try {
             localStorage.setItem("silaer_cached_header_stats", JSON.stringify(data));
           } catch {}

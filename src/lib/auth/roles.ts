@@ -2,6 +2,7 @@ import { UserRole } from "@/types/next-auth";
 
 export const OWNER_EMAILS = [
   "youtubrabdullah1626@gmail.com",
+  "abdullahblog1626@gmail.com",
   (process.env.ADMIN_EMAIL || "").toLowerCase().trim(),
   (process.env.GMAIL_SENDER_EMAIL || "").toLowerCase().trim(),
 ].filter(Boolean);
@@ -14,7 +15,8 @@ export function isOwnerEmail(email?: string | null): boolean {
   const normalized = email.toLowerCase().trim();
   return (
     OWNER_EMAILS.includes(normalized) ||
-    normalized === "youtubrabdullah1626@gmail.com"
+    normalized === "youtubrabdullah1626@gmail.com" ||
+    normalized === "abdullahblog1626@gmail.com"
   );
 }
 

@@ -23,7 +23,7 @@ export async function GET() {
 
     // Fast-path in-memory cache hit (0.1ms)
     const cachedData = telemetryCache.getHeaderStats(userId);
-    if (cachedData) {
+    if (cachedData && cachedData.inboxCount > 0) {
       return NextResponse.json(cachedData);
     }
 
