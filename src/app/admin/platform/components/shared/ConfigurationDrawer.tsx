@@ -132,20 +132,30 @@ export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationD
     setValidationErrors([]);
 
     if (isConfig(item)) {
-      // Parse value by type
       let parsedValue: unknown = editValue;
-      if (item.data_type === "NUMBER") parsedValue = Number(editValue);
-      if (item.data_type === "BOOLEAN") parsedValue = editValue === "true";
-
-      // Validate first
-      const result = await validateValue(item.key, parsedValue);
-      if (!result.valid) {
-        setValidationErrors(result.errors);
-        return;
+      if (item.data_type === "NUMBER") {
+        const num = Number(editValue);
+        if (isNaN(num)) {
+          setSaveError("Please enter a valid numeric value.");
+          return;
+        }
+        const rules = item.validation_rules as { min?: number; max?: number } | null;
+        if (rules?.min !== undefined && num < rules.min) {
+          setSaveError(`Value ${num} is below minimum allowed value of ${rules.min}.`);
+          return;
+        }
+        if (rules?.max !== undefined && num > rules.max) {
+          setSaveError(`Value ${num} exceeds maximum allowed limit of ${rules.max}.`);
+          return;
+        }
+        parsedValue = num;
+      }
+      if (item.data_type === "BOOLEAN") {
+        parsedValue = editValue === "true";
       }
 
-      const ok = await updateConfig(item.key, parsedValue, editReason || undefined);
-      if (ok) {
+      const res = await updateConfig(item.key, parsedValue, editReason || undefined);
+      if (res.ok) {
         setSaveSuccess(true);
         if (item.key === "BANNER_THEME") {
           document.body.setAttribute("data-theme", String(parsedValue));
@@ -153,29 +163,29 @@ export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationD
         globalMutate((k: any) => typeof k === "string" && (k.startsWith("/api/dashboard") || k.startsWith("/api/admin/platform")));
         toast.success("Platform configuration updated live across all dashboards!");
       } else {
-        setSaveError(configError || "Save failed. Please check validation rules.");
+        setSaveError(res.error || "Save failed. Please check validation rules.");
       }
     }
 
     if (isProvider(item)) {
-      const ok = await updateProvider(item.key, editValue, editReason || undefined);
-      if (ok) {
+      const res = await updateProvider(item.key, editValue, editReason || undefined);
+      if (res.ok) {
         setSaveSuccess(true);
         globalMutate((k: any) => typeof k === "string" && (k.startsWith("/api/dashboard") || k.startsWith("/api/admin/platform")));
         toast.success("Provider updated live!");
       } else {
-        setSaveError(providerError || "Save failed. Please try again.");
+        setSaveError(res.error || "Save failed. Please try again.");
       }
     }
 
     if (isFlag(item)) {
-      const ok = await toggleFlag(item.key, editValue === "true", editReason || undefined);
-      if (ok) {
+      const res = await toggleFlag(item.key, editValue === "true", editReason || undefined);
+      if (res.ok) {
         setSaveSuccess(true);
         globalMutate((k: any) => typeof k === "string" && (k.startsWith("/api/dashboard") || k.startsWith("/api/admin/platform")));
         toast.success("Feature flag toggled live!");
       } else {
-        setSaveError(flagError || "Failed to toggle flag.");
+        setSaveError(res.error || "Failed to toggle flag.");
       }
     }
   }

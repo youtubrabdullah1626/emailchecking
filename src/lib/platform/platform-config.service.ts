@@ -110,21 +110,25 @@ export class PlatformConfigService {
 
     const updated = await this.repo.updateValue(key, newValue, actor.id, reason, environment);
 
+    // Non-blocking fleet sync
     if (key === "MAX_DAILY_EMAILS" && typeof newValue === "number") {
-      await prisma.emailAccount.updateMany({
+      prisma.emailAccount.updateMany({
         data: { daily_limit: newValue }
-      }).catch(() => {});
+      }).catch((err) => console.error("[PlatformConfigService] Failed to sync daily_limit to email_accounts:", err));
     }
 
     configCache.delete(CACHE_KEYS.ALL_CONFIGS);
     configCache.delete(CACHE_KEYS.CONFIG(key));
     telemetryCache.clearAll();
 
-    auditService.logAction(
-      actor.id, actor.email, "Platform Configuration Updated", "SYSTEM",
-      config.name, "PlatformConfig", "SUCCESS",
-      { resourceId: config.id, oldValues: { value: config.value }, newValues: { value: newValue }, metadata: { key, reason } }
-    );
+    // Non-blocking audit logging
+    try {
+      auditService.logAction(
+        actor.id, actor.email, "Platform Configuration Updated", "SYSTEM",
+        config.name, "PlatformConfig", "SUCCESS",
+        { resourceId: config.id, oldValues: { value: config.value }, newValues: { value: newValue }, metadata: { key, reason } }
+      );
+    } catch {}
 
     return updated;
   }

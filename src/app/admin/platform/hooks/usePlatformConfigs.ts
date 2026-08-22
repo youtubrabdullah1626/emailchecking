@@ -53,7 +53,7 @@ export function usePlatformConfigs(environment = "production") {
     configKey: string,
     value: unknown,
     reason?: string
-  ): Promise<boolean> {
+  ): Promise<{ ok: boolean; error?: string; data?: any }> {
     setIsMutating(true);
     setMutationError(null);
 
@@ -73,17 +73,18 @@ export function usePlatformConfigs(environment = "production") {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: configKey, value, reason, environment }),
       });
+      const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-        throw new Error(err.error ?? `HTTP ${res.status}`);
+        throw new Error(data.error ?? `HTTP ${res.status}`);
       }
       try {
         await revalidate();
       } catch {}
-      return true;
+      return { ok: true, data: data.data };
     } catch (err: any) {
-      setMutationError(err.message ?? "Failed to update configuration");
-      return false;
+      const errorMessage = err.message ?? "Failed to update configuration";
+      setMutationError(errorMessage);
+      return { ok: false, error: errorMessage };
     } finally {
       setIsMutating(false);
     }

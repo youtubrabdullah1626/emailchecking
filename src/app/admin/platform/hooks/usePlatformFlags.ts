@@ -63,7 +63,7 @@ export function usePlatformFlags(environment = "production") {
     flagKey: string,
     enabled: boolean,
     reason?: string
-  ): Promise<boolean> {
+  ): Promise<{ ok: boolean; error?: string; data?: any }> {
     setIsMutating(true);
     setMutationError(null);
 
@@ -83,18 +83,19 @@ export function usePlatformFlags(environment = "production") {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: flagKey, enabled, reason, environment }),
       });
+      const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-        throw new Error(err.error ?? `HTTP ${res.status}`);
+        throw new Error(data.error ?? `HTTP ${res.status}`);
       }
       try {
         await revalidate(); // Confirm with real data
       } catch {}
-      return true;
+      return { ok: true, data: data.data };
     } catch (err: any) {
       await revalidate(); // Roll back optimistic update
-      setMutationError(err.message ?? "Failed to update feature flag");
-      return false;
+      const errorMessage = err.message ?? "Failed to update feature flag";
+      setMutationError(errorMessage);
+      return { ok: false, error: errorMessage };
     } finally {
       setIsMutating(false);
     }
