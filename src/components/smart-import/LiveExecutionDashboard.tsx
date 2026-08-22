@@ -219,12 +219,7 @@ export function LiveExecutionDashboard() {
           const resolvedEventTime = isDispatched
             ? (dbItem.lastEventTime || (dbItem.liveStatus === "SENT" ? "Just now" : "—"))
             : (prevItem?.lastEventTime || "—");
-
-          // Status protection: If campaign is ACTIVE and local state is in-flight PROCESSING and DB is still SCHEDULED, preserve PROCESSING. Otherwise follow DB.
-          let resolvedStatus = dbItem.liveStatus;
-          if (data.campaignStatus === "ACTIVE" && prevItem?.liveStatus === "PROCESSING" && dbItem.liveStatus === "SCHEDULED") {
-            resolvedStatus = "PROCESSING";
-          }
+          const resolvedStatus = dbItem.liveStatus;
 
           return {
             queueId: dbItem.stepId,
@@ -389,15 +384,7 @@ export function LiveExecutionDashboard() {
     const nextStatus = action === "RESUME" ? "ACTIVE" : "PAUSED";
     setCampaignStatus(nextStatus);
 
-    if (action === "RESUME") {
-      setLiveItems(prev => prev.map(item => {
-        const s = item.liveStatus as string;
-        if (s === "PAUSED" || s === "SCHEDULED") {
-          return { ...item, liveStatus: "PROCESSING" as any, lastEventTime: "Just now" };
-        }
-        return item;
-      }));
-    } else if (action === "PAUSE") {
+    if (action === "PAUSE") {
       setLiveItems(prev => prev.map(i => {
         const s = i.liveStatus as string;
         if (s === "PROCESSING" || s === "SCHEDULED") {
@@ -418,26 +405,21 @@ export function LiveExecutionDashboard() {
       }
 
       if (targetId) {
-        const res = await fetch(`/api/campaigns/${encodeURIComponent(targetId)}`, {
+        await apiClient<any>(`/api/campaigns/${encodeURIComponent(targetId)}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action, campaignName }),
         });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          toast.error(data.error || `Failed to ${action.toLowerCase()} campaign`);
-        } else {
-          toast.success(action === "PAUSE" ? "Campaign Paused — All sending stopped" : "Campaign Resumed");
-          fetchLiveStatusFromDb();
-          if (action === "RESUME") {
-            // Immediately trigger the scheduler from the client as well
-            fetch("/api/scheduler/run", { method: "POST" }).catch(() => {});
-            // Fast cascade refreshes to guarantee instant UI sync
-            setTimeout(() => fetchLiveStatusFromDb(), 300);
-            setTimeout(() => fetchLiveStatusFromDb(), 1000);
-            setTimeout(() => fetchLiveStatusFromDb(), 2500);
-            setTimeout(() => fetchLiveStatusFromDb(), 4000);
-          }
+
+        toast.success(action === "PAUSE" ? "Campaign Paused — All sending stopped" : "Campaign Resumed");
+        await fetchLiveStatusFromDb();
+        if (action === "RESUME") {
+          apiClient("/api/scheduler/run", { method: "POST" }).then(() => {
+            fetchLiveStatusFromDb();
+          }).catch(() => {});
+          setTimeout(() => fetchLiveStatusFromDb(), 800);
+          setTimeout(() => fetchLiveStatusFromDb(), 2000);
+          setTimeout(() => fetchLiveStatusFromDb(), 4000);
         }
       }
     } catch (e) {

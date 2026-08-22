@@ -53,15 +53,25 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const { pauseCampaign, activateCampaign } = await import("@/lib/campaign/lifecycle");
 
     // ── Robust Campaign Resolver ──────────────────────────────────────────────
-    let campaign = await prisma.campaign.findFirst({
-      where: {
-        OR: [
-          { id: params.id, user_id: session.user.id },
-          { name: params.id, user_id: session.user.id },
-        ]
-      },
-      select: { id: true, status: true }
-    });
+    let campaign = null;
+
+    if (params.id === "latest" || params.id === "active") {
+      campaign = await prisma.campaign.findFirst({
+        where: { user_id: session.user.id },
+        select: { id: true, status: true },
+        orderBy: { updated_at: "desc" }
+      });
+    } else {
+      campaign = await prisma.campaign.findFirst({
+        where: {
+          OR: [
+            { id: params.id, user_id: session.user.id },
+            { name: params.id, user_id: session.user.id },
+          ]
+        },
+        select: { id: true, status: true }
+      });
+    }
 
     if (!campaign) {
       const job = await prisma.importJob.findFirst({
@@ -81,6 +91,14 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         where: { name: campaignName, user_id: session.user.id },
         select: { id: true, status: true },
         orderBy: { created_at: "desc" }
+      });
+    }
+
+    if (!campaign) {
+      campaign = await prisma.campaign.findFirst({
+        where: { user_id: session.user.id },
+        select: { id: true, status: true },
+        orderBy: { updated_at: "desc" }
       });
     }
 
