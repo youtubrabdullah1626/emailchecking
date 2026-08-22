@@ -65,6 +65,7 @@ interface ConfigurationDrawerProps {
 }
 
 export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationDrawerProps) {
+  const { mutate: globalMutate } = useSWRConfig();
   const { flags, toggleFlag, isMutating: flagMutating } = usePlatformFlags();
   const { configs, updateConfig, validateValue, isMutating: configMutating } = usePlatformConfigs();
   const { providers, updateProvider, isMutating: providerMutating } = usePlatformProviders();
@@ -124,8 +125,6 @@ export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationD
   const riskLevel = "risk_level" in item ? item.risk_level : null;
   const category = "category" in item ? item.category : null;
   const itemDescription = item.description ?? "";
-
-  const { mutate: globalMutate } = useSWRConfig();
 
   async function handleSave() {
     setSaveError(null);
