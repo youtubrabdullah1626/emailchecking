@@ -40,9 +40,9 @@ export function usePlatformProviders(environment = "production") {
     }
   );
 
-  const providers = data?.data.items ?? [];
-  const nextCursor = data?.data.nextCursor ?? null;
-  const total = data?.data.total ?? 0;
+  const providers: ApiProviderConfig[] = ((data as any)?.data?.items ?? (data as any)?.items ?? []) as ApiProviderConfig[];
+  const nextCursor = (data as any)?.data?.nextCursor ?? (data as any)?.nextCursor ?? null;
+  const total = (data as any)?.data?.total ?? (data as any)?.total ?? providers.length;
 
   const [isMutating, setIsMutating] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);

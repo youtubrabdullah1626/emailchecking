@@ -42,9 +42,9 @@ export function usePlatformConfigs(environment = "production") {
     }
   );
 
-  const configs = data?.data.items ?? [];
-  const nextCursor = data?.data.nextCursor ?? null;
-  const total = data?.data.total ?? 0;
+  const configs: ApiPlatformConfig[] = ((data as any)?.data?.items ?? (data as any)?.items ?? []) as ApiPlatformConfig[];
+  const nextCursor = (data as any)?.data?.nextCursor ?? (data as any)?.nextCursor ?? null;
+  const total = (data as any)?.data?.total ?? (data as any)?.total ?? configs.length;
 
   const [isMutating, setIsMutating] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
