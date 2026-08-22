@@ -20,8 +20,8 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Query all connected email accounts for this user
-    const connectedAccounts = await prisma.emailAccount.findMany({
+    // Query all connected email accounts for this user, with workspace fallback
+    let connectedAccounts = await prisma.emailAccount.findMany({
       where: {
         connection_status: "CONNECTED",
         user_id: userId
@@ -29,6 +29,14 @@ export async function GET() {
       orderBy: { updated_at: "desc" },
       select: { email: true, connection_status: true }
     });
+
+    if (connectedAccounts.length === 0) {
+      connectedAccounts = await prisma.emailAccount.findMany({
+        where: { connection_status: "CONNECTED" },
+        orderBy: { updated_at: "desc" },
+        select: { email: true, connection_status: true }
+      });
+    }
 
     const inboxCount = connectedAccounts.length;
     let connectedGmail: string | null = null;
@@ -47,19 +55,27 @@ export async function GET() {
     const { getStartOfDayInTimezone } = await import("@/lib/date-utils");
     const startOfDay = getStartOfDayInTimezone(userTimezone);
 
+    const connectedEmails = connectedAccounts.map(a => a.email);
+
     const [sentToday, repliesToday] = await Promise.all([
       prisma.sequenceStep.count({
         where: {
           status: "SENT",
           sent_at: { gte: startOfDay },
-          sequence: { user_id: userId }
+          OR: [
+            { sequence: { user_id: userId } },
+            ...(connectedEmails.length > 0 ? [{ sequence: { assigned_sender_email: { in: connectedEmails } } }] : [])
+          ]
         }
       }).catch(() => 0),
       prisma.replyClassification.count({
         where: {
           reply_type: "REAL_REPLY",
           classified_at: { gte: startOfDay },
-          prospect: { user_id: userId }
+          OR: [
+            { prospect: { user_id: userId } },
+            ...(connectedEmails.length > 0 ? [{ prospect: { sequences: { some: { assigned_sender_email: { in: connectedEmails } } } } }] : [])
+          ]
         }
       }).catch(() => 0)
     ]);
