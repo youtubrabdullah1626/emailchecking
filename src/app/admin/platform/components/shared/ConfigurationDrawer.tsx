@@ -66,9 +66,9 @@ interface ConfigurationDrawerProps {
 
 export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationDrawerProps) {
   const { mutate: globalMutate } = useSWRConfig();
-  const { flags, toggleFlag, isMutating: flagMutating } = usePlatformFlags();
-  const { configs, updateConfig, validateValue, isMutating: configMutating } = usePlatformConfigs();
-  const { providers, updateProvider, isMutating: providerMutating } = usePlatformProviders();
+  const { flags, toggleFlag, isMutating: flagMutating, mutationError: flagError } = usePlatformFlags();
+  const { configs, updateConfig, validateValue, isMutating: configMutating, mutationError: configError } = usePlatformConfigs();
+  const { providers, updateProvider, isMutating: providerMutating, mutationError: providerError } = usePlatformProviders();
 
   // Dynamically resolve the item from SWR cache
   const item: ConfigItem | null =
@@ -154,7 +154,9 @@ export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationD
         globalMutate("/api/dashboard/header-stats");
         globalMutate("/api/admin/platform/configs");
         toast.success("Platform configuration updated live across all dashboards!");
-      } else setSaveError("Save failed. Please try again.");
+      } else {
+        setSaveError(configError || "Save failed. Please check validation rules.");
+      }
     }
 
     if (isProvider(item)) {
@@ -164,7 +166,9 @@ export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationD
         globalMutate("/api/dashboard/stats");
         globalMutate("/api/dashboard/header-stats");
         toast.success("Provider updated live!");
-      } else setSaveError("Save failed. Please try again.");
+      } else {
+        setSaveError(providerError || "Save failed. Please try again.");
+      }
     }
 
     if (isFlag(item)) {
@@ -174,7 +178,9 @@ export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationD
         globalMutate("/api/dashboard/stats");
         globalMutate("/api/dashboard/header-stats");
         toast.success("Feature flag toggled live!");
-      } else setSaveError("Failed to toggle flag.");
+      } else {
+        setSaveError(flagError || "Failed to toggle flag.");
+      }
     }
   }
 
