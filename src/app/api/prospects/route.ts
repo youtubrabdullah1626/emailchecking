@@ -31,8 +31,8 @@ export async function GET(request: NextRequest) {
   const skip = (page - 1) * limit;
 
   try {
-    // Query directly with user_id — bypasses DAL which lacks tenant param
-    const [total, rawProspects] = await prisma.$transaction([
+    // Query in parallel without transaction lock overhead
+    const [total, rawProspects] = await Promise.all([
       prisma.prospect.count({ where: { user_id: session.user.id } }),
       prisma.prospect.findMany({
         where: { user_id: session.user.id },

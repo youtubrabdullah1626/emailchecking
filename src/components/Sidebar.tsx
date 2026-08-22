@@ -48,6 +48,19 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
   // Use SWR to deduplicate this fetch globally with Header and Dashboard
   const { data: summary } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url));
 
+  // Prewarm core routes during idle browser time for 0ms instant page transitions
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const prewarmTimer = setTimeout(() => {
+      import("@/lib/speed/preloader").then(({ prewarmRouteData }) => {
+        ["/dashboard", "/prospects", "/sequences", "/replies", "/admin/platform"].forEach((route) => {
+          prewarmRouteData(route);
+        });
+      });
+    }, 1500);
+    return () => clearTimeout(prewarmTimer);
+  }, []);
+
   const handleLinkClick = () => {
     if (onNavigate) onNavigate();
   };
