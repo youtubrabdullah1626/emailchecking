@@ -39,19 +39,38 @@ export async function GET() {
       connectedGmail = `${inboxCount} Inboxes Rotating`;
     }
 
-    const [counts] = await prisma.$queryRaw<Array<{ sent_today: number; replies_today: number }>>`
-      SELECT 
-        (SELECT count(*)::int FROM sequence_steps ss JOIN sequences s ON ss.sequence_id = s.id WHERE ss.status = 'SENT' AND ss.sent_at >= CURRENT_DATE AND s.user_id = ${userId}) as sent_today,
-        (SELECT count(*)::int FROM reply_classifications rc JOIN sequences s ON rc.sequence_id = s.id WHERE rc.reply_type = 'REAL_REPLY' AND rc.classified_at >= CURRENT_DATE AND s.user_id = ${userId}) as replies_today;
-    `.catch(() => [{ sent_today: 0, replies_today: 0 }]);
+    const userRecord = await prisma.users.findUnique({
+      where: { id: userId },
+      select: { timezone: true },
+    });
+    const userTimezone = userRecord?.timezone || "UTC";
+    const { getStartOfDayInTimezone } = await import("@/lib/date-utils");
+    const startOfDay = getStartOfDayInTimezone(userTimezone);
+
+    const [sentToday, repliesToday] = await Promise.all([
+      prisma.sequenceStep.count({
+        where: {
+          status: "SENT",
+          sent_at: { gte: startOfDay },
+          sequence: { user_id: userId }
+        }
+      }).catch(() => 0),
+      prisma.replyClassification.count({
+        where: {
+          reply_type: "REAL_REPLY",
+          classified_at: { gte: startOfDay },
+          prospect: { user_id: userId }
+        }
+      }).catch(() => 0)
+    ]);
 
     return NextResponse.json({
       connectedGmail,
       inboxCount,
       accounts: connectedAccounts.map(a => a.email),
       connectionStatus: inboxCount > 0 ? "CONNECTED" : "DISCONNECTED",
-      emailsSentToday: counts?.sent_today || 0,
-      repliesToday: counts?.replies_today || 0,
+      emailsSentToday: sentToday,
+      repliesToday: repliesToday,
     });
 
   } catch (error: any) {
