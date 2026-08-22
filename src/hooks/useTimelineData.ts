@@ -53,9 +53,9 @@ export function useTimelineData() {
     `/api/timeline?${queryParams.toString()}`,
     fetcher,
     {
-      refreshInterval: isLiveSync ? 8000 : 0, // Auto-refresh every 8s if Live Sync enabled
+      refreshInterval: isLiveSync ? 3000 : 0, // Auto-refresh every 3s if Live Sync enabled
       revalidateOnFocus: true,
-      dedupingInterval: 3000,
+      dedupingInterval: 1000,
     }
   );
 
