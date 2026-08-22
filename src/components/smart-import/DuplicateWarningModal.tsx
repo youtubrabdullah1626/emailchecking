@@ -80,9 +80,20 @@ export function DuplicateWarningModal({
           <ScrollArea className="h-[250px] rounded-md border border-border bg-muted/10 p-2">
             <div className="space-y-2">
               {duplicates.map((dup) => {
-                const dateStr = dup.lastSentAt 
-                  ? new Date(dup.lastSentAt).toLocaleDateString()
-                  : "previously";
+                let dateStr = "previously";
+                if (dup.lastSentAt) {
+                  try {
+                    const d = new Date(dup.lastSentAt);
+                    const isToday = d.toDateString() === new Date().toDateString();
+                    if (isToday) {
+                      dateStr = `Today at ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+                    } else {
+                      dateStr = d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+                    }
+                  } catch (_) {
+                    dateStr = "previously";
+                  }
+                }
 
                 return (
                   <div key={dup.email} className="flex items-start space-x-3 p-2 hover:bg-muted/30 rounded-md transition-colors">

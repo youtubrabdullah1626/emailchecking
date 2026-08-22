@@ -853,3 +853,20 @@ model SendAttempt {
   @@index([step_id])
   @@map("send_attempts")
 }
+
+model ContactDeliveryLedger {
+  id               String   @id @default(cuid())
+  user_id          String
+  recipient_email  String
+  subject          String
+  body_snippet     String?
+  dispatched_at    DateTime @default(now())
+  gmail_message_id String?
+  status           String   @default("SENT")
+  created_at       DateTime @default(now())
+
+  @@index([recipient_email])
+  @@index([user_id, recipient_email])
+  @@index([dispatched_at])
+  @@map("contact_delivery_ledger")
+}

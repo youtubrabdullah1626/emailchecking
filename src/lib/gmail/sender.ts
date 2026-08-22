@@ -442,6 +442,19 @@ export async function sendStepInternal(stepId: string, cachedAuth?: any): Promis
     // Tracking Engine: Map the identifiers and ingest SENT event
     await emailTrackingService.setProviderMapping(trackingId, gmailMessageId, gmailThreadId);
     await emailTrackingService.ingestEvent(trackingId, "SENT");
+
+    // Record in immutable Contact Delivery Ledger
+    await prisma.contactDeliveryLedger.create({
+      data: {
+        user_id: step.sequence.user_id,
+        recipient_email: step.sequence.prospect.email.toLowerCase().trim(),
+        subject: step.subject,
+        body_snippet: step.body?.slice(0, 120) || "",
+        dispatched_at: new Date(),
+        gmail_message_id: gmailMessageId,
+        status: "SENT",
+      }
+    }).catch(() => {});
   } catch (err) {
     const msg = extractSafeErrorMessage(err);
     gmailLog("gmail_send_failed", {

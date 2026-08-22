@@ -54,7 +54,21 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // 2. Also check tracked_emails table
+    // 2. Also check permanent contactDeliveryLedger table
+    const ledgerDispatches = await prisma.contactDeliveryLedger.findMany({
+      where: {
+        recipient_email: { in: emails, mode: "insensitive" }
+      },
+      select: {
+        recipient_email: true,
+        subject: true,
+        dispatched_at: true,
+        body_snippet: true,
+      },
+      orderBy: { dispatched_at: "desc" }
+    });
+
+    // 3. Also check tracked_emails table
     const trackedEmails = await prisma.trackedEmail.findMany({
       where: {
         recipient_email: { in: emails, mode: "insensitive" }
@@ -67,7 +81,7 @@ export async function POST(req: NextRequest) {
       orderBy: { created_at: "desc" }
     });
 
-    // 3. Build fast lookup map: email -> array of past subjects & dates
+    // 4. Build fast lookup map: email -> array of past subjects & dates
     const historyByEmail = new Map<string, Array<{ subject: string; sentAt: string | null; bodySnippet: string }>>();
     
     for (const p of prospects) {
@@ -84,6 +98,17 @@ export async function POST(req: NextRequest) {
           }
         }
       }
+      historyByEmail.set(email, list);
+    }
+
+    for (const l of ledgerDispatches) {
+      const email = l.recipient_email.toLowerCase().trim();
+      const list = historyByEmail.get(email) || [];
+      list.push({
+        subject: l.subject,
+        sentAt: l.dispatched_at.toISOString(),
+        bodySnippet: normalizeString(l.body_snippet || ""),
+      });
       historyByEmail.set(email, list);
     }
 
