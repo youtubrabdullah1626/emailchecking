@@ -178,34 +178,43 @@ export function LiveExecutionDashboard() {
         }
       }
 
-      // Always render authoritative DB items directly
-      const newItems: LiveItem[] = data.items.map((dbItem: any) => {
-        const cleanDate = dbItem.scheduledAt ? (dbItem.scheduledAt.includes("T") ? dbItem.scheduledAt.split("T")[0] : dbItem.scheduledAt) : "";
-        const isDispatched = ["SENT", "OPENED", "REPLIED", "BOUNCED"].includes(dbItem.liveStatus);
-        const resolvedEventTime = isDispatched
-          ? (dbItem.lastEventTime || (dbItem.liveStatus === "SENT" ? "Just now" : "—"))
-          : "—";
+      // Always render authoritative DB items with in-flight status preservation to prevent flicker
+      setLiveItems(prev => {
+        const prevMap = new Map(prev.map(p => [(p as any).realStepId || p.queueId, p]));
+        return data.items.map((dbItem: any) => {
+          const prevItem = prevMap.get(dbItem.stepId);
+          const cleanDate = dbItem.scheduledAt ? (dbItem.scheduledAt.includes("T") ? dbItem.scheduledAt.split("T")[0] : dbItem.scheduledAt) : "";
+          const isDispatched = ["SENT", "OPENED", "REPLIED", "BOUNCED"].includes(dbItem.liveStatus);
+          const resolvedEventTime = isDispatched
+            ? (dbItem.lastEventTime || (dbItem.liveStatus === "SENT" ? "Just now" : "—"))
+            : (prevItem?.lastEventTime || "—");
 
-        return {
-          queueId: dbItem.stepId,
-          realStepId: dbItem.stepId,
-          recipientEmail: dbItem.recipientEmail,
-          recipientName: dbItem.recipientName,
-          sequenceStep: {
-            stepNumber: dbItem.stepNumber,
-            subject: dbItem.subject,
-            content: "",
-          },
-          scheduledDate: cleanDate,
-          scheduledTime: dbItem.scheduledTimeLocal || "09:00",
-          liveStatus: (dbItem.liveStatus as any),
-          lastEventTime: resolvedEventTime,
-          retryCount: dbItem.retryCount ?? 0,
-        };
+          // Status protection: If local state is in-flight PROCESSING and DB is still SCHEDULED, preserve PROCESSING
+          let resolvedStatus = dbItem.liveStatus;
+          if (prevItem?.liveStatus === "PROCESSING" && dbItem.liveStatus === "SCHEDULED") {
+            resolvedStatus = "PROCESSING";
+          }
+
+          return {
+            queueId: dbItem.stepId,
+            realStepId: dbItem.stepId,
+            recipientEmail: dbItem.recipientEmail,
+            recipientName: dbItem.recipientName,
+            sequenceStep: {
+              stepNumber: dbItem.stepNumber,
+              subject: dbItem.subject,
+              content: "",
+            },
+            scheduledDate: cleanDate,
+            scheduledTime: dbItem.scheduledTimeLocal || "09:00",
+            liveStatus: (resolvedStatus as any) || "SCHEDULED",
+            lastEventTime: resolvedEventTime,
+            retryCount: dbItem.retryCount ?? 0,
+          };
+        });
       });
 
       initialized.current = true;
-      setLiveItems(newItems);
 
       // Sync campaign status from DB
       if (data.campaignStatus === "PAUSED") setCampaignStatus("PAUSED");
@@ -571,14 +580,15 @@ export function LiveExecutionDashboard() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "SCHEDULED": return <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 font-medium text-xs"><Clock className="h-3 w-3 mr-1 text-slate-400" /> Scheduled</Badge>;
       case "PROCESSING": return <Badge variant="secondary" className="bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/80 font-medium text-xs shadow-2xs"><Loader2 className="h-3 w-3 mr-1 animate-spin text-amber-500" /> Processing</Badge>;
       case "SENT": return <Badge variant="secondary" className="bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200/80 font-medium text-xs shadow-2xs"><Send className="h-3 w-3 mr-1 text-sky-500" /> Sent</Badge>;
       case "OPENED": return <Badge variant="secondary" className="bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/80 font-medium text-xs shadow-2xs"><MailOpen className="h-3 w-3 mr-1 text-purple-500" /> Opened</Badge>;
       case "REPLIED": return <Badge variant="secondary" className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300/80 font-semibold text-xs shadow-2xs"><Reply className="h-3 w-3 mr-1 text-emerald-600" /> Replied</Badge>;
       case "CANCELLED": return <Badge variant="secondary" className="bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 font-medium text-xs"><Ban className="h-3 w-3 mr-1 text-zinc-400" /> Stopped (Replied)</Badge>;
       case "BOUNCED": return <Badge variant="secondary" className="bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 font-medium text-xs shadow-2xs"><AlertCircle className="h-3 w-3 mr-1 text-rose-500" /> Failed</Badge>;
-      default: return null;
+      case "SCHEDULED":
+      default:
+        return <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 font-medium text-xs"><Clock className="h-3 w-3 mr-1 text-slate-400" /> Scheduled</Badge>;
     }
   };
 
