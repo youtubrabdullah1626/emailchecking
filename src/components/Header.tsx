@@ -37,9 +37,9 @@ export function Header({ onMenuClick }: HeaderProps) {
   const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
-  const { data: accountStats } = useSWR("/api/dashboard/header-stats", (url: string) => apiClient<any>(url));
-  const { data: globalStats } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url), { refreshInterval: 30000 });
-  const { data: notifData } = useSWR("/api/notifications/important", (url: string) => apiClient<any>(url));
+  const { data: accountStats } = useSWR("/api/dashboard/header-stats", (url: string) => apiClient<any>(url), { refreshInterval: 3000, revalidateOnFocus: true });
+  const { data: globalStats } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url), { refreshInterval: 5000, revalidateOnFocus: true });
+  const { data: notifData } = useSWR("/api/notifications/important", (url: string) => apiClient<any>(url), { refreshInterval: 10000 });
   
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);

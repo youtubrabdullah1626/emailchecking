@@ -41,8 +41,8 @@ export async function GET() {
 
     const [counts] = await prisma.$queryRaw<Array<{ sent_today: number; replies_today: number }>>`
       SELECT 
-        (SELECT count(*)::int FROM sequence_steps WHERE status = 'SENT' AND sent_at >= CURRENT_DATE) as sent_today,
-        (SELECT count(*)::int FROM reply_classifications WHERE reply_type = 'REAL_REPLY' AND classified_at >= CURRENT_DATE) as replies_today;
+        (SELECT count(*)::int FROM sequence_steps ss JOIN sequences s ON ss.sequence_id = s.id WHERE ss.status = 'SENT' AND ss.sent_at >= CURRENT_DATE AND s.user_id = ${userId}) as sent_today,
+        (SELECT count(*)::int FROM reply_classifications rc JOIN sequences s ON rc.sequence_id = s.id WHERE rc.reply_type = 'REAL_REPLY' AND rc.classified_at >= CURRENT_DATE AND s.user_id = ${userId}) as replies_today;
     `.catch(() => [{ sent_today: 0, replies_today: 0 }]);
 
     return NextResponse.json({
