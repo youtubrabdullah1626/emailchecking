@@ -501,7 +501,6 @@ export function ImportProvider({ children }: { children: ReactNode }) {
 
   const approveImport = async () => {
     perfMonitor.startPhase();
-    setStatus("EXECUTING");
     const sequences = sequencesRef.current || [];
     const executionQueue = queueRef.current || [];
     const totalRows = Math.max(1, sequences.length > 0 ? sequences.length : (recordsRef.current?.length || 1));
@@ -593,20 +592,25 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         setBulkProgress({ ...progress });
       }
 
-      // ── PHASE 3: Mark complete ────────────────────────────────────────────────
+      // ── PHASE 3: Mark complete & bind authoritative campaign ID ───────────────
       progress.isComplete = true;
       perfMonitor.endPhase("handoffTimeMs");
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("silaer_active_campaign_id", campaignId);
+      }
 
       // Save checkpoint for live execution state
       if (sessionId) {
         await recoveryEngine.saveCheckpoint("EXECUTION_STARTED", {
           status: "EXECUTING",
-          heavyData: { campaignId }
+          heavyData: { campaignId, executionQueue }
         });
         setSessionId(null);
       }
 
       setBulkProgress(null);
+      // ONLY switch to EXECUTING now that DB has 100% of all rows committed
       setStatus("EXECUTING");
       toast.success("Campaign launched successfully!", {
         description: `${progress.successCount || totalRows} contacts saved — dispatching emails now...`,

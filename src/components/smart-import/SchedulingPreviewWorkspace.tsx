@@ -76,6 +76,8 @@ export function SchedulingPreviewWorkspace() {
       });
   }, [getSequences, appendTargetSessionId]);
 
+  const [isLaunching, setIsLaunching] = useState(false);
+
   const handleExecuteStrategy = async () => {
     setIsCheckingDuplicates(true);
     try {
@@ -86,7 +88,7 @@ export function SchedulingPreviewWorkspace() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sequences, targetCampaignId: appendTargetSessionId || null })
         }),
-        new Promise((resolve) => setTimeout(resolve, 500)) // smooth visual feedback
+        new Promise((resolve) => setTimeout(resolve, 400)) // smooth visual feedback
       ]);
 
       const data = await res.json().catch(() => ({}));
@@ -99,12 +101,16 @@ export function SchedulingPreviewWorkspace() {
         return;
       }
 
+      setIsCheckingDuplicates(false);
+      setIsLaunching(true);
       await approveImport();
     } catch (e) {
       console.error("Duplicate check error, proceeding to import:", e);
+      setIsLaunching(true);
       await approveImport();
     } finally {
       setIsCheckingDuplicates(false);
+      setIsLaunching(false);
     }
   };
 
@@ -117,7 +123,12 @@ export function SchedulingPreviewWorkspace() {
       removeSequencesByEmail(emailsToRemove);
     }
     setShowDuplicateModal(false);
-    await approveImport();
+    setIsLaunching(true);
+    try {
+      await approveImport();
+    } finally {
+      setIsLaunching(false);
+    }
   };
 
   useEffect(() => {
@@ -248,13 +259,13 @@ export function SchedulingPreviewWorkspace() {
       <div className="flex justify-end pt-6 border-t border-border">
         <Button 
           onClick={handleExecuteStrategy} 
-          disabled={status === "EXECUTING" || isCheckingDuplicates}
+          disabled={status === "EXECUTING" || isCheckingDuplicates || isLaunching}
           className="gap-2 shadow-md bg-emerald-600 hover:bg-emerald-700 text-white px-8 transition-all duration-300 min-w-[240px]"
         >
-          {status === "EXECUTING" || isCheckingDuplicates ? (
+          {status === "EXECUTING" || isCheckingDuplicates || isLaunching ? (
             <>
               <div className="animate-spin h-4 w-4 border-2 border-white/20 border-t-white rounded-full mr-2" />
-              {isCheckingDuplicates ? "Checking Duplicates..." : "Syncing to Database..."}
+              {isCheckingDuplicates ? "Checking Duplicates..." : isLaunching ? "Saving & Launching..." : "Syncing to Database..."}
             </>
           ) : (
             <>
