@@ -84,14 +84,16 @@ export function usePlatformFlags(environment = "production") {
         body: JSON.stringify({ key: flagKey, enabled, reason, environment }),
       });
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
         throw new Error(err.error ?? `HTTP ${res.status}`);
       }
-      await revalidate(); // Confirm with real data
+      try {
+        await revalidate(); // Confirm with real data
+      } catch {}
       return true;
     } catch (err: any) {
       await revalidate(); // Roll back optimistic update
-      setMutationError(err.message ?? "Failed to update flag");
+      setMutationError(err.message ?? "Failed to update feature flag");
       return false;
     } finally {
       setIsMutating(false);

@@ -74,13 +74,14 @@ export function usePlatformConfigs(environment = "production") {
         body: JSON.stringify({ key: configKey, value, reason, environment }),
       });
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
         throw new Error(err.error ?? `HTTP ${res.status}`);
       }
-      await revalidate();
+      try {
+        await revalidate();
+      } catch {}
       return true;
     } catch (err: any) {
-      await revalidate();
       setMutationError(err.message ?? "Failed to update configuration");
       return false;
     } finally {
