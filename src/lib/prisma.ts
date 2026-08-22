@@ -27,8 +27,6 @@ function createPrismaClient() {
 
 const prisma = globalThis.__prisma ?? createPrismaClient();
 
-if (process.env.NODE_ENV !== "production") {
-  globalThis.__prisma = prisma;
-}
+globalThis.__prisma = prisma;
 
 export default prisma;

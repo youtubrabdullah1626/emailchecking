@@ -173,9 +173,11 @@ export function LiveExecutionDashboard() {
   // On every tick, fetch the real step statuses from the DB via campaign ID.
   // This means the dashboard ALWAYS reflects truth — regardless of re-imports,
   // retries, or any client-side state inconsistencies.
-  const [dbFetchError, setDbFetchError] = useState(false);
+  const isFetchingLiveStatusRef = React.useRef(false);
 
   const fetchLiveStatusFromDb = React.useCallback(async () => {
+    if (isFetchingLiveStatusRef.current) return;
+    isFetchingLiveStatusRef.current = true;
     const campaignId = activeCampaignId || "latest";
 
     try {
@@ -252,9 +254,10 @@ export function LiveExecutionDashboard() {
       console.error("[LiveDashboard] Failed to fetch DB live status", err);
       setDbFetchError(true);
     } finally {
+      isFetchingLiveStatusRef.current = false;
       setIsLoading(false);
     }
-  }, [activeCampaignId]);
+  }, [activeCampaignId, liveItems]);
 
   // Initialize Queue: DB is the authoritative single source of truth
   const initialized = React.useRef(false);
@@ -267,26 +270,25 @@ export function LiveExecutionDashboard() {
   const liveItemsRef = React.useRef(liveItems);
   useEffect(() => { liveItemsRef.current = liveItems; }, [liveItems]);
 
-  // Main poller: ultra-fast 1.5s when processing, 2.5s when active, 5s when paused — instant live updates
+  // Main poller: throttled with concurrency guards to protect DB connection pool
   const pollCountRef = React.useRef(0);
   const hasProcessingItems = useMemo(() => liveItems.some(i => i.liveStatus === "PROCESSING"), [liveItems]);
 
   useEffect(() => {
-    const pollInterval = hasProcessingItems ? 1500 : (campaignStatus === "ACTIVE" ? 2500 : 5000);
+    const pollInterval = hasProcessingItems ? 2500 : (campaignStatus === "ACTIVE" ? 4000 : 8000);
     const interval = setInterval(async () => {
       pollCountRef.current++;
 
-      // 1. Always fetch real status from DB (sub-10ms single query)
+      // 1. Fetch real status from DB (single fast read)
       await fetchLiveStatusFromDb();
 
-      // 2. Trigger scheduler if campaign is active
-      if (campaignStatus === "ACTIVE") {
+      // 2. Trigger scheduler only periodically if campaign is active (every ~10s)
+      if (campaignStatus === "ACTIVE" && pollCountRef.current % 3 === 0) {
         fetch("/api/scheduler/run", { method: "POST" }).catch(() => {});
       }
 
-      // 3. Auto background reply scan every ~30s so user NEVER has to manually click sync
-      const scanFrequency = hasProcessingItems ? 10 : 4;
-      if (pollCountRef.current % scanFrequency === 0) {
+      // 3. Auto background reply scan every ~40s
+      if (pollCountRef.current % 10 === 0) {
         fetch("/api/replies/scan", { method: "POST" }).then(async (res) => {
           if (res.ok) {
             const data = await res.json().catch(() => ({}));
