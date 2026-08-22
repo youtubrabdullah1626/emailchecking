@@ -129,6 +129,8 @@ export async function GET(
       const sentAt = step.sent_at?.toISOString() ?? null;
       const tracked = trackedMap.get(step.id);
       const openedAt = tracked?.first_opened_at?.toISOString() ?? null;
+      const isDispatched = ["SENT", "OPENED", "REPLIED", "BOUNCED"].includes(liveStatus);
+      const lastEventTime = isDispatched ? (openedAt ?? sentAt) : null;
 
       return {
         stepId: step.id,
@@ -145,7 +147,7 @@ export async function GET(
         openedAt,
         openCount: tracked?.open_count ?? 0,
         liveStatus,
-        lastEventTime: openedAt ?? sentAt,
+        lastEventTime,
         retryCount: step.retry_count ?? 0,
         delayReason: step.delay_reason ?? null,
         retryAt: step.retry_at?.toISOString() ?? null,

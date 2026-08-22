@@ -158,13 +158,18 @@ export function LiveExecutionDashboard() {
 
             const cleanDate = dbItem.scheduledAt ? (dbItem.scheduledAt.includes("T") ? dbItem.scheduledAt.split("T")[0] : dbItem.scheduledAt) : item.scheduledDate;
 
+            const isDispatched = ["SENT", "OPENED", "REPLIED", "BOUNCED"].includes(dbItem.liveStatus);
+            const resolvedEventTime = isDispatched
+              ? (dbItem.lastEventTime || (dbItem.liveStatus === "SENT" ? "Just now" : "-"))
+              : "-";
+
             return {
               ...item,
               realStepId: dbItem.stepId,
               scheduledDate: cleanDate,
               scheduledTime: dbItem.scheduledTimeLocal || item.scheduledTime,
               liveStatus: (dbItem.liveStatus as any),
-              lastEventTime: dbItem.lastEventTime || (dbItem.liveStatus === "SENT" ? "Just now" : item.lastEventTime),
+              lastEventTime: resolvedEventTime,
               retryCount: dbItem.retryCount,
             };
           });
@@ -172,21 +177,24 @@ export function LiveExecutionDashboard() {
 
         // First load: build items entirely from DB
         initialized.current = true;
-        return data.items.map((dbItem: any) => ({
-          queueId: dbItem.stepId,
-          realStepId: dbItem.stepId,
-          recipientEmail: dbItem.recipientEmail,
-          recipientName: dbItem.recipientName,
-          sequenceStep: {
-            stepNumber: dbItem.stepNumber,
-            subject: dbItem.subject,
-            content: "",
-          },
-          scheduledDate: dbItem.scheduledAt ? (dbItem.scheduledAt.includes("T") ? dbItem.scheduledAt.split("T")[0] : dbItem.scheduledAt) : "",
-          liveStatus: dbItem.liveStatus,
-          lastEventTime: dbItem.lastEventTime || "-",
-          retryCount: dbItem.retryCount,
-        }));
+        return data.items.map((dbItem: any) => {
+          const isDispatched = ["SENT", "OPENED", "REPLIED", "BOUNCED"].includes(dbItem.liveStatus);
+          return {
+            queueId: dbItem.stepId,
+            realStepId: dbItem.stepId,
+            recipientEmail: dbItem.recipientEmail,
+            recipientName: dbItem.recipientName,
+            sequenceStep: {
+              stepNumber: dbItem.stepNumber,
+              subject: dbItem.subject,
+              content: "",
+            },
+            scheduledDate: dbItem.scheduledAt ? (dbItem.scheduledAt.includes("T") ? dbItem.scheduledAt.split("T")[0] : dbItem.scheduledAt) : "",
+            liveStatus: dbItem.liveStatus,
+            lastEventTime: isDispatched ? (dbItem.lastEventTime || "-") : "-",
+            retryCount: dbItem.retryCount,
+          };
+        });
       });
 
       // Sync campaign status from DB
@@ -210,11 +218,15 @@ export function LiveExecutionDashboard() {
       const q = getExecutionQueue();
       if (q && q.length > 0) {
         setLiveItems(
-          q.map((item: ExecutionQueueItem) => ({
-            ...item,
-            liveStatus: item.liveStatus || "SCHEDULED",
-            lastEventTime: item.lastEventTime || "-",
-          }))
+          q.map((item: ExecutionQueueItem) => {
+            const status = item.liveStatus || "SCHEDULED";
+            const isDispatched = ["SENT", "OPENED", "REPLIED", "BOUNCED"].includes(status);
+            return {
+              ...item,
+              liveStatus: status,
+              lastEventTime: isDispatched ? (item.lastEventTime || "-") : "-",
+            };
+          })
         );
       }
     }
@@ -767,7 +779,7 @@ export function LiveExecutionDashboard() {
                       {getStatusBadge(item.liveStatus)}
                     </TableCell>
                     <TableCell className="text-right text-xs font-mono text-muted-foreground py-3 whitespace-nowrap">
-                      {formatEventTime(item.lastEventTime)}
+                      {item.liveStatus === "SCHEDULED" ? "—" : formatEventTime(item.lastEventTime)}
                     </TableCell>
                     <TableCell className="text-center py-3">
                       <DropdownMenu>
