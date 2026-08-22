@@ -33,14 +33,14 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Direct indexed lookup using lower-case trimmed matching across sequence_steps
-    const historicalSteps: Array<{
+    const historicalSteps = await prisma.$queryRaw<Array<{
       email: string;
       subject: string | null;
       scheduled_at_utc: Date | null;
       sent_at: Date | null;
       status: string;
       body_snippet: string | null;
-    }> = await prisma.$queryRaw`
+    }>>`
       SELECT 
         LOWER(TRIM(p.email)) as email,
         ss.subject,
@@ -58,11 +58,11 @@ export async function POST(req: NextRequest) {
     `.catch(() => []);
 
     // 2. Also check tracked_emails table for historical dispatches
-    const trackedList: Array<{
+    const trackedList = await prisma.$queryRaw<Array<{
       recipient_email: string;
       subject: string | null;
       created_at: Date;
-    }> = await prisma.$queryRaw`
+    }>>`
       SELECT 
         LOWER(TRIM(recipient_email)) as recipient_email,
         subject,
