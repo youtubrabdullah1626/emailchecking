@@ -32,71 +32,71 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ duplicates: [], hasDuplicates: false });
     }
 
-    // 1. Direct indexed lookup using lower-case trimmed matching across sequence_steps
-    const historicalSteps = await prisma.$queryRaw<Array<{
-      email: string;
-      subject: string | null;
-      scheduled_at_utc: Date | null;
-      sent_at: Date | null;
-      status: string;
-      body_snippet: string | null;
-    }>>`
-      SELECT 
-        LOWER(TRIM(p.email)) as email,
-        ss.subject,
-        ss.scheduled_at_utc,
-        ss.sent_at,
-        ss.status,
-        LEFT(ss.body, 120) as body_snippet
-      FROM prospects p
-      JOIN sequences s ON s.prospect_id = p.id
-      JOIN sequence_steps ss ON ss.sequence_id = s.id
-      WHERE LOWER(TRIM(p.email)) IN (${Prisma.join(emails)})
-        AND (ss.status IN ('SENT', 'PROCESSING', 'SCHEDULED', 'PENDING', 'COMPLETED') OR ss.gmail_message_id IS NOT NULL OR s.status IN ('ACTIVE', 'COMPLETED', 'PAUSED', 'STOPPED'))
-      ORDER BY COALESCE(ss.sent_at, ss.scheduled_at_utc) DESC
-      LIMIT 1000;
-    `.catch(() => []);
+    // 1. Fetch prospects and sequences using Prisma ORM
+    const prospects = await prisma.prospect.findMany({
+      where: {
+        email: { in: emails, mode: "insensitive" }
+      },
+      include: {
+        sequences: {
+          include: {
+            steps: {
+              select: {
+                subject: true,
+                body: true,
+                sent_at: true,
+                scheduled_at_utc: true,
+                status: true,
+              }
+            }
+          }
+        }
+      }
+    });
 
-    // 2. Also check tracked_emails table for historical dispatches
-    const trackedList = await prisma.$queryRaw<Array<{
-      recipient_email: string;
-      subject: string | null;
-      created_at: Date;
-    }>>`
-      SELECT 
-        LOWER(TRIM(recipient_email)) as recipient_email,
-        subject,
-        created_at
-      FROM tracked_emails
-      WHERE LOWER(TRIM(recipient_email)) IN (${Prisma.join(emails)})
-      ORDER BY created_at DESC
-      LIMIT 1000;
-    `.catch(() => []);
+    // 2. Also check tracked_emails table
+    const trackedEmails = await prisma.trackedEmail.findMany({
+      where: {
+        recipient_email: { in: emails, mode: "insensitive" }
+      },
+      select: {
+        recipient_email: true,
+        subject: true,
+        created_at: true
+      },
+      orderBy: { created_at: "desc" }
+    });
 
     // 3. Build fast lookup map: email -> array of past subjects & dates
     const historyByEmail = new Map<string, Array<{ subject: string; sentAt: string | null; bodySnippet: string }>>();
     
-    for (const row of historicalSteps) {
-      const email = row.email?.toLowerCase().trim();
-      if (!email || !row.subject) continue;
+    for (const p of prospects) {
+      const email = p.email.toLowerCase().trim();
       const list = historyByEmail.get(email) || [];
-      list.push({
-        subject: row.subject,
-        sentAt: row.sent_at?.toISOString() || row.scheduled_at_utc?.toISOString() || null,
-        bodySnippet: normalizeString(row.body_snippet || ""),
-      });
+      for (const seq of p.sequences) {
+        for (const step of seq.steps) {
+          if (step.subject) {
+            list.push({
+              subject: step.subject,
+              sentAt: step.sent_at?.toISOString() || step.scheduled_at_utc?.toISOString() || null,
+              bodySnippet: normalizeString(step.body || ""),
+            });
+          }
+        }
+      }
       historyByEmail.set(email, list);
     }
 
-    for (const row of trackedList) {
-      const email = row.recipient_email?.toLowerCase().trim();
-      if (!email || !row.subject) continue;
+    for (const t of trackedEmails) {
+      const email = t.recipient_email.toLowerCase().trim();
       const list = historyByEmail.get(email) || [];
-      list.push({
-        subject: row.subject,
-        sentAt: row.created_at ? new Date(row.created_at).toISOString() : null,
-        bodySnippet: "",
-      });
+      if (t.subject) {
+        list.push({
+          subject: t.subject,
+          sentAt: t.created_at ? new Date(t.created_at).toISOString() : null,
+          bodySnippet: "",
+        });
+      }
       historyByEmail.set(email, list);
     }
 
@@ -114,46 +114,30 @@ export async function POST(req: NextRequest) {
       const pastList = historyByEmail.get(email);
       if (!pastList || pastList.length === 0) continue;
 
-      let isDuplicate = false;
-      let duplicateDate: string | null = null;
-      let duplicateSubject = "";
+      let bestSubject = pastList[0]?.subject || "Outreach Campaign";
+      let bestDate = pastList[0]?.sentAt || null;
 
       for (const step of (seq.steps || [])) {
-        if (isDuplicate) break;
-
         const proposedSubjectNorm = normalizeString(step.subject || "");
-        const proposedSnippet = normalizeString((step.content || "").slice(0, 120));
-
         for (const past of pastList) {
-          const pastSubjectNorm = normalizeString(past.subject);
-          
+          const pastSubjectNorm = normalizeString(past.subject || "");
           if (
-            (proposedSubjectNorm.length > 3 && (pastSubjectNorm === proposedSubjectNorm || pastSubjectNorm.includes(proposedSubjectNorm) || proposedSubjectNorm.includes(pastSubjectNorm))) ||
-            (proposedSnippet.length > 15 && past.bodySnippet && past.bodySnippet.includes(proposedSnippet.slice(0, 40)))
+            proposedSubjectNorm && pastSubjectNorm &&
+            (pastSubjectNorm === proposedSubjectNorm || pastSubjectNorm.includes(proposedSubjectNorm) || proposedSubjectNorm.includes(pastSubjectNorm))
           ) {
-            isDuplicate = true;
-            duplicateSubject = past.subject;
-            duplicateDate = past.sentAt;
+            bestSubject = past.subject;
+            bestDate = past.sentAt;
             break;
           }
         }
       }
 
-      // If exact subject match wasn't found but prospect already has an active past sequence
-      if (!isDuplicate && pastList.length > 0) {
-        isDuplicate = true;
-        duplicateSubject = pastList[0].subject;
-        duplicateDate = pastList[0].sentAt;
-      }
-
-      if (isDuplicate) {
-        duplicates.push({
-          email: seq.recipientEmail,
-          subject: duplicateSubject,
-          lastSentAt: duplicateDate,
-        });
-        duplicateEmailsFound.add(email);
-      }
+      duplicates.push({
+        email: seq.recipientEmail || email,
+        subject: bestSubject,
+        lastSentAt: bestDate,
+      });
+      duplicateEmailsFound.add(email);
     }
 
     return NextResponse.json({ duplicates, hasDuplicates: duplicates.length > 0 });
