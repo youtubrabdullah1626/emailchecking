@@ -110,3 +110,54 @@ export function checkTimezoneCooldown(lastUpdatedAt: Date | string | null): Cool
     nextAllowedDate,
   };
 }
+
+/**
+ * Converts a local date string (YYYY-MM-DD) and time string (HH:MM or HH:MM:SS or "10:51 AM")
+ * in a given IANA timezone (e.g. "Asia/Karachi", "America/New_York") into the exact UTC Date.
+ */
+export function toUtcFromZonedTime(dateStr: string, timeStr: string = "09:00", timezone: string = "UTC"): Date {
+  try {
+    const cleanTime = timeStr.trim();
+    let hours = 9, minutes = 0, seconds = 0;
+    
+    // Support "10:51 AM", "10:51", "10:51:00", etc.
+    const ampmMatch = cleanTime.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
+    if (ampmMatch) {
+      hours = parseInt(ampmMatch[1], 10);
+      minutes = parseInt(ampmMatch[2], 10);
+      seconds = ampmMatch[3] ? parseInt(ampmMatch[3], 10) : 0;
+      const ampm = ampmMatch[4]?.toUpperCase();
+      if (ampm === "PM" && hours < 12) hours += 12;
+      if (ampm === "AM" && hours === 12) hours = 0;
+    }
+
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const utcTimestamp = Date.UTC(y, m - 1, d, hours, minutes, seconds, 0);
+
+    // Measure timezone offset at this timestamp
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+      hourCycle: "h23",
+    }).formatToParts(new Date(utcTimestamp));
+
+    const pYear = Number(parts.find((p) => p.type === "year")?.value);
+    const pMonth = Number(parts.find((p) => p.type === "month")?.value);
+    const pDay = Number(parts.find((p) => p.type === "day")?.value);
+    const pHour = Number(parts.find((p) => p.type === "hour")?.value);
+    const pMinute = Number(parts.find((p) => p.type === "minute")?.value);
+    const pSecond = Number(parts.find((p) => p.type === "second")?.value);
+
+    const targetAsUtc = Date.UTC(pYear, pMonth - 1, pDay, pHour, pMinute, pSecond, 0);
+    const diffMs = targetAsUtc - utcTimestamp;
+
+    return new Date(utcTimestamp - diffMs);
+  } catch {
+    return new Date(`${dateStr}T${timeStr}:00Z`);
+  }
+}

@@ -502,7 +502,25 @@ export function LiveExecutionDashboard() {
           }));
           fetchLiveStatusFromDb();
         } else {
-          toast.success("Email Rescheduled & Synced with Database", { id: `reschedule-${targetItem.queueId}` });
+          toast.success("Email Rescheduled", { id: `reschedule-${targetItem.queueId}`, description: `Rescheduled to ${chosenDate} at ${chosenTime}` });
+          setLiveItems(prev => prev.map(item => {
+            const isMatch =
+              item.queueId === targetItem.queueId ||
+              (item as any).realStepId === data.stepId ||
+              ((item.recipientEmail || "").toLowerCase().trim() === (targetItem.recipientEmail || "").toLowerCase().trim() &&
+               (item.sequenceStep?.stepNumber || 1) === (targetItem.sequenceStep?.stepNumber || 1));
+            if (isMatch) {
+              return {
+                ...item,
+                realStepId: data.stepId || (item as any).realStepId,
+                scheduledDate: chosenDate,
+                scheduledTime: chosenTime,
+                liveStatus: "SCHEDULED" as any,
+                lastEventTime: "-",
+              };
+            }
+            return item;
+          }));
           if (rescheduleQueueItem) {
             rescheduleQueueItem(targetItem.queueId, chosenDate, chosenTime);
           }

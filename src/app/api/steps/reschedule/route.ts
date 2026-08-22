@@ -11,6 +11,7 @@ import { authOptions } from "@/lib/auth/nextauth";
 import prisma from "@/lib/prisma";
 import { sendStep } from "@/lib/gmail/sender";
 import { runScheduler } from "@/lib/scheduler/run";
+import { toUtcFromZonedTime } from "@/lib/date-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -89,16 +90,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Step not found" }, { status: 404 });
     }
 
-    // Compute UTC datetime from local date + time
-    let scheduledUtc: Date;
-    try {
-      const isoString = `${newDate}T${timeStr.length === 5 ? timeStr + ":00" : timeStr}`;
-      const localDate = new Date(isoString);
-      scheduledUtc = isNaN(localDate.getTime()) ? new Date(`${newDate}T09:00:00Z`) : localDate;
-    } catch {
-      scheduledUtc = new Date(`${newDate}T09:00:00Z`);
-    }
-
+    // Compute UTC datetime from local date + time in target timezone
+    const scheduledUtc = toUtcFromZonedTime(newDate, timeStr, timezone);
     const now = new Date();
     const isPastOrDue = scheduledUtc.getTime() <= (now.getTime() + 60000); // within 1 minute is considered due NOW
     const isFirstStep = targetStep.step_number === 1;
