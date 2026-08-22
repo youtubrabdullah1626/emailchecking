@@ -239,16 +239,16 @@ export function LiveExecutionDashboard() {
   const liveItemsRef = React.useRef(liveItems);
   useEffect(() => { liveItemsRef.current = liveItems; }, [liveItems]);
 
-  // Main poller: fast 3s when processing, 8s otherwise — fetch DB truth + trigger scheduler + auto-scan replies
+  // Main poller: ultra-fast 1.5s when processing, 2.5s when active, 5s when paused — instant live updates
   const pollCountRef = React.useRef(0);
   const hasProcessingItems = useMemo(() => liveItems.some(i => i.liveStatus === "PROCESSING"), [liveItems]);
 
   useEffect(() => {
-    const pollInterval = hasProcessingItems ? 3000 : 8000;
+    const pollInterval = hasProcessingItems ? 1500 : (campaignStatus === "ACTIVE" ? 2500 : 5000);
     const interval = setInterval(async () => {
       pollCountRef.current++;
 
-      // 1. Always fetch real status from DB
+      // 1. Always fetch real status from DB (sub-10ms single query)
       await fetchLiveStatusFromDb();
 
       // 2. Trigger scheduler if campaign is active
