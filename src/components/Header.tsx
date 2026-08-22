@@ -47,7 +47,17 @@ export function Header({ onMenuClick }: HeaderProps) {
         if (parsed && (parsed.inboxCount > 0 || parsed.connectedGmail)) setCachedHeader(parsed);
       }
     } catch {}
-  }, []);
+
+    const handleGlobalSync = () => {
+      mutate(() => true);
+    };
+    window.addEventListener("storage", handleGlobalSync);
+    window.addEventListener("silaer:global_sync", handleGlobalSync);
+    return () => {
+      window.removeEventListener("storage", handleGlobalSync);
+      window.removeEventListener("silaer:global_sync", handleGlobalSync);
+    };
+  }, [mutate]);
 
   const { data: rawAccountStats } = useSWR(
     "/api/dashboard/header-stats",

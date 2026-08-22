@@ -160,8 +160,14 @@ export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationD
         if (item.key === "BANNER_THEME") {
           document.body.setAttribute("data-theme", String(parsedValue));
         }
-        globalMutate((k: any) => typeof k === "string" && (k.startsWith("/api/dashboard") || k.startsWith("/api/admin/platform")));
-        toast.success("Platform configuration updated live across all dashboards!");
+        globalMutate(() => true);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("silaer_global_sync_event", Date.now().toString());
+            window.dispatchEvent(new CustomEvent("silaer:global_sync", { detail: { key: item.key, value: parsedValue } }));
+          } catch {}
+        }
+        toast.success("Platform configuration updated live across entire platform!");
       } else {
         setSaveError(res.error || "Save failed. Please check validation rules.");
       }
@@ -171,7 +177,13 @@ export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationD
       const res = await updateProvider(item.key, editValue, editReason || undefined);
       if (res.ok) {
         setSaveSuccess(true);
-        globalMutate((k: any) => typeof k === "string" && (k.startsWith("/api/dashboard") || k.startsWith("/api/admin/platform")));
+        globalMutate(() => true);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("silaer_global_sync_event", Date.now().toString());
+            window.dispatchEvent(new CustomEvent("silaer:global_sync", { detail: { key: item.key, value: editValue } }));
+          } catch {}
+        }
         toast.success("Provider updated live!");
       } else {
         setSaveError(res.error || "Save failed. Please try again.");
@@ -182,7 +194,13 @@ export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationD
       const res = await toggleFlag(item.key, editValue === "true", editReason || undefined);
       if (res.ok) {
         setSaveSuccess(true);
-        globalMutate((k: any) => typeof k === "string" && (k.startsWith("/api/dashboard") || k.startsWith("/api/admin/platform")));
+        globalMutate(() => true);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("silaer_global_sync_event", Date.now().toString());
+            window.dispatchEvent(new CustomEvent("silaer:global_sync", { detail: { key: item.key, value: editValue } }));
+          } catch {}
+        }
         toast.success("Feature flag toggled live!");
       } else {
         setSaveError(res.error || "Failed to toggle flag.");

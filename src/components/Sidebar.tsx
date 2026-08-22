@@ -4,7 +4,7 @@ import React from 'react';
 import { FastLink } from '@/components/ui/fast-link';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { cn } from "@/lib/utils";
 import { 
   LayoutDashboard, 
@@ -38,6 +38,7 @@ import { isOwnerEmail } from "@/lib/auth/roles";
 export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { mutate } = useSWRConfig();
   
   const user = session?.user as any;
   const normalizedRole = user?.role?.toUpperCase() || "USER";
@@ -58,8 +59,19 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
         });
       });
     }, 1500);
-    return () => clearTimeout(prewarmTimer);
-  }, []);
+
+    const handleGlobalSync = () => {
+      mutate(() => true);
+    };
+    window.addEventListener("storage", handleGlobalSync);
+    window.addEventListener("silaer:global_sync", handleGlobalSync);
+
+    return () => {
+      clearTimeout(prewarmTimer);
+      window.removeEventListener("storage", handleGlobalSync);
+      window.removeEventListener("silaer:global_sync", handleGlobalSync);
+    };
+  }, [mutate]);
 
   const handleLinkClick = () => {
     if (onNavigate) onNavigate();
