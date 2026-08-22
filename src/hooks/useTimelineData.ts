@@ -56,6 +56,7 @@ export function useTimelineData() {
       refreshInterval: isLiveSync ? 3000 : 0, // Auto-refresh every 3s if Live Sync enabled
       revalidateOnFocus: true,
       dedupingInterval: 1000,
+      keepPreviousData: true,
     }
   );
 

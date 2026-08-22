@@ -30,6 +30,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import useSWR from "swr";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -138,10 +139,6 @@ function computeSequenceState(seq: SequenceDetail) {
 
 export default function SequencesPage() {
   const router = useRouter();
-  const [sequences, setSequences] = useState<SequenceDetail[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [sequenceToDelete, setSequenceToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const [search, setSearch] = useState("");
@@ -166,37 +163,38 @@ export default function SequencesPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const loadSequences = useCallback(async (isSilent = false) => {
-    if (!isSilent) setLoading(true);
-    else setIsRefreshing(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/sequences");
+  const { data, error: swrError, isLoading: loading, isValidating: isRefreshing, mutate } = useSWR(
+    "/api/sequences",
+    async (url: string) => {
+      const res = await fetch(url);
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to load sequences.");
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to load sequences.");
       }
-      const json = await res.json();
-      const sortedSequences = (json.data ?? []).sort((a: SequenceDetail, b: SequenceDetail) => {
-        const stateA = computeSequenceState(a);
-        const stateB = computeSequenceState(b);
-        if (stateA.isActive && !stateB.isActive) return -1;
-        if (!stateA.isActive && stateB.isActive) return 1;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-      setSequences(sortedSequences);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to load sequences.";
-      setError(msg);
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
+      return res.json();
+    },
+    {
+      refreshInterval: 5000,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      dedupingInterval: 2000,
+      keepPreviousData: true,
     }
-  }, []);
+  );
 
-  useEffect(() => {
-    loadSequences();
-  }, [loadSequences]);
+  const sequences = useMemo(() => {
+    const rawList = (data?.data ?? []) as SequenceDetail[];
+    return rawList.sort((a: SequenceDetail, b: SequenceDetail) => {
+      const stateA = computeSequenceState(a);
+      const stateB = computeSequenceState(b);
+      if (stateA.isActive && !stateB.isActive) return -1;
+      if (!stateA.isActive && stateB.isActive) return 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [data?.data]);
+
+  const error = swrError?.message ?? null;
+  const loadSequences = (isSilent = false) => { mutate(); };
 
   const confirmDeleteSequence = () => {
     if (!sequenceToDelete) return;
@@ -213,7 +211,13 @@ export default function SequencesPage() {
       clearTimeout(deleteTimers.current[id]);
     }
 
-    setSequences((prev) => prev.filter((s) => s.id !== id));
+    mutate((currentData: any) => {
+      if (!currentData) return currentData;
+      return {
+        ...currentData,
+        data: (currentData.data || []).filter((s: SequenceDetail) => s.id !== id),
+      };
+    }, false);
 
     const timer = setTimeout(async () => {
       delete deleteTimers.current[id];
@@ -242,10 +246,15 @@ export default function SequencesPage() {
           delete deletedSequencesRef.current[id];
 
           if (restored) {
-            setSequences((prev) => {
-              if (prev.some((s) => s.id === id)) return prev;
-              return [restored, ...prev];
-            });
+            mutate((currentData: any) => {
+              if (!currentData) return currentData;
+              const list = currentData.data || [];
+              if (list.some((s: SequenceDetail) => s.id === id)) return currentData;
+              return {
+                ...currentData,
+                data: [restored, ...list],
+              };
+            }, false);
           }
           toast.info("Sequence restored");
         },

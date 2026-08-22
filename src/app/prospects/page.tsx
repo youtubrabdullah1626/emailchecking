@@ -167,7 +167,10 @@ function ProspectsPageContent() {
     pagination?: { total: number };
   }>("/api/prospects?limit=500", fetcher, {
     revalidateOnFocus: true,
-    dedupingInterval: 5000,
+    revalidateOnReconnect: true,
+    refreshInterval: 6000,
+    dedupingInterval: 2000,
+    keepPreviousData: true,
   });
 
   const prospects = useMemo(() => {

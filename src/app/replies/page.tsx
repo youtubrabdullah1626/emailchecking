@@ -24,6 +24,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import useSWR from "swr";
 
 const cleanSnippet = (text: string) => {
   if (!text) return { actualReply: "", quotedText: null };
@@ -88,10 +89,6 @@ function getAvatarColor(str: string) {
 }
 
 export default function RepliesPage() {
-  const [replies, setReplies] = useState<ReplyItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const [activeTab, setActiveTab] = useState<"ALL" | "REAL_REPLY" | "NEEDS_REVIEW" | "AUTO_REPLY">("ALL");
   const [search, setSearch] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -118,6 +115,32 @@ export default function RepliesPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const { data, error: swrError, isLoading: loading, mutate } = useSWR(
+    "/api/replies",
+    async (url: string) => {
+      const res = await fetch(url);
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to load replies.");
+      }
+      return res.json();
+    },
+    {
+      refreshInterval: 5000,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      dedupingInterval: 2000,
+      keepPreviousData: true,
+    }
+  );
+
+  const replies: ReplyItem[] = useMemo(() => {
+    return (data?.replies ?? []) as ReplyItem[];
+  }, [data?.replies]);
+
+  const error = swrError?.message ?? null;
+  const loadReplies = () => { mutate(); };
+
   const handleSendQuickReply = async () => {
     if (!quickReplyText.trim() || !selectedReply) return;
     setSendingReply(true);
@@ -139,41 +162,19 @@ export default function RepliesPage() {
           },
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to send reply");
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || "Failed to send reply");
 
       toast.success("Reply sent successfully!");
       setQuickReplyText("");
       setSelectedReply(null);
+      mutate();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to send reply");
     } finally {
       setSendingReply(false);
     }
   };
-
-  const loadReplies = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/replies");
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to load replies.");
-      }
-      const data = await res.json();
-      setReplies(data.replies ?? []);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to load replies.";
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadReplies();
-  }, [loadReplies]);
 
   const handleOperatorAction = async (reviewId: string, action: "CONFIRM_STOP" | "KEEP_ACTIVE" | "DISMISS") => {
     setActionProcessing(true);
