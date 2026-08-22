@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -31,8 +31,11 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const resolvedParams = await Promise.resolve(params);
+    const targetId = resolvedParams?.id || "latest";
+
     let campaign;
-    if (params.id === "latest" || params.id === "active") {
+    if (targetId === "latest" || targetId === "active") {
       campaign = await prisma.campaign.findFirst({
         where: { user_id: userId },
         orderBy: { updated_at: "desc" },
@@ -40,7 +43,7 @@ export async function GET(
       });
     } else {
       campaign = await prisma.campaign.findFirst({
-        where: { id: params.id, user_id: userId },
+        where: { id: targetId, user_id: userId },
         select: { id: true, status: true, name: true },
       });
     }
@@ -51,46 +54,77 @@ export async function GET(
 
     const campaignId = campaign.id;
 
-    // Fetch steps from ACTIVE sequences only (latest import run)
-    const steps = await prisma.sequenceStep.findMany({
-      where: {
-        sequence: {
-          status: "ACTIVE",
-          prospect: { campaign_id: campaignId },
-        },
-      },
+    // 1. Fetch all prospects assigned to this campaign
+    const prospects = await prisma.prospect.findMany({
+      where: { campaign_id: campaignId },
       select: {
         id: true,
-        step_number: true,
-        subject: true,
+        email: true,
+        name: true,
         status: true,
-        scheduled_at_utc: true,
-        scheduled_time_local: true,
-        timezone: true,
-        sent_at: true,
-        retry_count: true,
-        delay_reason: true,
-        retry_at: true,
-        sequence: {
-          select: {
-            id: true,
-            status: true,
+      },
+    });
+
+    const prospectIds = prospects.map((p) => p.id);
+
+    // 2. Fetch all sequences for these prospects (ordered newest first)
+    const allSequences = prospectIds.length > 0
+      ? await prisma.sequence.findMany({
+          where: { prospect_id: { in: prospectIds } },
+          orderBy: { created_at: "desc" },
+          include: {
             prospect: {
               select: {
                 id: true,
                 email: true,
                 name: true,
-                status: true,   // "REPLIED" if prospect replied
+                status: true,
               },
             },
+            steps: {
+              select: {
+                id: true,
+                step_number: true,
+                subject: true,
+                status: true,
+                scheduled_at_utc: true,
+                scheduled_time_local: true,
+                timezone: true,
+                sent_at: true,
+                retry_count: true,
+                delay_reason: true,
+                retry_at: true,
+              },
+              orderBy: [{ step_number: "asc" }],
+            },
           },
+        })
+      : [];
+
+    // 3. Take the latest sequence per prospect
+    const seenProspects = new Set<string>();
+    const latestSequences = [];
+    for (const seq of allSequences) {
+      if (!seenProspects.has(seq.prospect_id)) {
+        seenProspects.add(seq.prospect_id);
+        latestSequences.push(seq);
+      }
+    }
+
+    // Flatten all steps from the latest sequences
+    const stepsWithSeq = latestSequences.flatMap((seq) =>
+      seq.steps.map((step) => ({
+        ...step,
+        sequence: {
+          id: seq.id,
+          status: seq.status,
+          prospect: seq.prospect,
         },
-      },
-      orderBy: [{ scheduled_at_utc: "asc" }, { step_number: "asc" }],
-    });
+      }))
+    );
 
     // Query real tracked emails for open counts
-    const stepIds = steps.map((s) => s.id);
+    const stepIds = stepsWithSeq.map((s) => s.id);
     const trackedEmails = stepIds.length > 0
       ? await prisma.trackedEmail.findMany({
           where: { source_id: { in: stepIds } },
@@ -103,14 +137,16 @@ export async function GET(
     );
 
     // Map DB step status → dashboard liveStatus
-    // Prospect.status = "REPLIED" overrides everything → show REPLIED
-    function mapLiveStatus(step: typeof steps[0]): string {
+    function mapLiveStatus(step: typeof stepsWithSeq[0]): string {
       const prospectStatus = step.sequence.prospect.status;
-      if (prospectStatus === "REPLIED") return "REPLIED";
-
       const tracked = trackedMap.get(step.id);
+
+      if (prospectStatus === "REPLIED" || tracked?.status === "REPLIED") {
+        if (step.status === "SENT") return "REPLIED";
+      }
+
       if (tracked && (tracked.open_count > 0 || tracked.status === "OPENED")) {
-        return "OPENED";
+        if (step.status === "SENT") return "OPENED";
       }
 
       switch (step.status) {
@@ -119,12 +155,11 @@ export async function GET(
         case "FAILED":     return "BOUNCED";
         case "CANCELLED":
         case "SKIPPED":    return "CANCELLED";
-        // PENDING or RETRYABLE_FAILURE → still scheduled (will retry)
         default:           return "SCHEDULED";
       }
     }
 
-    const items = steps.map((step) => {
+    const items = stepsWithSeq.map((step) => {
       const liveStatus = mapLiveStatus(step);
       const sentAt = step.sent_at?.toISOString() ?? null;
       const tracked = trackedMap.get(step.id);
@@ -154,7 +189,15 @@ export async function GET(
       };
     });
 
-    // Aggregate stats
+    // Sort items by prospect email, then step number
+    items.sort((a, b) => {
+      if (a.recipientEmail !== b.recipientEmail) {
+        return a.recipientEmail.localeCompare(b.recipientEmail);
+      }
+      return a.stepNumber - b.stepNumber;
+    });
+
+    // Aggregate stats across all campaign leads
     const sentCount    = items.filter(i => ["SENT", "OPENED", "REPLIED"].includes(i.liveStatus)).length;
     const openedCount  = items.filter(i => ["OPENED", "REPLIED"].includes(i.liveStatus) || (i.openCount && i.openCount > 0)).length;
     const repliedCount = items.filter(i => i.liveStatus === "REPLIED").length;
