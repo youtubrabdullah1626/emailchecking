@@ -347,6 +347,10 @@ export function LiveExecutionDashboard() {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           toast.error(data.error || `Failed to ${nextAction.toLowerCase()} campaign`);
+        } else {
+          // Immediately refresh live status to reflect newly dispatched emails
+          setTimeout(() => fetchLiveStatusFromDb(), 1000);
+          setTimeout(() => fetchLiveStatusFromDb(), 3500);
         }
       }
     } catch (e) {
