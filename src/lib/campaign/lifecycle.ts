@@ -55,37 +55,35 @@ export async function activateCampaign(campaignId: string, userId: string): Prom
   // 1. Activate Campaign
   await prisma.campaign.update({ where: { id: campaignId }, data: { status: 'ACTIVE' } });
 
-  // 2. Also ensure all campaign prospects that have not replied are set to ACTIVE
-  await prisma.prospect.updateMany({
-    where: {
-      campaign_id: campaignId,
-      status: { notIn: ['REPLIED', 'STOPPED', 'COMPLETED'] }
-    },
-    data: { status: 'ACTIVE' }
-  });
+  // 2. Activate Prospects
+  await prisma.$executeRaw`
+    UPDATE prospects
+    SET status = 'ACTIVE'
+    WHERE campaign_id = ${campaignId}
+      AND status NOT IN ('REPLIED', 'STOPPED', 'COMPLETED')
+  `.catch(() => {});
 
-  // 3. Also ensure all campaign sequences that have not replied are set to ACTIVE
-  await prisma.sequence.updateMany({
-    where: {
-      prospect: {
-        campaign_id: campaignId,
-        status: { not: 'REPLIED' }
-      },
-      status: { not: 'COMPLETED' }
-    },
-    data: { status: 'ACTIVE', stopped_at: null }
-  });
+  // 3. Activate Sequences
+  await prisma.$executeRaw`
+    UPDATE sequences seq
+    SET status = 'ACTIVE', stopped_at = NULL
+    FROM prospects p
+    WHERE seq.prospect_id = p.id
+      AND p.campaign_id = ${campaignId}
+      AND seq.status != 'COMPLETED'
+  `.catch(() => {});
 
-  // 3. For any steps scheduled in the past or due, set eligible_after_utc = now so they can be dispatched immediately
-  const now = new Date();
-  await prisma.sequenceStep.updateMany({
-    where: {
-      sequence: { prospect: { campaign_id: campaignId } },
-      status: 'PENDING',
-      scheduled_at_utc: { lte: now }
-    },
-    data: { eligible_after_utc: now }
-  });
+  // 4. Set eligible_after_utc = now for any due steps so they are ready for dispatch immediately
+  await prisma.$executeRaw`
+    UPDATE sequence_steps s
+    SET eligible_after_utc = NOW()
+    FROM sequences seq
+    JOIN prospects p ON seq.prospect_id = p.id
+    WHERE s.sequence_id = seq.id
+      AND p.campaign_id = ${campaignId}
+      AND s.status = 'PENDING'
+      AND s.scheduled_at_utc <= NOW()
+  `.catch(() => {});
 
   return { success: true, activeCount: activeCount + 1, limit: maxAllowed };
 }
@@ -99,45 +97,29 @@ export async function pauseCampaign(campaignId: string, userId: string): Promise
   if (campaign.user_id !== userId && !isOwnerOrAdmin) return { success: false, message: 'Unauthorized campaign access.' };
   if (campaign.status === 'PAUSED') return { success: true }; // Idempotent
 
-  // 1. Update Campaign & Sequences status to PAUSED
+  // 1. Update Campaign status to PAUSED
   await prisma.campaign.update({ where: { id: campaignId }, data: { status: 'PAUSED' } });
-  await prisma.sequence.updateMany({
-    where: {
-      prospect: { campaign_id: campaignId },
-      status: { not: 'COMPLETED' }
-    },
-    data: { status: 'PAUSED' }
-  });
 
-  // 2. Immediately reset any in-flight PROCESSING steps back to PENDING
-  try {
-    const processingSteps = await prisma.sequenceStep.findMany({
-      where: {
-        status: 'PROCESSING',
-        sequence: { prospect: { campaign_id: campaignId } }
-      },
-      select: { id: true, sequence: { select: { assigned_sender_email: true } } }
-    });
+  // 2. Pause Sequences
+  await prisma.$executeRaw`
+    UPDATE sequences seq
+    SET status = 'PAUSED'
+    FROM prospects p
+    WHERE seq.prospect_id = p.id
+      AND p.campaign_id = ${campaignId}
+      AND seq.status != 'COMPLETED'
+  `.catch(() => {});
 
-    if (processingSteps.length > 0) {
-      const stepIds = processingSteps.map(s => s.id);
-      await prisma.sequenceStep.updateMany({
-        where: { id: { in: stepIds } },
-        data: { status: 'PENDING', claimed_at: null }
-      });
-
-      const senders = Array.from(new Set(processingSteps.map(s => s.sequence.assigned_sender_email).filter(Boolean))) as string[];
-      for (const sender of senders) {
-        await prisma.$executeRaw`
-          UPDATE email_accounts
-          SET reserved_count = GREATEST(0, reserved_count - 1)
-          WHERE email = ${sender}
-        `.catch(() => {});
-      }
-    }
-  } catch (err) {
-    console.error("[pauseCampaign] Failed to reset processing steps:", err);
-  }
+  // 3. Immediately reset any in-flight PROCESSING steps back to PENDING
+  await prisma.$executeRaw`
+    UPDATE sequence_steps s
+    SET status = 'PENDING', claimed_at = NULL
+    FROM sequences seq
+    JOIN prospects p ON seq.prospect_id = p.id
+    WHERE s.sequence_id = seq.id
+      AND p.campaign_id = ${campaignId}
+      AND s.status = 'PROCESSING'
+  `.catch(() => {});
 
   return { success: true };
 }
