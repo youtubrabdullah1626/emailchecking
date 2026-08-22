@@ -173,6 +173,7 @@ export function LiveExecutionDashboard() {
   // On every tick, fetch the real step statuses from the DB via campaign ID.
   // This means the dashboard ALWAYS reflects truth — regardless of re-imports,
   // retries, or any client-side state inconsistencies.
+  const [dbFetchError, setDbFetchError] = useState(false);
   const isFetchingLiveStatusRef = React.useRef(false);
 
   const fetchLiveStatusFromDb = React.useCallback(async () => {
