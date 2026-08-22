@@ -27,7 +27,7 @@ import useSWR from "swr";
 import { apiClient } from "@/lib/api-client";
 
 type LiveItem = ExecutionQueueItem & {
-  liveStatus: "SCHEDULED" | "PROCESSING" | "SENT" | "OPENED" | "REPLIED" | "BOUNCED" | "CANCELLED";
+  liveStatus: "SCHEDULED" | "PROCESSING" | "SENT" | "OPENED" | "REPLIED" | "BOUNCED" | "CANCELLED" | "PAUSED";
   lastEventTime: string;
   retryCount?: number;
 };
@@ -348,11 +348,12 @@ export function LiveExecutionDashboard() {
   const handleTogglePauseDashboard = async () => {
     const isCurrentlyPaused = campaignStatus === "PAUSED";
     
-    // If currently paused and user is resuming: check if any scheduled emails are overdue
+    // If currently paused and user is resuming: check if any scheduled/paused emails are overdue
     if (isCurrentlyPaused) {
       const now = new Date();
       const overdue = liveItems.filter(item => {
-        if (item.liveStatus !== "SCHEDULED") return false;
+        const statusStr = item.liveStatus as string;
+        if (statusStr !== "SCHEDULED" && statusStr !== "PAUSED") return false;
         try {
           const itemDateTime = new Date(`${item.scheduledDate} ${item.scheduledTime || "00:00"}`);
           return itemDateTime <= now;
@@ -386,21 +387,17 @@ export function LiveExecutionDashboard() {
     setCampaignStatus(nextStatus);
 
     if (action === "RESUME") {
-      // 10X Smart Optimistic Update: Immediately flip overdue items to PROCESSING in local UI
-      const overdueIds = new Set(overdueItemsForResume.map(o => o.id));
-      if (overdueIds.size > 0) {
-        setLiveItems(prev => prev.map(item => {
-          if (overdueIds.has(item.queueId)) {
-            return { ...item, liveStatus: "PROCESSING" as const, lastEventTime: new Date().toISOString() };
-          }
-          return item;
-        }));
-      }
-    }
-
-    if (action === "PAUSE") {
+      setLiveItems(prev => prev.map(item => {
+        const s = item.liveStatus as string;
+        if (s === "PAUSED" || s === "SCHEDULED") {
+          return { ...item, liveStatus: "PROCESSING" as any, lastEventTime: "Just now" };
+        }
+        return item;
+      }));
+    } else if (action === "PAUSE") {
       setLiveItems(prev => prev.map(i => {
-        if (i.liveStatus === "PROCESSING" || i.liveStatus === "SCHEDULED") {
+        const s = i.liveStatus as string;
+        if (s === "PROCESSING" || s === "SCHEDULED") {
           return { ...i, liveStatus: "PAUSED" as any };
         }
         return i;
