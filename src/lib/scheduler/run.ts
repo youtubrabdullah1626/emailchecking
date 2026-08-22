@@ -116,14 +116,23 @@ export async function runScheduler(
 
   try {
     const SCHEDULER_LOCK_KEY = 'main_scheduler';
-    const lockResult = await prisma.$executeRaw`
-      INSERT INTO scheduler_locks (lock_name, locked_at, locked_until, run_id)
-      VALUES (${SCHEDULER_LOCK_KEY}, NOW(), NOW() + INTERVAL '2 minutes', ${runId})
-      ON CONFLICT (lock_name) DO UPDATE
-        SET locked_at = NOW(), locked_until = NOW() + INTERVAL '2 minutes', run_id = ${runId}
-        WHERE scheduler_locks.locked_until < NOW()
-    `;
-    if (lockResult === 0) {
+    let lockAcquired = true;
+    try {
+      const lockResult = await prisma.$executeRaw`
+        INSERT INTO scheduler_locks (lock_name, locked_at, locked_until, run_id)
+        VALUES (${SCHEDULER_LOCK_KEY}, NOW(), NOW() + INTERVAL '2 minutes', ${runId})
+        ON CONFLICT (lock_name) DO UPDATE
+          SET locked_at = NOW(), locked_until = NOW() + INTERVAL '2 minutes', run_id = ${runId}
+          WHERE scheduler_locks.locked_until < NOW()
+      `;
+      if (lockResult === 0) {
+        lockAcquired = false;
+      }
+    } catch (lockErr) {
+      log("scheduler_config_fetch_warning", { runId, error: String(lockErr) });
+    }
+
+    if (!lockAcquired) {
       console.log('scheduler_run_skipped_lock_held', { runId });
       return { runId, startedAt: startedAt.toISOString(), finishedAt: new Date().toISOString(), durationMs: 0, candidatesFound: 0, eligibleSteps: 0, claimedSteps: 0, skippedSteps: 0, errorSteps: 0, errors: [], claimedStepIds: [], dryRun, status: 'SUCCESS' as SchedulerRunStatus, staleProcessingSteps: [] };
     }
