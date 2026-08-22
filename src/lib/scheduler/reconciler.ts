@@ -124,10 +124,12 @@ export async function reconcileUncertainSend(
 }
 
 export async function runSelfHealingSweeper(): Promise<void> {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const sentSteps = await prisma.sequenceStep.findMany({
     where: {
       status: 'SENT',
-      step_number: { gt: 0 }
+      sent_at: { gte: thirtyDaysAgo },
+      sequence: { status: 'ACTIVE' }
     },
     select: {
       id: true,
@@ -135,7 +137,8 @@ export async function runSelfHealingSweeper(): Promise<void> {
       step_number: true,
       sent_at: true,
       scheduled_at_utc: true
-    }
+    },
+    take: 100,
   });
 
   let healedCount = 0;
