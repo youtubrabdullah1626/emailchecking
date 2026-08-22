@@ -38,6 +38,13 @@ export async function findCandidateSteps(
       ],
       sequence: {
         status: "ACTIVE",
+        prospect: {
+          status: "ACTIVE",
+          OR: [
+            { campaign: { status: "ACTIVE" } },
+            { campaign: null }
+          ]
+        }
       },
     },
     select: {
@@ -66,6 +73,7 @@ export async function findCandidateSteps(
               campaign: {
                 select: {
                   id: true,
+                  status: true,
                   last_dispatched_at: true
                 }
               }

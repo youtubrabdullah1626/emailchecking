@@ -47,6 +47,12 @@ export async function loadStepForSend(
               name: true,
               email: true,
               status: true,
+              campaign: {
+                select: {
+                  id: true,
+                  status: true,
+                }
+              }
             },
           },
           // Load all steps so we can find the immediate predecessor

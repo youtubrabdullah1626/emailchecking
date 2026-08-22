@@ -37,6 +37,7 @@ export const BLOCKING_PROSPECT_STATUSES = new Set<string>([
  */
 export const BLOCKING_SEQUENCE_STATUSES = new Set([
   "DRAFT",
+  "PAUSED",
   "STOPPED",
   "COMPLETED",
 ]);

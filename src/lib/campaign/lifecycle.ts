@@ -88,7 +88,18 @@ export async function pauseCampaign(campaignId: string, userId: string): Promise
   if (!campaign || campaign.user_id !== userId) return { success: false, message: 'Campaign not found.' };
   if (campaign.status === 'PAUSED') return { success: true }; // Idempotent
   if (campaign.status !== 'ACTIVE') return { success: false, message: 'Only ACTIVE campaigns can be paused.' };
-  await prisma.campaign.update({ where: { id: campaignId }, data: { status: 'PAUSED' } });
+
+  await prisma.$transaction([
+    prisma.campaign.update({ where: { id: campaignId }, data: { status: 'PAUSED' } }),
+    prisma.sequence.updateMany({
+      where: {
+        prospect: { campaign_id: campaignId },
+        status: 'ACTIVE'
+      },
+      data: { status: 'PAUSED' }
+    })
+  ]);
+
   return { success: true };
 }
 

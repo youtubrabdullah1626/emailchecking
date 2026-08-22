@@ -93,6 +93,8 @@ export type GmailLogEvent =
   | "gmail_send_success"
   | "gmail_send_failed"
   | "gmail_send_aborted_stale_step"
+  | "gmail_send_aborted_sequence_paused"
+  | "gmail_send_aborted_campaign_paused"
   | "gmail_send_aborted_attempt_write_failed"
   | "gmail_send_db_update_failed"
   | "gmail_batch_started"

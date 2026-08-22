@@ -91,6 +91,24 @@ export async function sendStepInternal(stepId: string, cachedAuth?: any): Promis
     return { stepId, outcome: "ABORTED", detail: "Step not found." };
   }
 
+  // ── 2.1 Strict Pause & Stop Safety Guards ─────────────────────────────────
+  if (step.sequence.status === "PAUSED" || step.sequence.status === "STOPPED") {
+    gmailLog("gmail_send_aborted_sequence_paused", {
+      stepId,
+      sequenceId: step.sequence.id,
+      sequenceStatus: step.sequence.status,
+    });
+    return { stepId, outcome: "ABORTED", detail: `Sequence is ${step.sequence.status} — send aborted.` };
+  }
+
+  if ((step.sequence.prospect as any)?.campaign?.status === "PAUSED") {
+    gmailLog("gmail_send_aborted_campaign_paused", {
+      stepId,
+      campaignId: (step.sequence.prospect as any)?.campaign?.id,
+    });
+    return { stepId, outcome: "ABORTED", detail: "Campaign is PAUSED — send aborted." };
+  }
+
   // ── 2.5 Smart Sticky Sender & Multi-Inbox Rotation Engine ───────────────────
   let connectedAccount: any = null;
   const assignedEmail = step.sequence.assigned_sender_email;

@@ -209,6 +209,13 @@ export async function runScheduler(
         continue;
       }
 
+      const campaignStatus = (step.sequence.prospect as any)?.campaign?.status;
+      if (campaignStatus && campaignStatus !== "ACTIVE") {
+        log("step_not_eligible", { runId, stepId: step.id, reason: `CAMPAIGN_${campaignStatus}` });
+        skippedSteps++;
+        continue;
+      }
+
       if (step.sequence.user_id) {
         const userCap = await getUserCapacity(step.sequence.user_id, nowUtc);
         const effectiveDaily = Math.max(userCap.sentToday, userCap.sentLast24h) + userCap.claimedThisRun;
