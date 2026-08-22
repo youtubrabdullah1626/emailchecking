@@ -18,6 +18,7 @@ import { Send, MailOpen, Reply, AlertCircle, Clock, Activity, Calendar as Calend
 import { toast } from "sonner";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { StorageEngine } from "@/lib/storage/StorageEngine";
+import { ResumeConfirmationModal, OverdueEmailItem } from "./ResumeConfirmationModal";
 
 type LiveItem = ExecutionQueueItem & {
   liveStatus: "SCHEDULED" | "PROCESSING" | "SENT" | "OPENED" | "REPLIED" | "BOUNCED" | "CANCELLED";
@@ -313,13 +314,47 @@ export function LiveExecutionDashboard() {
     }
   };
 
+  const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
+  const [overdueItemsForResume, setOverdueItemsForResume] = useState<OverdueEmailItem[]>([]);
+
   const handleTogglePauseDashboard = async () => {
     const isCurrentlyPaused = campaignStatus === "PAUSED";
-    const nextAction = isCurrentlyPaused ? "RESUME" : "PAUSE";
-    const nextStatus = isCurrentlyPaused ? "ACTIVE" : "PAUSED";
     
+    // If currently paused and user is resuming: check if any scheduled emails are overdue
+    if (isCurrentlyPaused) {
+      const now = new Date();
+      const overdue = liveItems.filter(item => {
+        if (item.liveStatus !== "SCHEDULED") return false;
+        try {
+          const itemDateTime = new Date(`${item.scheduledDate} ${item.scheduledTime || "00:00"}`);
+          return itemDateTime <= now;
+        } catch {
+          return false;
+        }
+      });
+
+      if (overdue.length > 0) {
+        setOverdueItemsForResume(overdue.map(i => ({
+          id: i.queueId,
+          recipientEmail: i.recipientEmail,
+          stepNumber: i.sequenceStep?.stepNumber || 1,
+          subject: i.sequenceStep?.subject || "(Follow-up)",
+          scheduledTime: i.scheduledTime,
+          scheduledDate: i.scheduledDate
+        })));
+        setIsResumeModalOpen(true);
+        return;
+      }
+    }
+
+    // Otherwise directly execute resume or pause
+    await executeTogglePause(isCurrentlyPaused ? "RESUME" : "PAUSE");
+  };
+
+  const executeTogglePause = async (action: "RESUME" | "PAUSE") => {
+    const nextStatus = action === "RESUME" ? "ACTIVE" : "PAUSED";
     setCampaignStatus(nextStatus);
-    toast.success(isCurrentlyPaused ? "Campaign resumed" : "Campaign paused");
+    toast.success(action === "RESUME" ? "Campaign resumed — sending due emails!" : "Campaign paused");
 
     try {
       let targetId = currentSessionMeta?.sessionId || storage.getActiveSessionId();
@@ -342,13 +377,13 @@ export function LiveExecutionDashboard() {
         const res = await fetch(`/api/campaigns/${encodeURIComponent(targetId)}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: nextAction, campaignName }),
+          body: JSON.stringify({ action, campaignName }),
         });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          toast.error(data.error || `Failed to ${nextAction.toLowerCase()} campaign`);
+          toast.error(data.error || `Failed to ${action.toLowerCase()} campaign`);
         } else {
-          if (nextAction === "RESUME") {
+          if (action === "RESUME") {
             // Immediately trigger the scheduler from the client as well
             fetch("/api/scheduler/run", { method: "POST" }).catch(() => {});
             // Immediately refresh live status to reflect newly dispatched emails
@@ -1023,6 +1058,14 @@ export function LiveExecutionDashboard() {
           </ScrollArea>
         </SheetContent>
       </Sheet>
+
+      {/* Resume Confirmation Dialog for Overdue Emails */}
+      <ResumeConfirmationModal
+        isOpen={isResumeModalOpen}
+        onOpenChange={setIsResumeModalOpen}
+        overdueItems={overdueItemsForResume}
+        onConfirmResume={() => executeTogglePause("RESUME")}
+      />
     </div>
   );
 }
