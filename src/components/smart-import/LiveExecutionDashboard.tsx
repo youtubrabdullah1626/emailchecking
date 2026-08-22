@@ -93,7 +93,7 @@ export function LiveExecutionDashboard() {
       if (["OPENED", "REPLIED"].includes(item.liveStatus as string)) opened++;
 
       if (item.liveStatus === "REPLIED") replied++;
-      if (item.liveStatus === "BOUNCED") bounced++;
+      if (["BOUNCED", "FAILED"].includes(item.liveStatus as string)) bounced++;
     });
     return { sent, opened, replied, bounced };
   }, [liveItems]);
