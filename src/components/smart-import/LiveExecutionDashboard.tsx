@@ -425,9 +425,6 @@ export function LiveExecutionDashboard() {
         toast.success(action === "PAUSE" ? "Campaign Paused — All sending stopped" : "Campaign Resumed");
         await fetchLiveStatusFromDb();
         if (action === "RESUME") {
-          apiClient("/api/scheduler/run", { method: "POST" }).then(() => {
-            fetchLiveStatusFromDb();
-          }).catch(() => {});
           setTimeout(() => fetchLiveStatusFromDb(), 800);
           setTimeout(() => fetchLiveStatusFromDb(), 2000);
           setTimeout(() => fetchLiveStatusFromDb(), 4000);

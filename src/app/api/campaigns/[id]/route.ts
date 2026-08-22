@@ -143,19 +143,16 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         return NextResponse.json({ ok: false, error: result.message || "Failed to activate campaign" }, { status: 400 });
       }
 
-      // Immediately run the scheduler for any steps that became due while paused
-      try {
-        const { runScheduler } = await import("@/lib/scheduler/run");
+      // Fire scheduler asynchronously in the background (100% non-blocking)
+      import("@/lib/scheduler/run").then(async ({ runScheduler }) => {
         const { sendBatch } = await import("@/lib/gmail/sender");
         const schedResult = await runScheduler({ dryRun: false, maxClaims: 50 });
         if (schedResult.claimedStepIds && schedResult.claimedStepIds.length > 0) {
-          sendBatch(schedResult.claimedStepIds).catch((err) => {
-            console.error("[CAMPAIGN_RESUME] Immediate batch send error:", err);
-          });
+          await sendBatch(schedResult.claimedStepIds);
         }
-      } catch (schedErr) {
-        console.error("[CAMPAIGN_RESUME] Scheduler run warning:", schedErr);
-      }
+      }).catch((schedErr) => {
+        console.error("[CAMPAIGN_RESUME] Background scheduler run warning:", schedErr);
+      });
 
       return NextResponse.json({ ok: true, message: "Campaign resumed successfully", activeCount: result.activeCount });
     }
