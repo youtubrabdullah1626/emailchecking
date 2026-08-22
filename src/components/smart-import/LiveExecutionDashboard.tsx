@@ -353,11 +353,12 @@ export function LiveExecutionDashboard() {
   };
 
   const executeTogglePause = async (action: "RESUME" | "PAUSE") => {
+    // 10X Ultra-Fast: Close modal and set active status in 0ms
+    setIsResumeModalOpen(false);
     const nextStatus = action === "RESUME" ? "ACTIVE" : "PAUSED";
     setCampaignStatus(nextStatus);
 
     if (action === "RESUME") {
-      setIsResumingCampaign(true);
       // 10X Smart Optimistic Update: Immediately flip overdue items to PROCESSING in local UI
       const overdueIds = new Set(overdueItemsForResume.map(o => o.id));
       if (overdueIds.size > 0) {
@@ -403,8 +404,8 @@ export function LiveExecutionDashboard() {
             // Immediately trigger the scheduler from the client as well
             fetch("/api/scheduler/run", { method: "POST" }).catch(() => {});
             // Fast cascade refreshes to guarantee instant UI sync
-            setTimeout(() => fetchLiveStatusFromDb(), 400);
-            setTimeout(() => fetchLiveStatusFromDb(), 1200);
+            setTimeout(() => fetchLiveStatusFromDb(), 300);
+            setTimeout(() => fetchLiveStatusFromDb(), 1000);
             setTimeout(() => fetchLiveStatusFromDb(), 2500);
             setTimeout(() => fetchLiveStatusFromDb(), 4000);
           }
@@ -414,7 +415,6 @@ export function LiveExecutionDashboard() {
       toast.error("Failed to update campaign state");
     } finally {
       setIsResumingCampaign(false);
-      setIsResumeModalOpen(false);
     }
   };
 
