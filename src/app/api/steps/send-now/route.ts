@@ -5,8 +5,7 @@
  * Updates the database atomically and advances the sequence.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/nextauth";
+import { getSession } from "@/lib/auth/session";
 import prisma from "@/lib/prisma";
 import { sendStep } from "@/lib/gmail/sender";
 
@@ -14,15 +13,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    let userId = session?.user?.id;
-    if (!userId) {
-      const connectedAccount = await prisma.emailAccount.findFirst({
-        where: { connection_status: "CONNECTED", refresh_token: { not: null } },
-        select: { user_id: true }
-      });
-      userId = connectedAccount?.user_id || (await prisma.users.findFirst({ select: { id: true } }))?.id;
-    }
+    const session = await getSession();
+    const userId = session?.user?.id;
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -160,12 +160,13 @@ export async function runSelfHealingSweeper(): Promise<void> {
       const eligibleAfter = new Date(step.sent_at.getTime() + delayMs);
       const slaBufferMs = Math.min(Math.max(delayMs * 0.5, 12 * 3600 * 1000), 72 * 3600 * 1000);
       const softSlaDead = new Date(eligibleAfter.getTime() + slaBufferMs);
-
-      await prisma.sequenceStep.update({
-        where: { id: nextStep.id },
+      const updateRes = await prisma.sequenceStep.updateMany({
+        where: { id: nextStep.id, eligible_after_utc: null },
         data: { eligible_after_utc: eligibleAfter, soft_sla_deadline: softSlaDead }
       });
-      healedCount++;
+      if (updateRes.count > 0) {
+        healedCount++;
+      }
     }
   }
   

@@ -1,16 +1,22 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/auth/session";
 
-// Dummy auth check for admin routes
-function isAuthenticated(req: Request) {
+async function isAuthorizedAdmin(req: Request): Promise<boolean> {
   const authHeader = req.headers.get("Authorization");
   const ADMIN_SECRET = process.env.ADMIN_API_SECRET;
-  if (!ADMIN_SECRET) return false; // Force-fail if env var not set
-  return authHeader === `Bearer ${ADMIN_SECRET}`;
+  if (ADMIN_SECRET && authHeader === `Bearer ${ADMIN_SECRET}`) {
+    return true;
+  }
+  const session = await getSession();
+  if (session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN" || session?.user?.role === "OWNER") {
+    return true;
+  }
+  return false;
 }
 
 export async function GET(req: Request) {
-  if (!isAuthenticated(req)) {
+  if (!(await isAuthorizedAdmin(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -30,7 +36,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!isAuthenticated(req)) {
+  if (!(await isAuthorizedAdmin(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
