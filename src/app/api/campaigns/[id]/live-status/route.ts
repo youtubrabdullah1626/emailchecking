@@ -133,6 +133,13 @@ export async function GET(
         if (step.status === "SENT") return "OPENED";
       }
 
+      if (campaign?.status === "PAUSED" || step.sequence.status === "PAUSED") {
+        if (["SENT", "OPENED", "REPLIED", "FAILED", "CANCELLED", "SKIPPED"].includes(step.status)) {
+          return step.status === "FAILED" ? "BOUNCED" : (step.status === "SKIPPED" ? "CANCELLED" : step.status);
+        }
+        return "PAUSED";
+      }
+
       switch (step.status) {
         case "SENT":       return "SENT";
         case "PROCESSING": return "PROCESSING";

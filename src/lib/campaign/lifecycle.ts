@@ -89,16 +89,45 @@ export async function pauseCampaign(campaignId: string, userId: string): Promise
   if (campaign.status === 'PAUSED') return { success: true }; // Idempotent
   if (campaign.status !== 'ACTIVE') return { success: false, message: 'Only ACTIVE campaigns can be paused.' };
 
-  await prisma.$transaction([
-    prisma.campaign.update({ where: { id: campaignId }, data: { status: 'PAUSED' } }),
-    prisma.sequence.updateMany({
+  // 1. Update Campaign & Sequences status to PAUSED
+  await prisma.campaign.update({ where: { id: campaignId }, data: { status: 'PAUSED' } });
+  await prisma.sequence.updateMany({
+    where: {
+      prospect: { campaign_id: campaignId },
+      status: 'ACTIVE'
+    },
+    data: { status: 'PAUSED' }
+  });
+
+  // 2. Immediately reset any in-flight PROCESSING steps back to PENDING
+  try {
+    const processingSteps = await prisma.sequenceStep.findMany({
       where: {
-        prospect: { campaign_id: campaignId },
-        status: 'ACTIVE'
+        status: 'PROCESSING',
+        sequence: { prospect: { campaign_id: campaignId } }
       },
-      data: { status: 'PAUSED' }
-    })
-  ]);
+      select: { id: true, sequence: { select: { assigned_sender_email: true } } }
+    });
+
+    if (processingSteps.length > 0) {
+      const stepIds = processingSteps.map(s => s.id);
+      await prisma.sequenceStep.updateMany({
+        where: { id: { in: stepIds } },
+        data: { status: 'PENDING', claimed_at: null }
+      });
+
+      const senders = Array.from(new Set(processingSteps.map(s => s.sequence.assigned_sender_email).filter(Boolean))) as string[];
+      for (const sender of senders) {
+        await prisma.$executeRaw`
+          UPDATE email_accounts
+          SET reserved_count = GREATEST(0, reserved_count - 1)
+          WHERE email = ${sender}
+        `.catch(() => {});
+      }
+    }
+  } catch (err) {
+    console.error("[pauseCampaign] Failed to reset processing steps:", err);
+  }
 
   return { success: true };
 }

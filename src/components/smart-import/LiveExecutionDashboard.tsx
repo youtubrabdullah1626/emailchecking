@@ -217,9 +217,9 @@ export function LiveExecutionDashboard() {
             ? (dbItem.lastEventTime || (dbItem.liveStatus === "SENT" ? "Just now" : "—"))
             : (prevItem?.lastEventTime || "—");
 
-          // Status protection: If local state is in-flight PROCESSING and DB is still SCHEDULED, preserve PROCESSING
+          // Status protection: If campaign is ACTIVE and local state is in-flight PROCESSING and DB is still SCHEDULED, preserve PROCESSING. Otherwise follow DB.
           let resolvedStatus = dbItem.liveStatus;
-          if (prevItem?.liveStatus === "PROCESSING" && dbItem.liveStatus === "SCHEDULED") {
+          if (data.campaignStatus === "ACTIVE" && prevItem?.liveStatus === "PROCESSING" && dbItem.liveStatus === "SCHEDULED") {
             resolvedStatus = "PROCESSING";
           }
 
@@ -398,18 +398,18 @@ export function LiveExecutionDashboard() {
       }
     }
 
-    toast.success(action === "RESUME" ? "Campaign resumed — sending due emails!" : "Campaign paused");
+    if (action === "PAUSE") {
+      setLiveItems(prev => prev.map(i => {
+        if (i.liveStatus === "PROCESSING" || i.liveStatus === "SCHEDULED") {
+          return { ...i, liveStatus: "PAUSED" as any };
+        }
+        return i;
+      }));
+    }
 
     try {
-      let targetId = currentSessionMeta?.sessionId || storage.getActiveSessionId();
-      let campaignName = currentSessionMeta?.campaignName;
-
-      try {
-        if (targetId) {
-          const dataset = await storage.loadHeavyDataset(targetId);
-          if (dataset?.campaignId) targetId = dataset.campaignId;
-        }
-      } catch (e) {}
+      const targetId = activeCampaignId || "latest";
+      const campaignName = (bulkProgress as any)?.campaignName || currentSessionMeta?.campaignName;
 
       if (currentSessionMeta) {
         currentSessionMeta.status = nextStatus === "PAUSED" ? "PAUSED" : "EXECUTING";
@@ -427,6 +427,8 @@ export function LiveExecutionDashboard() {
           const data = await res.json().catch(() => ({}));
           toast.error(data.error || `Failed to ${action.toLowerCase()} campaign`);
         } else {
+          toast.success(action === "PAUSE" ? "Campaign Paused — All sending stopped" : "Campaign Resumed");
+          fetchLiveStatusFromDb();
           if (action === "RESUME") {
             // Immediately trigger the scheduler from the client as well
             fetch("/api/scheduler/run", { method: "POST" }).catch(() => {});
