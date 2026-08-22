@@ -88,19 +88,14 @@ export async function runScheduler(
     ]);
 
     let dynamicUserDailyLimit = 0;
-    if (maxDaily && maxDaily > 0) {
-      dynamicUserDailyLimit = maxDaily;
-    } else if (userInboxes && userInboxes.length > 0) {
+    const defaultPerInbox = (maxDaily && maxDaily > 0) ? maxDaily : 50;
+    if (userInboxes && userInboxes.length > 0) {
       for (const acc of userInboxes) {
-        const created = acc.created_at || now;
-        const ageInDays = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
-        const baseLimit = acc.daily_limit && acc.daily_limit <= 100 ? acc.daily_limit : 50;
-        if (acc.warmup_status === "COMPLETED" || ageInDays >= 7) dynamicUserDailyLimit += baseLimit;
-        else if (ageInDays <= 2) dynamicUserDailyLimit += Math.min(baseLimit, 10);
-        else dynamicUserDailyLimit += Math.min(baseLimit, 25);
+        const baseLimit = (acc.daily_limit && acc.daily_limit > 0) ? acc.daily_limit : defaultPerInbox;
+        dynamicUserDailyLimit += baseLimit;
       }
     } else {
-      dynamicUserDailyLimit = 50;
+      dynamicUserDailyLimit = defaultPerInbox;
     }
 
     const state: UserCapacityState = {
