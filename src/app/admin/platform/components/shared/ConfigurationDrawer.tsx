@@ -24,6 +24,8 @@ import {
   formatRollout,
 } from "../../hooks/types";
 import { Sparkles } from "lucide-react";
+import { useSWRConfig } from "swr";
+import { toast } from "sonner";
 
 function getAIRecommendation(key: string): string | null {
   switch (key) {
@@ -123,6 +125,8 @@ export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationD
   const category = "category" in item ? item.category : null;
   const itemDescription = item.description ?? "";
 
+  const { mutate: globalMutate } = useSWRConfig();
+
   async function handleSave() {
     setSaveError(null);
     setSaveSuccess(false);
@@ -147,19 +151,31 @@ export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationD
         if (item.key === "BANNER_THEME") {
           document.body.setAttribute("data-theme", String(parsedValue));
         }
+        globalMutate("/api/dashboard/stats");
+        globalMutate("/api/dashboard/header-stats");
+        globalMutate("/api/admin/platform/configs");
+        toast.success("Platform configuration updated live across all dashboards!");
       } else setSaveError("Save failed. Please try again.");
     }
 
     if (isProvider(item)) {
       const ok = await updateProvider(item.key, editValue, editReason || undefined);
-      if (ok) setSaveSuccess(true);
-      else setSaveError("Save failed. Please try again.");
+      if (ok) {
+        setSaveSuccess(true);
+        globalMutate("/api/dashboard/stats");
+        globalMutate("/api/dashboard/header-stats");
+        toast.success("Provider updated live!");
+      } else setSaveError("Save failed. Please try again.");
     }
 
     if (isFlag(item)) {
       const ok = await toggleFlag(item.key, editValue === "true", editReason || undefined);
-      if (ok) setSaveSuccess(true);
-      else setSaveError("Failed to toggle flag.");
+      if (ok) {
+        setSaveSuccess(true);
+        globalMutate("/api/dashboard/stats");
+        globalMutate("/api/dashboard/header-stats");
+        toast.success("Feature flag toggled live!");
+      } else setSaveError("Failed to toggle flag.");
     }
   }
 
