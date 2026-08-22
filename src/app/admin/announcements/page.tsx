@@ -101,15 +101,21 @@ export default function AnnouncementsAdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"ALL" | "LIVE" | "SCHEDULED" | "EXPIRED" | "HIDDEN">("ALL");
 
-  const [cachedAnnouncements, setCachedAnnouncements] = useState<any>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem("silaer_cached_admin_announcements");
-        if (raw) return JSON.parse(raw);
-      } catch {}
-    }
-    return null;
-  });
+  const [cachedAnnouncements, setCachedAnnouncements] = useState<any>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("silaer_cached_admin_announcements");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setCachedAnnouncements(parsed);
+        if (parsed?.announcements) {
+          setAnnouncements(parsed.announcements);
+          setIsLoading(false);
+        }
+      }
+    } catch {}
+  }, []);
 
   const { data: swrData, mutate: mutateAnnouncements } = useSWR<{ announcements: any[] }>(
     "/api/admin/announcements",
@@ -119,7 +125,6 @@ export default function AnnouncementsAdminPage() {
       revalidateOnFocus: true,
       dedupingInterval: 2000,
       keepPreviousData: true,
-      fallbackData: cachedAnnouncements,
       onSuccess: (resData) => {
         if (resData && typeof window !== "undefined") {
           try {

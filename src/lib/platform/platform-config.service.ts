@@ -4,6 +4,8 @@
  */
 
 import { platform_configs } from "@prisma/client";
+import prisma from "@/lib/prisma";
+import { telemetryCache } from "@/lib/cache/telemetry-cache";
 import { PlatformConfigRepository, ConfigListParams } from "./platform-config.repository";
 import { configValidationService } from "./config-validation.service";
 import { auditService } from "@/lib/audit/audit.service";
@@ -108,8 +110,15 @@ export class PlatformConfigService {
 
     const updated = await this.repo.updateValue(key, newValue, actor.id, reason, environment);
 
+    if (key === "MAX_DAILY_EMAILS" && typeof newValue === "number") {
+      await prisma.emailAccount.updateMany({
+        data: { daily_limit: newValue }
+      }).catch(() => {});
+    }
+
     configCache.delete(CACHE_KEYS.ALL_CONFIGS);
     configCache.delete(CACHE_KEYS.CONFIG(key));
+    telemetryCache.clearAll();
 
     auditService.logAction(
       actor.id, actor.email, "Platform Configuration Updated", "SYSTEM",

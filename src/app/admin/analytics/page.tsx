@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import useSWR from "swr";
 import { Activity, Info, Sparkles, RefreshCw, Radio } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -23,18 +23,17 @@ export default function GlobalAnalyticsDashboard() {
   const [timeRange, setTimeRange] = useState("Last 7 Days");
   const [isLive, setIsLive] = useState(true);
 
-  const [cachedAnalytics, setCachedAnalytics] = useState<any>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem("silaer_cached_admin_analytics");
-        if (raw) return JSON.parse(raw);
-      } catch {}
-    }
-    return null;
-  });
+  const [cachedAnalytics, setCachedAnalytics] = useState<any>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("silaer_cached_admin_analytics");
+      if (raw) setCachedAnalytics(JSON.parse(raw));
+    } catch {}
+  }, []);
 
   // Use SWR for intelligent polling and caching
-  const { data, error, isLoading } = useSWR<GlobalAnalyticsPayload>(
+  const { data: rawData, error, isLoading: swrLoading } = useSWR<GlobalAnalyticsPayload>(
     "/api/admin/analytics", 
     fetcher,
     {
@@ -42,7 +41,6 @@ export default function GlobalAnalyticsDashboard() {
       revalidateOnFocus: isLive,
       dedupingInterval: 5000,
       keepPreviousData: true,
-      fallbackData: cachedAnalytics,
       onSuccess: (resData) => {
         if (resData && typeof window !== "undefined") {
           try {
@@ -52,6 +50,9 @@ export default function GlobalAnalyticsDashboard() {
       },
     }
   );
+
+  const data = rawData || cachedAnalytics;
+  const isLoading = swrLoading && !data;
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">

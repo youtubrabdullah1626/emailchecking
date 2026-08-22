@@ -163,42 +163,41 @@ export default function SequencesPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const [cachedSequences, setCachedSequences] = useState<any>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem("silaer_cached_sequences");
-        if (raw) return JSON.parse(raw);
-      } catch {}
-    }
-    return null;
-  });
+  const [cachedSequences, setCachedSequences] = useState<any>(null);
 
-  const { data, error: swrError, isLoading: loading, isValidating: isRefreshing, mutate } = useSWR(
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("silaer_cached_sequences");
+      if (raw) setCachedSequences(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const { data: rawData, error: swrError, isLoading: swrLoading, isValidating: isRefreshing, mutate } = useSWR(
     "/api/sequences",
     async (url: string) => {
       const res = await fetch(url);
       if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || "Failed to load sequences.");
+        throw new Error("Failed to fetch sequences");
       }
       return res.json();
     },
     {
-      refreshInterval: 5000,
+      refreshInterval: 6000,
       revalidateOnFocus: true,
-      revalidateOnReconnect: true,
       dedupingInterval: 2000,
       keepPreviousData: true,
-      fallbackData: cachedSequences,
-      onSuccess: (resData) => {
-        if (resData && typeof window !== "undefined") {
+      onSuccess: (res) => {
+        if (res && typeof window !== "undefined") {
           try {
-            localStorage.setItem("silaer_cached_sequences", JSON.stringify(resData));
+            localStorage.setItem("silaer_cached_sequences", JSON.stringify(res));
           } catch {}
         }
-      },
+      }
     }
   );
+
+  const data = rawData || cachedSequences;
+  const loading = swrLoading && !data;
 
   const sequences = useMemo(() => {
     const rawList = (data?.data ?? []) as SequenceDetail[];

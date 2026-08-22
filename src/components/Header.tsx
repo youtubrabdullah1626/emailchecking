@@ -37,27 +37,25 @@ export function Header({ onMenuClick }: HeaderProps) {
   const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
-  const [cachedHeader, setCachedHeader] = useState<any>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem("silaer_cached_header_stats");
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed && (parsed.inboxCount > 0 || parsed.connectedGmail)) return parsed;
-        }
-      } catch {}
-    }
-    return null;
-  });
+  const [cachedHeader, setCachedHeader] = useState<any>(null);
 
-  const { data: accountStats } = useSWR(
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("silaer_cached_header_stats");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && (parsed.inboxCount > 0 || parsed.connectedGmail)) setCachedHeader(parsed);
+      }
+    } catch {}
+  }, []);
+
+  const { data: rawAccountStats } = useSWR(
     "/api/dashboard/header-stats",
     (url: string) => apiClient<any>(url),
     {
       refreshInterval: 4000,
       revalidateOnFocus: true,
       dedupingInterval: 2000,
-      fallbackData: cachedHeader,
       onSuccess: (data) => {
         if (data && (data.inboxCount > 0 || data.connectedGmail) && typeof window !== "undefined") {
           try {
@@ -67,6 +65,8 @@ export function Header({ onMenuClick }: HeaderProps) {
       }
     }
   );
+
+  const accountStats = rawAccountStats || cachedHeader;
 
   const { data: globalStats } = useSWR(
     "/api/dashboard/stats",

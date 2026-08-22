@@ -43,7 +43,7 @@ export function VersionHistoryTab() {
 
   // Build unified timeline
   const timeline: TimelineEntry[] = [
-    ...flagHistory.map((h) => ({
+    ...(flagHistory || []).map((h) => ({
       id: h.id,
       domain: "flag" as const,
       subject: flags.find((f) => f.id === h.flag_id)?.name ?? "Feature Flag",
@@ -51,10 +51,10 @@ export function VersionHistoryTab() {
       changedAt: h.changed_at,
       reason: h.reason,
       isRollback: h.is_rollback,
-      from: h.old_value.enabled ? "Enabled" : "Disabled",
-      to: h.new_value.enabled ? "Enabled" : "Disabled",
+      from: h.old_value && typeof h.old_value === "object" && "enabled" in h.old_value ? (h.old_value.enabled ? "Enabled" : "Disabled") : String(h.old_value ?? "—"),
+      to: h.new_value && typeof h.new_value === "object" && "enabled" in h.new_value ? (h.new_value.enabled ? "Enabled" : "Disabled") : String(h.new_value ?? "—"),
     })),
-    ...configHistory.map((h) => ({
+    ...(configHistory || []).map((h) => ({
       id: h.id,
       domain: "config" as const,
       subject: configs.find((c) => c.id === h.config_id)?.name ?? "Platform Config",
@@ -62,10 +62,10 @@ export function VersionHistoryTab() {
       changedAt: h.changed_at,
       reason: h.reason,
       isRollback: h.is_rollback,
-      from: String(h.old_value),
-      to: String(h.new_value),
+      from: String(h.old_value ?? "—"),
+      to: String(h.new_value ?? "—"),
     })),
-    ...providerHistory.map((h) => ({
+    ...(providerHistory || []).map((h) => ({
       id: h.id,
       domain: "provider" as const,
       subject: providers.find((p) => p.id === h.provider_id)?.name ?? "Provider",
@@ -73,8 +73,8 @@ export function VersionHistoryTab() {
       changedAt: h.changed_at,
       reason: h.reason,
       isRollback: h.is_rollback,
-      from: h.old_value.active_provider,
-      to: h.new_value.active_provider,
+      from: (h.old_value && typeof h.old_value === "object" && "active_provider" in h.old_value) ? (h.old_value as any).active_provider : String(h.old_value ?? "—"),
+      to: (h.new_value && typeof h.new_value === "object" && "active_provider" in h.new_value) ? (h.new_value as any).active_provider : String(h.new_value ?? "—"),
     })),
   ].sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime());
 

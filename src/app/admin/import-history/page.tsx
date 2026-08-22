@@ -57,17 +57,16 @@ export default function ImportHistoryAdminPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [revertingId, setRevertingId] = useState<string | null>(null);
 
-  const [cachedJobs, setCachedJobs] = useState<any>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem("silaer_cached_admin_import_history");
-        if (raw) return JSON.parse(raw);
-      } catch {}
-    }
-    return null;
-  });
+  const [cachedJobs, setCachedJobs] = useState<any>(null);
 
-  const { data: swrData, isLoading, mutate } = useSWR<{
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("silaer_cached_admin_import_history");
+      if (raw) setCachedJobs(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const { data: rawSwrData, isLoading: swrLoading, mutate } = useSWR<{
     jobs: ImportJob[];
     pagination: { page: number; total: number; totalPages: number };
   }>(
@@ -78,7 +77,6 @@ export default function ImportHistoryAdminPage() {
       revalidateOnFocus: true,
       dedupingInterval: 2000,
       keepPreviousData: true,
-      fallbackData: cachedJobs,
       onSuccess: (resData) => {
         if (resData && typeof window !== "undefined") {
           try {
@@ -89,6 +87,8 @@ export default function ImportHistoryAdminPage() {
     }
   );
 
+  const swrData = rawSwrData || cachedJobs;
+  const isLoading = swrLoading && !swrData;
   const jobs = swrData?.jobs || [];
   const pagination = swrData?.pagination || { page: currentPage, total: jobs.length, totalPages: 1 };
 
@@ -128,8 +128,8 @@ export default function ImportHistoryAdminPage() {
     }
   };
 
-  const totalSuccessAll = jobs.reduce((a, j) => a + j.successCount, 0);
-  const totalFailAll = jobs.reduce((a, j) => a + j.failureCount, 0);
+  const totalSuccessAll = jobs.reduce((a: number, j: ImportJob) => a + j.successCount, 0);
+  const totalFailAll = jobs.reduce((a: number, j: ImportJob) => a + j.failureCount, 0);
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
@@ -219,7 +219,7 @@ export default function ImportHistoryAdminPage() {
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {jobs.map((job) => (
+                {jobs.map((job: ImportJob) => (
                   <div key={job.id} className="p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-muted/10 transition-colors">
                     {/* Left: File info */}
                     <div className="flex-1 min-w-0 space-y-1">

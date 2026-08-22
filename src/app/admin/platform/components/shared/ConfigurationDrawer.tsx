@@ -150,9 +150,7 @@ export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationD
         if (item.key === "BANNER_THEME") {
           document.body.setAttribute("data-theme", String(parsedValue));
         }
-        globalMutate("/api/dashboard/stats");
-        globalMutate("/api/dashboard/header-stats");
-        globalMutate("/api/admin/platform/configs");
+        globalMutate((k: any) => typeof k === "string" && (k.startsWith("/api/dashboard") || k.startsWith("/api/admin/platform")));
         toast.success("Platform configuration updated live across all dashboards!");
       } else {
         setSaveError(configError || "Save failed. Please check validation rules.");
@@ -163,8 +161,7 @@ export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationD
       const ok = await updateProvider(item.key, editValue, editReason || undefined);
       if (ok) {
         setSaveSuccess(true);
-        globalMutate("/api/dashboard/stats");
-        globalMutate("/api/dashboard/header-stats");
+        globalMutate((k: any) => typeof k === "string" && (k.startsWith("/api/dashboard") || k.startsWith("/api/admin/platform")));
         toast.success("Provider updated live!");
       } else {
         setSaveError(providerError || "Save failed. Please try again.");
@@ -175,8 +172,7 @@ export function ConfigurationDrawer({ itemKey, domain, onClose }: ConfigurationD
       const ok = await toggleFlag(item.key, editValue === "true", editReason || undefined);
       if (ok) {
         setSaveSuccess(true);
-        globalMutate("/api/dashboard/stats");
-        globalMutate("/api/dashboard/header-stats");
+        globalMutate((k: any) => typeof k === "string" && (k.startsWith("/api/dashboard") || k.startsWith("/api/admin/platform")));
         toast.success("Feature flag toggled live!");
       } else {
         setSaveError(flagError || "Failed to toggle flag.");

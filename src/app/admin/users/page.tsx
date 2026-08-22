@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { UserCheck, Info, Sparkles, Download, ShieldAlert, AlertTriangle, Users } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { UserSearchFilters } from "./components/UserSearchFilters";
@@ -38,22 +38,20 @@ function UserManagementContent() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [healthFilter, setHealthFilter] = useState("all");
-  const [cachedUsers, setCachedUsers] = useState<any>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem("silaer_cached_admin_users");
-        if (raw) return JSON.parse(raw);
-      } catch {}
-    }
-    return null;
-  });
+  const [cachedUsers, setCachedUsers] = useState<any>(null);
 
-  const { data, error, isLoading, mutate } = useSWR("/api/admin/users", fetcher, {
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("silaer_cached_admin_users");
+      if (raw) setCachedUsers(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const { data: rawData, error, isLoading: swrLoading, mutate } = useSWR("/api/admin/users", fetcher, {
     refreshInterval: 30000,
     revalidateOnFocus: true,
     dedupingInterval: 2000,
     keepPreviousData: true,
-    fallbackData: cachedUsers,
     onSuccess: (resData) => {
       if (resData && typeof window !== "undefined") {
         try {
@@ -62,6 +60,9 @@ function UserManagementContent() {
       }
     },
   });
+
+  const data = rawData || cachedUsers;
+  const isLoading = swrLoading && !data;
 
   const users: MockUser[] = data?.users || [];
   const totalUsers = data?.pagination?.total || users.length;

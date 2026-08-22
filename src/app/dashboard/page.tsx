@@ -102,17 +102,16 @@ export default function DashboardPage() {
     toast.success("Recent replies cleared from dashboard view");
   };
 
-  const [cachedDashboard, setCachedDashboard] = useState<any>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem("silaer_cached_dashboard_stats");
-        if (raw) return JSON.parse(raw);
-      } catch {}
-    }
-    return null;
-  });
+  const [cachedDashboard, setCachedDashboard] = useState<any>(null);
 
-  const { data: statsData, isLoading: statsLoading } = useSWR(
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("silaer_cached_dashboard_stats");
+      if (raw) setCachedDashboard(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const { data: rawStatsData, isLoading: statsLoading } = useSWR(
     "/api/dashboard/stats", 
     (url: string) => apiClient<any>(url), 
     {
@@ -120,7 +119,6 @@ export default function DashboardPage() {
       revalidateOnFocus: true,
       dedupingInterval: 2000,
       keepPreviousData: true,
-      fallbackData: cachedDashboard,
       onSuccess: (data) => {
         if (data && typeof window !== "undefined") {
           try {
@@ -130,6 +128,8 @@ export default function DashboardPage() {
       }
     }
   );
+
+  const statsData = rawStatsData || cachedDashboard;
 
   const { data: repliesData, isLoading: repliesLoading } = useSWR(
     "/api/replies", 

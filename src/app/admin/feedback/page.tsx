@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import useSWR from "swr";
 import { 
   Star, 
@@ -81,17 +81,16 @@ export default function AdminFeedbackPage() {
   if (statusFilter !== "ALL") queryParams.set("status", statusFilter);
   if (searchQuery.trim()) queryParams.set("search", searchQuery.trim());
 
-  const [cachedFeedback, setCachedFeedback] = useState<any>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem("silaer_cached_admin_feedback");
-        if (raw) return JSON.parse(raw);
-      } catch {}
-    }
-    return null;
-  });
+  const [cachedFeedback, setCachedFeedback] = useState<any>(null);
 
-  const { data, mutate, isLoading } = useSWR<{
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("silaer_cached_admin_feedback");
+      if (raw) setCachedFeedback(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const { data: rawData, mutate, isLoading: swrLoading } = useSWR<{
     metrics: FeedbackMetrics;
     feedbacks: FeedbackItem[];
     pagination: { total: number; page: number; totalPages: number };
@@ -102,7 +101,6 @@ export default function AdminFeedbackPage() {
       revalidateOnFocus: true,
       dedupingInterval: 2000,
       keepPreviousData: true,
-      fallbackData: cachedFeedback,
       onSuccess: (resData) => {
         if (resData && typeof window !== "undefined") {
           try {
@@ -112,6 +110,9 @@ export default function AdminFeedbackPage() {
       },
     }
   );
+
+  const data = rawData || cachedFeedback;
+  const isLoading = swrLoading && !data;
 
   const metrics = data?.metrics;
   const feedbacks = data?.feedbacks || [];
@@ -362,7 +363,7 @@ export default function AdminFeedbackPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {feedbacks.map((item) => (
+              {feedbacks.map((item: FeedbackItem) => (
                 <Card key={item.id} className="shadow-xs border-border overflow-hidden transition-all hover:shadow-sm">
                   <CardContent className="p-5 space-y-4">
                     {/* Top Row: User details & Stars */}

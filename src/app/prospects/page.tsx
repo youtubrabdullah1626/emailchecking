@@ -162,17 +162,16 @@ function ProspectsPageContent() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const [cachedProspects, setCachedProspects] = useState<any>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem("silaer_cached_prospects");
-        if (raw) return JSON.parse(raw);
-      } catch {}
-    }
-    return null;
-  });
+  const [cachedProspects, setCachedProspects] = useState<any>(null);
 
-  const { data, error, isLoading } = useSWR<{
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("silaer_cached_prospects");
+      if (raw) setCachedProspects(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const { data: rawData, error, isLoading: swrLoading } = useSWR<{
     data: ProspectDetail[];
     pagination?: { total: number };
   }>("/api/prospects?limit=500", fetcher, {
@@ -181,7 +180,6 @@ function ProspectsPageContent() {
     refreshInterval: 6000,
     dedupingInterval: 2000,
     keepPreviousData: true,
-    fallbackData: cachedProspects,
     onSuccess: (resData) => {
       if (resData && typeof window !== "undefined") {
         try {
@@ -190,6 +188,9 @@ function ProspectsPageContent() {
       }
     },
   });
+
+  const data = rawData || cachedProspects;
+  const isLoading = swrLoading && !data;
 
   const prospects = useMemo(() => {
     const list = [...(data?.data || [])];
@@ -553,7 +554,7 @@ function ProspectsPageContent() {
 
                   let sequenceBadge = null;
                   if (prospect.sequence) {
-                    const allStepsSent = Boolean(prospect.sequence.steps && prospect.sequence.steps.length > 0 && prospect.sequence.steps.every((s) => s.status === "SENT"));
+                    const allStepsSent = Boolean(prospect.sequence.steps && prospect.sequence.steps.length > 0 && prospect.sequence.steps.every((s: any) => s.status === "SENT"));
                     if (prospect.status === "REPLIED" || prospect.sequence.status === "STOPPED") {
                       sequenceBadge = (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary text-muted-foreground font-semibold text-[10px] border border-border">
@@ -608,7 +609,7 @@ function ProspectsPageContent() {
                           >
                             {prospect.name
                               .split(" ")
-                              .map((n) => n[0])
+                              .map((n: string) => n[0])
                               .join("")
                               .substring(0, 2)
                               .toUpperCase() || "P"}

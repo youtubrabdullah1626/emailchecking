@@ -19,20 +19,21 @@ export async function GET() {
       },
       orderBy: { scheduledAt: 'desc' },
       take: 10,
-    });
+    }).catch(() => []);
 
-    const notifications = activeAnnouncements.map(announcement => ({
+    const notifications = (activeAnnouncements || []).map(announcement => ({
       id: announcement.id,
-      type: announcement.type.toLowerCase(), // e.g., 'feature', 'warning', 'info'
-      title: announcement.title,
-      message: announcement.message,
-      timestamp: announcement.scheduledAt.toISOString(),
+      type: (announcement.type || "INFO").toLowerCase(), // e.g., 'feature', 'warning', 'info'
+      title: announcement.title || "Announcement",
+      message: announcement.message || "",
+      timestamp: announcement.scheduledAt ? announcement.scheduledAt.toISOString() : new Date().toISOString(),
       isRead: false,
       link: announcement.link || undefined
     }));
 
     return NextResponse.json({ notifications });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch announcements" }, { status: 500 });
+    console.error("[Notifications Important GET]", error);
+    return NextResponse.json({ notifications: [] });
   }
 }

@@ -115,17 +115,16 @@ export default function RepliesPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const [cachedReplies, setCachedReplies] = useState<any>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem("silaer_cached_replies");
-        if (raw) return JSON.parse(raw);
-      } catch {}
-    }
-    return null;
-  });
+  const [cachedReplies, setCachedReplies] = useState<any>(null);
 
-  const { data, error: swrError, isLoading: loading, mutate } = useSWR(
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("silaer_cached_replies");
+      if (raw) setCachedReplies(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const { data: rawData, error: swrError, isLoading: swrLoading, mutate } = useSWR(
     "/api/replies",
     async (url: string) => {
       const res = await fetch(url);
@@ -141,7 +140,6 @@ export default function RepliesPage() {
       revalidateOnReconnect: true,
       dedupingInterval: 2000,
       keepPreviousData: true,
-      fallbackData: cachedReplies,
       onSuccess: (resData) => {
         if (resData && typeof window !== "undefined") {
           try {
@@ -151,6 +149,9 @@ export default function RepliesPage() {
       },
     }
   );
+
+  const data = rawData || cachedReplies;
+  const loading = swrLoading && !data;
 
   const replies: ReplyItem[] = useMemo(() => {
     return (data?.replies ?? []) as ReplyItem[];
