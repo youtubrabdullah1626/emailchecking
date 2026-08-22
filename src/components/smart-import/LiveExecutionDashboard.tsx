@@ -24,6 +24,7 @@ import { DailyResetCountdown } from "./DailyResetCountdown";
 import { WhyNotSentModal } from "./WhyNotSentModal";
 import { resolveStepDiagnostic, StepDiagnosticContext } from "@/lib/capacity/state";
 import useSWR from "swr";
+import { apiClient } from "@/lib/api-client";
 
 type LiveItem = ExecutionQueueItem & {
   liveStatus: "SCHEDULED" | "PROCESSING" | "SENT" | "OPENED" | "REPLIED" | "BOUNCED" | "CANCELLED";
@@ -58,11 +59,7 @@ export function LiveExecutionDashboard() {
   // Fetch real-time fleet capacity telemetry (SILAER 10X)
   const { data: statsData } = useSWR(
     "/api/dashboard/stats",
-    async (url: string) => {
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      return res.json();
-    },
+    (url: string) => apiClient<any>(url),
     {
       refreshInterval: 4000,
       revalidateOnFocus: true,
@@ -179,12 +176,10 @@ export function LiveExecutionDashboard() {
     const campaignId = activeCampaignId || "latest";
 
     try {
-      const res = await fetch(`/api/campaigns/${campaignId}/live-status`);
-      if (!res.ok) { setDbFetchError(true); return; }
-      const data = await res.json();
+      const data = await apiClient<any>(`/api/campaigns/${campaignId}/live-status`);
       setDbFetchError(false);
 
-      if (!data.items || data.items.length === 0) return;
+      if (!data?.items || data.items.length === 0) return;
 
       const prevReplied = new Set<string>();
       liveItems.forEach(i => { if (i.liveStatus === "REPLIED") prevReplied.add(i.recipientEmail.toLowerCase()); });
