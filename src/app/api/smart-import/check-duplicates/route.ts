@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ duplicates: [], hasDuplicates: false });
     }
 
-    // 4. Smart duplicate detection
+    // 5. Smart duplicate detection with newest-first ordering
     const duplicates: { email: string; subject: string; lastSentAt: string | null }[] = [];
     const duplicateEmailsFound = new Set<string>();
 
@@ -139,10 +139,19 @@ export async function POST(req: NextRequest) {
       const pastList = historyByEmail.get(email);
       if (!pastList || pastList.length === 0) continue;
 
+      // Always sort pastList newest first (DESC) so most recent send takes priority
+      pastList.sort((a, b) => {
+        const timeA = a.sentAt ? new Date(a.sentAt).getTime() : 0;
+        const timeB = b.sentAt ? new Date(b.sentAt).getTime() : 0;
+        return timeB - timeA;
+      });
+
       let bestSubject = pastList[0]?.subject || "Outreach Campaign";
       let bestDate = pastList[0]?.sentAt || null;
 
+      let foundExactMatch = false;
       for (const step of (seq.steps || [])) {
+        if (foundExactMatch) break;
         const proposedSubjectNorm = normalizeString(step.subject || "");
         for (const past of pastList) {
           const pastSubjectNorm = normalizeString(past.subject || "");
@@ -152,6 +161,7 @@ export async function POST(req: NextRequest) {
           ) {
             bestSubject = past.subject;
             bestDate = past.sentAt;
+            foundExactMatch = true;
             break;
           }
         }
