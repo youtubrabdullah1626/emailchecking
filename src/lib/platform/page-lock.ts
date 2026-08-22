@@ -56,10 +56,13 @@ export const LOCKABLE_MODULES: LockableModule[] = [
 
 const SUPREME_OWNER_EMAIL = "youtubrabdullah1626@gmail.com";
 
+let isPageLockFlagsEnsured = false;
+
 /**
  * Ensures all page lock flags and custom text configs exist in the database with proper defaults.
  */
 export async function ensurePageLockFlags(): Promise<void> {
+  if (isPageLockFlagsEnsured) return;
   try {
     for (const mod of LOCKABLE_MODULES) {
       await prisma.feature_flags.upsert({
@@ -129,6 +132,7 @@ export async function ensurePageLockFlags(): Promise<void> {
         category: "SECURITY",
       },
     });
+    isPageLockFlagsEnsured = true;
   } catch (err) {
     console.error("[PageLock] Failed to ensure page lock flags:", err);
   }

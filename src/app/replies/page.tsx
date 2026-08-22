@@ -115,6 +115,16 @@ export default function RepliesPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const [cachedReplies, setCachedReplies] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("silaer_cached_replies");
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return null;
+  });
+
   const { data, error: swrError, isLoading: loading, mutate } = useSWR(
     "/api/replies",
     async (url: string) => {
@@ -131,6 +141,14 @@ export default function RepliesPage() {
       revalidateOnReconnect: true,
       dedupingInterval: 2000,
       keepPreviousData: true,
+      fallbackData: cachedReplies,
+      onSuccess: (resData) => {
+        if (resData && typeof window !== "undefined") {
+          try {
+            localStorage.setItem("silaer_cached_replies", JSON.stringify(resData));
+          } catch {}
+        }
+      },
     }
   );
 

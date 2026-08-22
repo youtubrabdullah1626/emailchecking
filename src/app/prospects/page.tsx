@@ -162,6 +162,16 @@ function ProspectsPageContent() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const [cachedProspects, setCachedProspects] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("silaer_cached_prospects");
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return null;
+  });
+
   const { data, error, isLoading } = useSWR<{
     data: ProspectDetail[];
     pagination?: { total: number };
@@ -171,6 +181,14 @@ function ProspectsPageContent() {
     refreshInterval: 6000,
     dedupingInterval: 2000,
     keepPreviousData: true,
+    fallbackData: cachedProspects,
+    onSuccess: (resData) => {
+      if (resData && typeof window !== "undefined") {
+        try {
+          localStorage.setItem("silaer_cached_prospects", JSON.stringify(resData));
+        } catch {}
+      }
+    },
   });
 
   const prospects = useMemo(() => {

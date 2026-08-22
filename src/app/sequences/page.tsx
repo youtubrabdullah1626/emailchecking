@@ -163,6 +163,16 @@ export default function SequencesPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const [cachedSequences, setCachedSequences] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("silaer_cached_sequences");
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return null;
+  });
+
   const { data, error: swrError, isLoading: loading, isValidating: isRefreshing, mutate } = useSWR(
     "/api/sequences",
     async (url: string) => {
@@ -179,6 +189,14 @@ export default function SequencesPage() {
       revalidateOnReconnect: true,
       dedupingInterval: 2000,
       keepPreviousData: true,
+      fallbackData: cachedSequences,
+      onSuccess: (resData) => {
+        if (resData && typeof window !== "undefined") {
+          try {
+            localStorage.setItem("silaer_cached_sequences", JSON.stringify(resData));
+          } catch {}
+        }
+      },
     }
   );
 

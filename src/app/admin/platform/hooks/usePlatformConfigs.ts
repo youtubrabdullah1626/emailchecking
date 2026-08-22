@@ -18,8 +18,16 @@ const fetcher = (url: string) =>
 
 export function usePlatformConfigs(environment = "production") {
   const searchParams = useSearchParams();
-  const qs = searchParams ? searchParams.toString() : "";
-  const key = `${CONFIGS_KEY}?environment=${environment}${qs ? `&${qs}` : ""}`;
+  const search = searchParams?.get("search") || "";
+  const category = searchParams?.get("category") || "";
+  const risk_level = searchParams?.get("risk_level") || "";
+
+  const queryParts = [`environment=${environment}`];
+  if (search) queryParts.push(`search=${encodeURIComponent(search)}`);
+  if (category) queryParts.push(`category=${encodeURIComponent(category)}`);
+  if (risk_level) queryParts.push(`risk_level=${encodeURIComponent(risk_level)}`);
+
+  const key = `${CONFIGS_KEY}?${queryParts.join("&")}`;
 
   const { data, error, isLoading, mutate: revalidate } = useSWR<PaginatedResponse<ApiPlatformConfig>>(
     key,
@@ -28,6 +36,7 @@ export function usePlatformConfigs(environment = "production") {
       revalidateOnFocus: true,
       revalidateOnReconnect: true,
       dedupingInterval: 5000,
+      keepPreviousData: true,
       errorRetryCount: 3,
       errorRetryInterval: 2000,
     }

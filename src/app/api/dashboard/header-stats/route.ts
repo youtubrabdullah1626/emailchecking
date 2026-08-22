@@ -1,8 +1,9 @@
-export const dynamic = "force-dynamic";
-
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth/session";
+import { telemetryCache } from "@/lib/cache/telemetry-cache";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
@@ -18,6 +19,12 @@ export async function GET() {
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Fast-path in-memory cache hit (0.1ms)
+    const cachedData = telemetryCache.getHeaderStats(userId);
+    if (cachedData) {
+      return NextResponse.json(cachedData);
     }
 
     // Query all connected email accounts for this user, with workspace fallback
@@ -80,14 +87,18 @@ export async function GET() {
       }).catch(() => 0)
     ]);
 
-    return NextResponse.json({
+    const payload = {
       connectedGmail,
       inboxCount,
       accounts: connectedAccounts.map(a => a.email),
       connectionStatus: inboxCount > 0 ? "CONNECTED" : "DISCONNECTED",
       emailsSentToday: sentToday,
       repliesToday: repliesToday,
-    });
+    };
+
+    telemetryCache.setHeaderStats(userId, payload);
+
+    return NextResponse.json(payload);
 
   } catch (error: any) {
     console.error("[header-stats] Error:", error);

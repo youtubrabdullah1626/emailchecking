@@ -50,6 +50,12 @@ export async function PATCH(req: NextRequest) {
 
     const updated = await platformConfigService.updateConfig(key, value, actor, reason, environment);
 
+    // Invalidate server-side telemetry caches instantly
+    try {
+      const { telemetryCache } = await import("@/lib/cache/telemetry-cache");
+      telemetryCache.clearAll();
+    } catch {}
+
     if (key === "MAX_DAILY_EMAILS") {
       const { default: prisma } = await import("@/lib/prisma");
       const numVal = parseInt(String(value), 10);

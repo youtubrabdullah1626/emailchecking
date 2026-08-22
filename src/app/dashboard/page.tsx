@@ -102,16 +102,42 @@ export default function DashboardPage() {
     toast.success("Recent replies cleared from dashboard view");
   };
 
+  const [cachedDashboard, setCachedDashboard] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("silaer_cached_dashboard_stats");
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return null;
+  });
+
   const { data: statsData, isLoading: statsLoading } = useSWR(
     "/api/dashboard/stats", 
     (url: string) => apiClient<any>(url), 
-    { refreshInterval: 15000 }
+    {
+      refreshInterval: 8000,
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
+      keepPreviousData: true,
+      fallbackData: cachedDashboard,
+      onSuccess: (data) => {
+        if (data && typeof window !== "undefined") {
+          try {
+            localStorage.setItem("silaer_cached_dashboard_stats", JSON.stringify(data));
+          } catch {}
+        }
+      }
+    }
   );
 
   const { data: repliesData, isLoading: repliesLoading } = useSWR(
     "/api/replies", 
     (url: string) => apiClient<any>(url).catch(() => ({ replies: [] })), 
-    { refreshInterval: 15000 }
+    {
+      refreshInterval: 8000,
+      keepPreviousData: true,
+    }
   );
 
   const stats = useMemo(() => {

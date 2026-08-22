@@ -24,6 +24,7 @@ import { getTenantPrisma } from "@/lib/db/tenant-prisma";
 import { getSession } from "@/lib/auth/session";
 import { getSchedulerHealth } from "@/lib/scheduler/health";
 import { getStartOfDayInTimezone, getStartOfHour } from "@/lib/date-utils";
+import { telemetryCache } from "@/lib/cache/telemetry-cache";
 
 export async function GET(req: NextRequest) {
   try {
@@ -40,6 +41,13 @@ export async function GET(req: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Fast-path in-memory cache hit (0.1ms)
+    const cachedData = telemetryCache.getDashboardStats(userId);
+    if (cachedData) {
+      return NextResponse.json(cachedData);
+    }
+
     const tenantPrisma = getTenantPrisma(userId);
 
     // Fetch user's configured timezone and email
@@ -516,8 +524,7 @@ export async function GET(req: NextRequest) {
       select: { key: true },
     }).catch(() => []);
     const lockedModules = lockFlags.map((f) => f.key);
-
-    return NextResponse.json({
+    const payload = {
       activeSequences,
       emailsSentToday,
       opensToday: opensTodayCount ?? 0,
@@ -559,9 +566,12 @@ export async function GET(req: NextRequest) {
       sequenceLimit: sequenceLimitConfig?.value ? parseInt(String(sequenceLimitConfig.value), 10) : 5,
       emailsSentThisHour: emailsSentThisHour ?? 0,
       bannerTheme: bannerThemeConfig?.value ? String(bannerThemeConfig.value) : "DEFAULT",
-      userTimezone,
       lockedModules,
-    });
+    };
+
+    telemetryCache.setDashboardStats(userId, payload);
+
+    return NextResponse.json(payload);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to load dashboard metrics";
     return NextResponse.json(

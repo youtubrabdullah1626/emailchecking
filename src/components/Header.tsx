@@ -37,9 +37,44 @@ export function Header({ onMenuClick }: HeaderProps) {
   const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
-  const { data: accountStats } = useSWR("/api/dashboard/header-stats", (url: string) => apiClient<any>(url), { refreshInterval: 3000, revalidateOnFocus: true });
-  const { data: globalStats } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url), { refreshInterval: 5000, revalidateOnFocus: true });
-  const { data: notifData } = useSWR("/api/notifications/important", (url: string) => apiClient<any>(url), { refreshInterval: 10000 });
+  const [cachedHeader, setCachedHeader] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("silaer_cached_header_stats");
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return null;
+  });
+
+  const { data: accountStats } = useSWR(
+    "/api/dashboard/header-stats",
+    (url: string) => apiClient<any>(url),
+    {
+      refreshInterval: 4000,
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
+      fallbackData: cachedHeader,
+      onSuccess: (data) => {
+        if (data && typeof window !== "undefined") {
+          try {
+            localStorage.setItem("silaer_cached_header_stats", JSON.stringify(data));
+          } catch {}
+        }
+      }
+    }
+  );
+
+  const { data: globalStats } = useSWR(
+    "/api/dashboard/stats",
+    (url: string) => apiClient<any>(url),
+    {
+      refreshInterval: 6000,
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
+    }
+  );
+  const { data: notifData } = useSWR("/api/notifications/important", (url: string) => apiClient<any>(url), { refreshInterval: 15000 });
   
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
