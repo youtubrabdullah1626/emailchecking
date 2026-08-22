@@ -63,13 +63,31 @@ export function DailyResetCountdown({
   if (!isDailyCapReached && !isHourlyPacingActive) {
     const headroom = Math.max(0, dailyLimit - sentToday);
     return (
-      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-semibold shadow-2xs">
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-        </span>
-        <span>Daily Headroom: <strong>{headroom}</strong> / {dailyLimit} sends remaining</span>
-      </div>
+      <TooltipProvider delayDuration={150}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              onClick={onOpenScaleModal}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-semibold shadow-2xs cursor-pointer hover:bg-emerald-500/15 transition-all"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Zap className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 fill-emerald-500/20" />
+                <span>⚡ Ready to Dispatch: <strong>{headroom} Available</strong> ({sentToday} / {dailyLimit} Sent Today)</span>
+              </span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs text-xs space-y-1 p-3">
+            <p className="font-bold text-emerald-600 dark:text-emerald-400">⚡ Dispatch Pipeline Active</p>
+            <p className="text-muted-foreground leading-relaxed">
+              <strong>{sentToday}</strong> of <strong>{dailyLimit}</strong> daily emails sent today. <strong>{headroom}</strong> dispatch slots are ready for immediate sending. Click to inspect dispatch forensics.
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     );
   }
 
@@ -86,7 +104,7 @@ export function DailyResetCountdown({
             >
               <ShieldCheck className="h-4 w-4 text-amber-600 dark:text-amber-400 animate-pulse" />
               <span>
-                Daily Protection Active ({sentToday}/{dailyLimit}) &bull; Next Window:{" "}
+                ⏸️ Queued: Daily Cap Reached ({sentToday}/{dailyLimit}) &bull; Reset:{" "}
                 <span className="font-mono font-bold tracking-tight">
                   {formatDigits(timeLeft.hours)}h : {formatDigits(timeLeft.minutes)}m : {formatDigits(timeLeft.seconds)}s
                 </span>
@@ -98,9 +116,9 @@ export function DailyResetCountdown({
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-xs text-xs space-y-1 p-3">
             <p className="font-bold text-amber-600 dark:text-amber-400">Account Safety Sentinel Active</p>
-            <p className="text-muted-foreground">
-              To keep your Gmail inbox 100% healthy, sending paused after reaching your daily cap of {dailyLimit} emails.
-              Dispatches automatically resume at midnight.
+            <p className="text-muted-foreground leading-relaxed">
+              To keep your Gmail inbox 100% healthy, sending is paused after safely reaching your daily cap of {sentToday}/{dailyLimit} emails today.
+              Dispatches automatically resume at midnight ({userTimezone.split("/").pop() || "UTC"}). Click for diagnostic breakdown.
             </p>
             <div className="pt-1 text-primary font-semibold flex items-center gap-1">
               Want to send more today? Connect another inbox &rarr;
@@ -113,15 +131,30 @@ export function DailyResetCountdown({
 
   if (isHourlyPacingActive && timeLeft) {
     return (
-      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 text-xs font-semibold shadow-2xs">
-        <Clock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-        <span>
-          Hourly Pacing ({sentThisHour}/{hourlyLimit}) &bull; Next Batch in:{" "}
-          <span className="font-mono font-bold">
-            {formatDigits(timeLeft.minutes)}m : {formatDigits(timeLeft.seconds)}s
-          </span>
-        </span>
-      </div>
+      <TooltipProvider delayDuration={150}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              onClick={onOpenScaleModal}
+              className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 text-xs font-semibold shadow-2xs cursor-pointer hover:bg-blue-500/20 transition-all"
+            >
+              <Clock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 animate-pulse" />
+              <span>
+                ⏳ Hourly Pacing ({sentThisHour}/{hourlyLimit}/hr) &bull; Top of Hour:{" "}
+                <span className="font-mono font-bold tracking-tight">
+                  {formatDigits(timeLeft.minutes)}m : {formatDigits(timeLeft.seconds)}s
+                </span>
+              </span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs text-xs space-y-1 p-3">
+            <p className="font-bold text-blue-600 dark:text-blue-400">Hourly Velocity Governor Active</p>
+            <p className="text-muted-foreground leading-relaxed">
+              Dispatched <strong>{sentThisHour}</strong> of <strong>{hourlyLimit}</strong> emails allowed this hour. Pacing resets at the top of the hour to safeguard Gmail inbox reputation. Click for details.
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     );
   }
 
