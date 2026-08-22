@@ -93,11 +93,11 @@ export async function GET(req: NextRequest) {
       emailsSentThisHour,
     ] = await Promise.all([
       tenantPrisma.sequence.count({ where: { status: "ACTIVE" } }),
-      prisma.emailEvent.count({
+      prisma.sequenceStep.count({
         where: {
-          event_type: "SENT",
-          occurred_at: { gte: startOfDay },
-          step: { sequence: { user_id: userId } }
+          status: "SENT",
+          sent_at: { gte: startOfDay },
+          sequence: { user_id: userId }
         },
       }),
       prisma.adhocEmail.count({
@@ -284,10 +284,10 @@ export async function GET(req: NextRequest) {
         }
       }),
       prisma.prospect.count({ where: { user_id: userId } }),
-      prisma.emailEvent.count({
+      prisma.sequenceStep.count({
         where: {
-          event_type: "SENT",
-          step: { sequence: { user_id: userId } }
+          status: "SENT",
+          sequence: { user_id: userId }
         }
       }),
       prisma.trackedEmail.count({
