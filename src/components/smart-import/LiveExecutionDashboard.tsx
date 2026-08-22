@@ -27,9 +27,25 @@ type LiveItem = ExecutionQueueItem & {
 
 export function LiveExecutionDashboard() {
   const { getExecutionQueue, updateQueueItemState, closeSession, deleteQueueItem, rescheduleQueueItem, bulkProgress } = useImport() as any;
-  const [liveItems, setLiveItems] = useState<LiveItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const storage = useMemo(() => new StorageEngine(), []);
+
+  // Instant 0ms synchronous hydration from in-memory queue
+  const initialQueue = useMemo(() => {
+    try {
+      const q = typeof getExecutionQueue === "function" ? getExecutionQueue() : [];
+      if (q && q.length > 0) {
+        return q.map((item: any) => ({
+          ...item,
+          liveStatus: item.liveStatus || "SCHEDULED",
+          lastEventTime: item.lastEventTime || "—",
+        }));
+      }
+    } catch (_) {}
+    return [];
+  }, [getExecutionQueue]);
+
+  const [liveItems, setLiveItems] = useState<LiveItem[]>(initialQueue);
+  const [isLoading, setIsLoading] = useState(initialQueue.length === 0);
   const [campaignStatus, setCampaignStatus] = useState<"ACTIVE" | "PAUSED">("ACTIVE");
   const [currentSessionMeta, setCurrentSessionMeta] = useState<any>(null);
 
@@ -37,15 +53,32 @@ export function LiveExecutionDashboard() {
   const activeCampaignId: string = (bulkProgress as any)?.campaignId ?? currentSessionMeta?.campaignId ?? (typeof window !== "undefined" ? localStorage.getItem("silaer_active_campaign_id") : null) ?? "latest";
 
   useEffect(() => {
-    const activeId = storage.getActiveSessionId();
-    if (activeId) {
-      const all = storage.getAllSessions();
-      const found = all.find(s => s.sessionId === activeId);
-      if (found) {
-        setCurrentSessionMeta(found);
-        setCampaignStatus(found.status === "PAUSED" ? "PAUSED" : "ACTIVE");
+    const hydrateLocal = async () => {
+      const activeId = storage.getActiveSessionId();
+      if (activeId) {
+        const all = storage.getAllSessions();
+        const found = all.find(s => s.sessionId === activeId);
+        if (found) {
+          setCurrentSessionMeta(found);
+          setCampaignStatus(found.status === "PAUSED" ? "PAUSED" : "ACTIVE");
+        }
+
+        if (liveItems.length === 0) {
+          try {
+            const dataset = await storage.loadHeavyDataset(activeId);
+            if (dataset && dataset.executionQueue && dataset.executionQueue.length > 0) {
+              setLiveItems(dataset.executionQueue.map((item: any) => ({
+                ...item,
+                liveStatus: item.liveStatus || "SCHEDULED",
+                lastEventTime: item.lastEventTime || "—",
+              })));
+              setIsLoading(false);
+            }
+          } catch (_) {}
+        }
       }
-    }
+    };
+    hydrateLocal();
   }, [storage]);
 
   // Real stats based on actual data

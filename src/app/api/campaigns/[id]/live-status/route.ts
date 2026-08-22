@@ -34,19 +34,49 @@ export async function GET(
     const resolvedParams = await Promise.resolve(params);
     const targetId = resolvedParams?.id || "latest";
 
-    let campaign;
-    if (targetId === "latest" || targetId === "active") {
-      campaign = await prisma.campaign.findFirst({
-        where: { user_id: userId },
-        orderBy: { updated_at: "desc" },
-        select: { id: true, status: true, name: true },
-      });
-    } else {
-      campaign = await prisma.campaign.findFirst({
-        where: { id: targetId, user_id: userId },
-        select: { id: true, status: true, name: true },
-      });
-    }
+    const campaign = await prisma.campaign.findFirst({
+      where: (targetId === "latest" || targetId === "active")
+        ? { user_id: userId }
+        : { id: targetId, user_id: userId },
+      orderBy: { updated_at: "desc" },
+      select: {
+        id: true,
+        status: true,
+        name: true,
+        prospects: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            status: true,
+            sequences: {
+              orderBy: { created_at: "desc" },
+              take: 1,
+              select: {
+                id: true,
+                status: true,
+                steps: {
+                  select: {
+                    id: true,
+                    step_number: true,
+                    subject: true,
+                    status: true,
+                    scheduled_at_utc: true,
+                    scheduled_time_local: true,
+                    timezone: true,
+                    sent_at: true,
+                    retry_count: true,
+                    delay_reason: true,
+                    retry_at: true,
+                  },
+                  orderBy: { step_number: "asc" },
+                }
+              }
+            }
+          }
+        }
+      }
+    });
 
     if (!campaign) {
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
@@ -54,74 +84,28 @@ export async function GET(
 
     const campaignId = campaign.id;
 
-    // 1. Fetch all prospects assigned to this campaign
-    const prospects = await prisma.prospect.findMany({
-      where: { campaign_id: campaignId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        status: true,
-      },
-    });
-
-    const prospectIds = prospects.map((p) => p.id);
-
-    // 2. Fetch all sequences for these prospects (ordered newest first)
-    const allSequences = prospectIds.length > 0
-      ? await prisma.sequence.findMany({
-          where: { prospect_id: { in: prospectIds } },
-          orderBy: { created_at: "desc" },
-          include: {
-            prospect: {
-              select: {
-                id: true,
-                email: true,
-                name: true,
-                status: true,
-              },
-            },
-            steps: {
-              select: {
-                id: true,
-                step_number: true,
-                subject: true,
-                status: true,
-                scheduled_at_utc: true,
-                scheduled_time_local: true,
-                timezone: true,
-                sent_at: true,
-                retry_count: true,
-                delay_reason: true,
-                retry_at: true,
-              },
-              orderBy: [{ step_number: "asc" }],
-            },
-          },
-        })
-      : [];
-
-    // 3. Take the latest sequence per prospect
-    const seenProspects = new Set<string>();
-    const latestSequences = [];
-    for (const seq of allSequences) {
-      if (!seenProspects.has(seq.prospect_id)) {
-        seenProspects.add(seq.prospect_id);
-        latestSequences.push(seq);
+    // Flatten all steps from the latest sequences
+    const stepsWithSeq: any[] = [];
+    for (const prospect of campaign.prospects) {
+      const latestSeq = prospect.sequences[0];
+      if (latestSeq) {
+        for (const step of latestSeq.steps) {
+          stepsWithSeq.push({
+            ...step,
+            sequence: {
+              id: latestSeq.id,
+              status: latestSeq.status,
+              prospect: {
+                id: prospect.id,
+                email: prospect.email,
+                name: prospect.name,
+                status: prospect.status,
+              }
+            }
+          });
+        }
       }
     }
-
-    // Flatten all steps from the latest sequences
-    const stepsWithSeq = latestSequences.flatMap((seq) =>
-      seq.steps.map((step) => ({
-        ...step,
-        sequence: {
-          id: seq.id,
-          status: seq.status,
-          prospect: seq.prospect,
-        },
-      }))
-    );
 
     // Query real tracked emails for open counts
     const stepIds = stepsWithSeq.map((s) => s.id);
