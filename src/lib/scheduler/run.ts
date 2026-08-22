@@ -88,7 +88,9 @@ export async function runScheduler(
     ]);
 
     let dynamicUserDailyLimit = 0;
-    if (userInboxes && userInboxes.length > 0) {
+    if (maxDaily && maxDaily > 0) {
+      dynamicUserDailyLimit = maxDaily;
+    } else if (userInboxes && userInboxes.length > 0) {
       for (const acc of userInboxes) {
         const created = acc.created_at || now;
         const ageInDays = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
@@ -98,7 +100,7 @@ export async function runScheduler(
         else dynamicUserDailyLimit += Math.min(baseLimit, 25);
       }
     } else {
-      dynamicUserDailyLimit = maxDaily;
+      dynamicUserDailyLimit = 50;
     }
 
     const state: UserCapacityState = {

@@ -49,6 +49,17 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updated = await platformConfigService.updateConfig(key, value, actor, reason, environment);
+
+    if (key === "MAX_DAILY_EMAILS") {
+      const { default: prisma } = await import("@/lib/prisma");
+      const numVal = parseInt(String(value), 10);
+      if (!isNaN(numVal) && numVal > 0) {
+        await prisma.emailAccount.updateMany({
+          data: { daily_limit: numVal }
+        }).catch(() => {});
+      }
+    }
+
     return NextResponse.json({ data: updated });
   } catch (err: any) {
     console.error("[Platform Configs PATCH]", err);

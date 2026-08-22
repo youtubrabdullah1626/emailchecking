@@ -492,25 +492,35 @@ export async function GET(req: NextRequest) {
     const effectiveTotalSent = totalTrackedSent > 0 ? totalTrackedSent : (emailsSentToday > 0 ? emailsSentToday : 0);
     const openRate = effectiveTotalSent > 0 ? Math.round((totalOpens / effectiveTotalSent) * 100) : (totalOpens > 0 ? 100 : 0);
 
-    // Compute dynamic fleet daily limit
+    // Compute dynamic fleet daily limit, strictly respecting MAX_DAILY_EMAILS platform config
     const connectedAccounts = userEmailAccounts.filter(a => a.connection_status === "CONNECTED");
     let totalFleetDailyLimit = 0;
-    if (connectedAccounts.length > 0) {
-      for (const acc of connectedAccounts) {
-        const now = new Date();
-        const created = acc.created_at || now;
-        const ageInDays = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
-        const baseLimit = acc.daily_limit && acc.daily_limit <= 100 ? acc.daily_limit : 50;
-        if (acc.warmup_status === "COMPLETED" || ageInDays >= 7) {
-          totalFleetDailyLimit += baseLimit;
-        } else if (ageInDays <= 2) {
-          totalFleetDailyLimit += Math.min(baseLimit, 10);
-        } else {
-          totalFleetDailyLimit += Math.min(baseLimit, 25);
-        }
+
+    if (dailyLimitConfig?.value) {
+      const parsed = parseInt(String(dailyLimitConfig.value), 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        totalFleetDailyLimit = parsed;
       }
-    } else {
-      totalFleetDailyLimit = dailyLimitConfig?.value ? parseInt(String(dailyLimitConfig.value), 10) : 50;
+    }
+
+    if (totalFleetDailyLimit === 0) {
+      if (connectedAccounts.length > 0) {
+        for (const acc of connectedAccounts) {
+          const now = new Date();
+          const created = acc.created_at || now;
+          const ageInDays = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+          const baseLimit = acc.daily_limit && acc.daily_limit <= 100 ? acc.daily_limit : 50;
+          if (acc.warmup_status === "COMPLETED" || ageInDays >= 7) {
+            totalFleetDailyLimit += baseLimit;
+          } else if (ageInDays <= 2) {
+            totalFleetDailyLimit += Math.min(baseLimit, 10);
+          } else {
+            totalFleetDailyLimit += Math.min(baseLimit, 25);
+          }
+        }
+      } else {
+        totalFleetDailyLimit = 50;
+      }
     }
 
     // Query currently locked modules from feature flags
