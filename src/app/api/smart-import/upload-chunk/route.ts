@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSessionUser } from "@/lib/audit/rbac";
-import { localDateTimeToUtc } from "@/lib/date-utils";
+import { localDateTimeToUtc, isInLeadBusinessHours, nextBusinessSlotUtc } from "@/lib/date-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -206,6 +206,21 @@ export async function POST(request: NextRequest) {
           scheduledUtc = new Date(scheduleInfo.timestamp);
         } else {
           scheduledUtc = localDateTimeToUtc(dateStr, timeStr, tz);
+        }
+
+        // ── Business Hours Guard (Pillar 4) ─────────────────────────────────
+        // Never send cold emails on weekends or outside 8 AM–6 PM in the
+        // lead's local timezone. Doing so tanks open rates and flags domains.
+        // If the computed UTC time falls outside business hours, advance it
+        // to the next business-day 9:00 AM in the lead's timezone.
+        if (!isInLeadBusinessHours(scheduledUtc, tz)) {
+          const adjusted = nextBusinessSlotUtc(scheduledUtc, tz);
+          console.log(
+            `[upload-chunk] Step ${step.stepNumber} for ${seq.recipientEmail}: ` +
+            `rescheduled from ${scheduledUtc.toISOString()} → ${adjusted.toISOString()} ` +
+            `(outside business hours in ${tz})`
+          );
+          scheduledUtc = adjusted;
         }
 
         const isFirstStep = step.stepNumber === 1;
