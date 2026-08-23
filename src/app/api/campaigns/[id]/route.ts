@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth/session";
+import { featureFlagService } from "@/lib/platform/feature-flag.service";
 
 export const dynamic = "force-dynamic";
+
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await getSession();
@@ -52,9 +54,23 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const { action, campaignName } = body;
     const { pauseCampaign, activateCampaign } = await import("@/lib/campaign/lifecycle");
 
+    // ── Feature Flag Gate: Campaign Pause/Resume ──────────────────────────────
+    // If the platform admin has disabled pause/resume via Platform Config → Feature Flags,
+    // reject the action immediately. Cache-first isEnabled() = ~0ms overhead.
+    if (action === "PAUSE" || action === "RESUME") {
+      const pauseResumeEnabled = featureFlagService.isEnabled("campaign_pause_resume");
+      if (!pauseResumeEnabled) {
+        return NextResponse.json(
+          { ok: false, error: "Campaign pause/resume is currently disabled by platform configuration. Campaigns run to completion — delete the campaign to stop sending." },
+          { status: 403 }
+        );
+      }
+    }
+
     // ── Fast Campaign Resolver ────────────────────────────────────────────────
     // When the frontend sends an exact UUID (always true after approveImport sets
     // localStorage), this is a SINGLE indexed lookup — very fast.
+
     // Only falls back to slower queries when UUID is unavailable.
     let campaign: { id: string; status: string } | null = null;
     const id = params.id;

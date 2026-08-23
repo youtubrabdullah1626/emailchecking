@@ -155,6 +155,16 @@ export function LiveExecutionDashboard() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // ── Feature Flag: Campaign Pause/Resume ──────────────────────────────────
+  // Reads from Platform Config → Feature Flags. Defaults true while loading
+  // so the button never flickers away on page load.
+  const { data: featureFlags } = useSWR(
+    "/api/feature-flags?keys=campaign_pause_resume",
+    (url: string) => apiClient<Record<string, boolean>>(url),
+    { revalidateOnFocus: false, dedupingInterval: 60000 }
+  );
+  const pauseResumeEnabled = featureFlags?.["campaign_pause_resume"] ?? true;
+
   // Reschedule Dialog State
   const [rescheduleItem, setRescheduleItem] = useState<LiveItem | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
@@ -942,28 +952,31 @@ export function LiveExecutionDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleTogglePauseDashboard}
-            className={`gap-1.5 font-semibold text-xs rounded-xl shadow-xs border ${
-              campaignStatus === "PAUSED"
-                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-300 hover:bg-emerald-100"
-                : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-300 hover:bg-amber-100"
-            }`}
-          >
-            {campaignStatus === "PAUSED" ? (
-              <>
-                <Play className="h-3.5 w-3.5 fill-current" />
-                Resume Sending
-              </>
-            ) : (
-              <>
-                <Pause className="h-3.5 w-3.5" />
-                Pause Campaign
-              </>
-            )}
-          </Button>
+          {/* Pause/Resume — only shown when platform flag is ON */}
+          {pauseResumeEnabled && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTogglePauseDashboard}
+              className={`gap-1.5 font-semibold text-xs rounded-xl shadow-xs border ${
+                campaignStatus === "PAUSED"
+                  ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-300 hover:bg-emerald-100"
+                  : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-300 hover:bg-amber-100"
+              }`}
+            >
+              {campaignStatus === "PAUSED" ? (
+                <>
+                  <Play className="h-3.5 w-3.5 fill-current" />
+                  Resume Sending
+                </>
+              ) : (
+                <>
+                  <Pause className="h-3.5 w-3.5" />
+                  Pause Campaign
+                </>
+              )}
+            </Button>
+          )}
 
           <Button 
             variant="outline" 
@@ -1405,14 +1418,16 @@ export function LiveExecutionDashboard() {
         </SheetContent>
       </Sheet>
 
-      {/* Resume Confirmation Dialog for Overdue Emails */}
-      <ResumeConfirmationModal
-        isOpen={isResumeModalOpen}
-        onOpenChange={setIsResumeModalOpen}
-        overdueItems={overdueItemsForResume}
-        onConfirmResume={() => executeTogglePause("RESUME")}
-        isResuming={isResumingCampaign}
-      />
+      {/* Resume Confirmation Dialog — only mounted when pause/resume feature is ON */}
+      {pauseResumeEnabled && (
+        <ResumeConfirmationModal
+          isOpen={isResumeModalOpen}
+          onOpenChange={setIsResumeModalOpen}
+          overdueItems={overdueItemsForResume}
+          onConfirmResume={() => executeTogglePause("RESUME")}
+          isResuming={isResumingCampaign}
+        />
+      )}
 
       {/* 1-Click Forensic Diagnostic & Capacity Sentinel Modal (SILAER 10X) */}
       <WhyNotSentModal

@@ -97,7 +97,23 @@ async function seedPlatformConfig() {
       is_safe_runtime: true, requires_reason: false,
       rollout_strategy: "GLOBAL" as const, depends_on: [] as string[], environment: ENV,
     },
+    {
+      key: "campaign_pause_resume",
+      name: "Campaign Pause / Resume",
+      description: "When enabled, users can pause and resume active campaigns from the Live Execution Dashboard. When disabled, campaigns run straight through — the only way to stop a campaign is to delete it.",
+      category: "OUTREACH" as const,
+      enabled: true,
+      risk_level: "SAFE" as const,
+      is_safe_runtime: true,
+      requires_reason: false,
+      rollout_strategy: "GLOBAL" as const,
+      depends_on: [] as string[],
+      environment: ENV,
+    },
+
+
   ];
+
 
   for (const flag of featureFlags) {
     await prisma.feature_flags.upsert({
