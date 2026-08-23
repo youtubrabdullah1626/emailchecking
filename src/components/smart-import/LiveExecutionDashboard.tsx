@@ -32,7 +32,10 @@ type LiveItem = ExecutionQueueItem & {
   liveStatus: "SCHEDULED" | "PROCESSING" | "SENT" | "OPENED" | "REPLIED" | "BOUNCED" | "CANCELLED" | "PAUSED";
   lastEventTime: string;
   retryCount?: number;
+  scheduledAtUtc?: string | null;
+  realStepId?: string;
 };
+
 
 export function LiveExecutionDashboard() {
   const { getExecutionQueue, updateQueueItemState, closeSession, deleteQueueItem, rescheduleQueueItem, bulkProgress } = useImport() as any;
