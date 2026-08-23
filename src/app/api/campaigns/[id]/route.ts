@@ -257,6 +257,24 @@ export async function DELETE(
       }
 
       if (sequenceIds.length > 0) {
+        // Release reserved capacity if any steps were in PROCESSING
+        await tx.$executeRaw`
+          WITH proc_steps AS (
+            SELECT seq.assigned_sender_email, COUNT(*) as cnt
+            FROM sequence_steps s
+            JOIN sequences seq ON s.sequence_id = seq.id
+            JOIN prospects p ON seq.prospect_id = p.id
+            WHERE p.campaign_id = ${campaignId}
+              AND s.status = 'PROCESSING'
+              AND seq.assigned_sender_email IS NOT NULL
+            GROUP BY seq.assigned_sender_email
+          )
+          UPDATE email_accounts ea
+          SET reserved_count = GREATEST(0, ea.reserved_count - ps.cnt)
+          FROM proc_steps ps
+          WHERE ea.email = ps.assigned_sender_email
+        `.catch(() => {});
+
         await tx.sequenceStep.deleteMany({
           where: { sequence_id: { in: sequenceIds } }
         });
@@ -264,6 +282,7 @@ export async function DELETE(
           where: { id: { in: sequenceIds } }
         });
       }
+
 
       if (prospectIds.length > 0) {
         await tx.prospect.deleteMany({

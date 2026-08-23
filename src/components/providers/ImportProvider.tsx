@@ -526,21 +526,41 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     const totalChunks = Math.max(1, Math.ceil(totalRows / dynamicChunkSize));
 
     try {
-      // ── PHASE 1: Create the job + campaign in the DB ─────────────────────────
-      const jobRes = await fetch("/api/smart-import/create-job", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: uploadedFile?.name || "bulk-import.pdf",
-          totalRows,
-          campaignName: uploadedFile?.name?.replace(/\.[^/.]+$/, "") || "Smart Import Campaign",
-          chunksTotal: totalChunks,
-        })
-      });
+      // ── PHASE 1: Create the job + campaign in the DB (Resilient Retry) ───────
+      let jobRes: Response | null = null;
+      let lastErr: any = null;
 
-      if (!jobRes.ok) {
-        const e = await jobRes.json().catch(() => ({}));
-        throw new Error(e.error || "Failed to initialize import session.");
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          jobRes = await fetch("/api/smart-import/create-job", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileName: uploadedFile?.name || "bulk-import.pdf",
+              totalRows,
+              campaignName: uploadedFile?.name?.replace(/\.[^/.]+$/, "") || "Smart Import Campaign",
+              chunksTotal: totalChunks,
+            })
+          });
+          if (jobRes.ok) break;
+          // Retry on 502/503 or transient 401 during server restart
+          if (jobRes.status >= 500 || jobRes.status === 401) {
+            await new Promise(r => setTimeout(r, 600 * attempt));
+          } else {
+            break;
+          }
+        } catch (err) {
+          lastErr = err;
+          await new Promise(r => setTimeout(r, 600 * attempt));
+        }
+      }
+
+      if (!jobRes || !jobRes.ok) {
+        const e = jobRes ? await jobRes.json().catch(() => ({})) : {};
+        if (jobRes?.status === 401) {
+          throw new Error("Your session expired. Please refresh the page to continue.");
+        }
+        throw new Error(e.error || lastErr?.message || "Failed to initialize import session. Please try again.");
       }
 
       const { jobId, campaignId } = await jobRes.json();
@@ -560,21 +580,32 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         const chunkIds = new Set(chunkSequences.map((s: any) => s.recordId));
         const chunkQueue = executionQueue.filter((q: any) => chunkIds.has(q.recordId));
 
-        const chunkRes = await fetch("/api/smart-import/upload-chunk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            jobId,
-            chunkIndex: i,
-            totalChunks,
-            campaignId,
-            sequences: chunkSequences,
-            executionQueue: chunkQueue,
-          })
-        });
+        let chunkRes: Response | null = null;
+        for (let chunkAttempt = 1; chunkAttempt <= 2; chunkAttempt++) {
+          try {
+            chunkRes = await fetch("/api/smart-import/upload-chunk", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                jobId,
+                chunkIndex: i,
+                totalChunks,
+                campaignId,
+                sequences: chunkSequences,
+                executionQueue: chunkQueue,
+              })
+            });
+            if (chunkRes.ok) break;
+            if (chunkRes.status >= 500) {
+              await new Promise(r => setTimeout(r, 500 * chunkAttempt));
+            }
+          } catch {
+            await new Promise(r => setTimeout(r, 500 * chunkAttempt));
+          }
+        }
 
-        if (!chunkRes.ok) {
-          const e = await chunkRes.json().catch(() => ({}));
+        if (!chunkRes || !chunkRes.ok) {
+          const e = chunkRes ? await chunkRes.json().catch(() => ({})) : {};
           console.error(`[import] Chunk ${i} failed:`, e.error);
           progress.failureCount += chunkSequences.length;
         } else {
@@ -582,6 +613,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
           progress.successCount += result.saved || 0;
           progress.failureCount += result.failed || 0;
         }
+
 
         progress.chunksLoaded += 1;
         setBulkProgress({ ...progress });
