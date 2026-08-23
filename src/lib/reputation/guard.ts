@@ -150,13 +150,13 @@ export async function canSendEmail(email: string): Promise<ReputationGuardResult
     ? parseInt(String(hourlyConfig.value), 10)
     : account.hourly_limit || 15;
 
-  const effectiveSentToday = Math.max(sentToday, account.sent_today || 0);
-  // For hourly: use ONLY the live event count (not the cached column).
-  // The cached column never resets when a new hour starts, causing permanent blocking.
+  // Use live database EmailEvent counts for truth (not stale cached columns from previous days)
+  const effectiveSentToday = sentToday;
   const effectiveSentThisHour = sentThisHour;
-  const effectiveSentLast24h = Math.max(sentLast24h, account.sent_today || 0);
+  const effectiveSentLast24h = sentLast24h;
 
   // Background sync counter cache for dashboard cards & admin visibility
+
   if (prisma.emailAccount?.update) {
     try {
       const updatePromise = prisma.emailAccount.update({
