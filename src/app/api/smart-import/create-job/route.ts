@@ -12,13 +12,11 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     // ── Auth ──────────────────────────────────────────────────────────────────
-    let user = await getSessionUser();
-    let userId = user?.id;
+    const user = await getSessionUser();
+    const userId = user?.id;
 
-    if (!userId || userId === "mock_admin_123") {
-      const firstUser = await prisma.users.findFirst();
-      if (!firstUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      userId = firstUser.id;
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();

@@ -169,14 +169,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   const session = await getSession();
-  let userId = session?.user?.id;
-  if (!userId) {
-    const connectedAccount = await prisma.emailAccount.findFirst({
-      where: { connection_status: "CONNECTED", refresh_token: { not: null } },
-      select: { user_id: true }
-    });
-    userId = connectedAccount?.user_id || (await prisma.users.findFirst({ select: { id: true } }))?.id;
-  }
+  const userId = session?.user?.id;
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

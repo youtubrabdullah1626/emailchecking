@@ -91,6 +91,13 @@ export async function sendStepInternal(stepId: string, cachedAuth?: any): Promis
     return { stepId, outcome: "ABORTED", detail: "Step not found." };
   }
 
+  // ── 2.0 Active Heartbeat Update ───────────────────────────────────────────
+  // Refreshes claimed_at so long sequential batches never get falsely flagged by the stale monitor
+  await prisma.sequenceStep.updateMany({
+    where: { id: stepId, status: "PROCESSING" },
+    data: { claimed_at: new Date() },
+  }).catch(() => {});
+
   // ── 2.1 Strict Pause & Stop Safety Guards ─────────────────────────────────
   if (step.sequence.status === "PAUSED" || step.sequence.status === "STOPPED") {
     gmailLog("gmail_send_aborted_sequence_paused", {

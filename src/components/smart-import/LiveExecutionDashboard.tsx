@@ -104,7 +104,7 @@ export function LiveExecutionDashboard() {
   const [liveUserTimezone, setLiveUserTimezone] = useState<string>("UTC");
 
   const effectiveStats = statsData || cachedStats;
-  const sentToday = Math.max(effectiveStats?.emailsSentToday ?? 0, 4);
+  const sentToday = effectiveStats?.emailsSentToday ?? 0;
   const dailyLimit = effectiveStats?.dailyLimit || 6;
   const sentThisHour = effectiveStats?.emailsSentThisHour ?? 0;
   const hourlyLimit = effectiveStats?.hourlyLimit ?? 60;
@@ -205,12 +205,13 @@ export function LiveExecutionDashboard() {
 
       if (!data?.items || data.items.length === 0) return;
 
+      const currentLiveItems = liveItemsRef.current;
       const prevReplied = new Set<string>();
-      liveItems.forEach(i => { if (i.liveStatus === "REPLIED") prevReplied.add(i.recipientEmail.toLowerCase()); });
+      currentLiveItems.forEach(i => { if (i.liveStatus === "REPLIED") prevReplied.add(i.recipientEmail.toLowerCase()); });
 
       // Check for toast notifications on status transitions
-      if (liveItems.length > 0) {
-        const prevMap = new Map(liveItems.map(i => [(i as any).realStepId || i.queueId, i]));
+      if (currentLiveItems.length > 0) {
+        const prevMap = new Map(currentLiveItems.map(i => [(i as any).realStepId || i.queueId, i]));
         for (const dbItem of data.items) {
           const prev = prevMap.get(dbItem.stepId);
           if (prev) {
@@ -286,7 +287,7 @@ export function LiveExecutionDashboard() {
       isFetchingLiveStatusRef.current = false;
       setIsLoading(false);
     }
-  }, [activeCampaignId, liveItems]);
+  }, [activeCampaignId]);
 
   // Initialize Queue: DB is the authoritative single source of truth
   const initialized = React.useRef(false);

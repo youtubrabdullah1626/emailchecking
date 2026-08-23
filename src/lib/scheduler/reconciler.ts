@@ -15,8 +15,9 @@ export async function runStaleMonitor(nowUtc: Date): Promise<void> {
     },
   }).catch(() => {});
 
-  // Fast path 2: Any step claimed > 60 seconds ago without finishing is considered stale
-  const staleBeforeUtc = new Date(nowUtc.getTime() - 60 * 1000); // 60 seconds
+  // Fast path 2: Any step claimed > 5 minutes ago without finishing is considered stale.
+  // This 5-minute threshold safely accommodates human-like jitter delays (15–45s) across sequential batches.
+  const staleBeforeUtc = new Date(nowUtc.getTime() - 5 * 60 * 1000); // 5 minutes
   
   const staleSteps = await prisma.sequenceStep.findMany({
     where: {

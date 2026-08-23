@@ -14,12 +14,10 @@ export async function GET(
   { params }: { params: { jobId: string } }
 ) {
   try {
-    let user = await getSessionUser();
-    let userId = user?.id;
-    if (!userId || userId === "mock_admin_123") {
-      const firstUser = await prisma.users.findFirst();
-      if (!firstUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      userId = firstUser.id;
+    const user = await getSessionUser();
+    const userId = user?.id;
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const job = await prisma.importJob.findFirst({
@@ -67,12 +65,10 @@ export async function PATCH(
   { params }: { params: { jobId: string } }
 ) {
   try {
-    let user = await getSessionUser();
-    let userId = user?.id;
-    if (!userId || userId === "mock_admin_123") {
-      const firstUser = await prisma.users.findFirst();
-      if (!firstUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      userId = firstUser.id;
+    const user = await getSessionUser();
+    const userId = user?.id;
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const job = await prisma.importJob.findFirst({
