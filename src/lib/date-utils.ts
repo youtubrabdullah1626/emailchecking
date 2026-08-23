@@ -158,6 +158,32 @@ export function getTimezoneShortLabel(timezone: string, at: Date = new Date()): 
   }
 }
 
+/**
+ * Returns a human-friendly city or region name for a timezone identifier.
+ * Example: 'Europe/London' -> 'London', 'America/New_York' -> 'New York', 'Asia/Karachi' -> 'Pakistan'
+ */
+export function getTimezoneFriendlyCity(timezone: string): string {
+  const cityMap: Record<string, string> = {
+    "America/New_York": "New York",
+    "America/Chicago": "Chicago",
+    "America/Denver": "Denver",
+    "America/Los_Angeles": "Los Angeles",
+    "Europe/London": "London",
+    "Europe/Paris": "Paris / Rome",
+    "Asia/Dubai": "Dubai",
+    "Asia/Karachi": "Pakistan",
+    "Asia/Kolkata": "India",
+    "Asia/Singapore": "Singapore",
+    "Asia/Tokyo": "Tokyo",
+    "Australia/Sydney": "Sydney",
+    "UTC": "UTC",
+  };
+  if (cityMap[timezone]) return cityMap[timezone];
+  const parts = timezone.split("/");
+  const city = parts[parts.length - 1]?.replace(/_/g, " ");
+  return city || timezone;
+}
+
 export interface CooldownStatus {
   canChange: boolean;
   remainingDays: number;

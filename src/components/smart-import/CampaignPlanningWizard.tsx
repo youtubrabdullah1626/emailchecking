@@ -21,7 +21,7 @@ import {
   Lightbulb
 } from "lucide-react";
 import { format } from "date-fns";
-import { convertLeadTimeToUserLocal, getTimezoneShortLabel } from "@/lib/date-utils";
+import { convertLeadTimeToUserLocal, getTimezoneShortLabel, getTimezoneFriendlyCity } from "@/lib/date-utils";
 
 
 export function CampaignPlanningWizard() {
@@ -94,12 +94,19 @@ export function CampaignPlanningWizard() {
     try {
       const leadTz = config.timezone;
       const userTz = userHomeTz;
-      // No tip needed when lead and user are in the same timezone
-      if (leadTz === userTz) return null;
+      const isSameTimezone = leadTz === userTz;
+      
+      const leadCity = getTimezoneFriendlyCity(leadTz);
+      const userCity = getTimezoneFriendlyCity(userTz);
+      
       const userLocalTime = convertLeadTimeToUserLocal("09:00", leadTz, userTz);
-      const leadTzLabel = getTimezoneShortLabel(leadTz);
-      const userTzLabel = getTimezoneShortLabel(userTz);
-      return { userLocalTime, leadTzLabel, userTzLabel, leadTz, userTz };
+      
+      return {
+        isSameTimezone,
+        leadCity,
+        userCity,
+        userLocalTime,
+      };
     } catch {
       return null;
     }
@@ -200,26 +207,40 @@ export function CampaignPlanningWizard() {
                         <SelectItem value="Australia/Sydney">Sydney, Melbourne (AEST / AEDT)</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-[10px] text-muted-foreground leading-relaxed">
-                      Select your <strong>prospect&apos;s</strong> timezone. Emails will arrive at 9 AM their business time, regardless of where you are.
-                    </p>
-                    {/* ── Smart Timezone Preview Tip ── */}
-                    {smartPreview && (
-                      <div className="flex items-start gap-1.5 mt-2 px-2.5 py-2 rounded-lg bg-primary/5 border border-primary/15">
-                        <Lightbulb className="h-3 w-3 text-primary shrink-0 mt-0.5" />
-                        <div className="min-w-0">
-                          <span className="text-[11px] font-semibold text-foreground">
-                            09:00 AM {smartPreview.leadTzLabel} = {smartPreview.userLocalTime} on your clock
-                          </span>
-                          <p className="text-[10px] text-muted-foreground leading-relaxed mt-0.5">
-                            Lands as your leads open their morning inbox — dispatches at {smartPreview.userLocalTime} ({smartPreview.userTzLabel}) on your device.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
                   </div>
                 </div>
+
+                {/* ── Smart Schedule Preview (Full Width & Crystal Clear) ── */}
+                {smartPreview && (
+                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/15 flex items-start gap-2.5">
+                    <div className="h-6 w-6 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                      <Lightbulb className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="space-y-0.5 min-w-0">
+                      {!smartPreview.isSameTimezone ? (
+                        <>
+                          <div className="text-xs font-semibold text-foreground flex items-center gap-1.5 flex-wrap">
+                            <span>9:00 AM in {smartPreview.leadCity}</span>
+                            <span className="text-muted-foreground font-normal">=</span>
+                            <span className="text-primary font-bold">{smartPreview.userLocalTime} on your clock</span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed">
+                            Your emails will automatically send at {smartPreview.userLocalTime} so leads receive them right at 9:00 AM their time.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-xs font-semibold text-foreground">
+                            Leads are in your local timezone ({smartPreview.userCity})
+                          </div>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed">
+                            Your emails will automatically send at 9:00 AM on your clock.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between pt-3 border-t border-border/60">
                   <div className="space-y-0.5">
