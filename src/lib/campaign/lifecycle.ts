@@ -97,23 +97,11 @@ export async function pauseCampaign(campaignId: string, userId: string): Promise
   if (campaign.user_id !== userId && !isOwnerOrAdmin) return { success: false, message: 'Unauthorized campaign access.' };
   if (campaign.status === 'PAUSED') return { success: true }; // Idempotent
 
-  // 1. Update Campaign status to PAUSED
-  await prisma.campaign.update({ where: { id: campaignId }, data: { status: 'PAUSED' } });
-
-  // 2. Pause Sequences
-  await prisma.$executeRaw`
-    UPDATE sequences seq
-    SET status = 'PAUSED'
-    FROM prospects p
-    WHERE seq.prospect_id = p.id
-      AND p.campaign_id = ${campaignId}
-      AND seq.status != 'COMPLETED'
-  `.catch(() => {});
-
-  // 3. Immediately reset any in-flight PROCESSING steps back to PENDING
-  //    and release their reserved_count on email_accounts.
-  //    Without releasing reserved_count, capacity stays permanently inflated
-  //    and new sends are blocked even though no email is actively being sent.
+  // STEP 1 (FIRST — Emergency Brake):
+  // Immediately reset any in-flight PROCESSING steps back to PENDING
+  // and release their reserved_count on email_accounts.
+  // This MUST run before pausing sequences so that sender.ts's live re-read
+  // sees status=PENDING and aborts before calling the Gmail API.
   await prisma.$executeRaw`
     WITH reset_steps AS (
       UPDATE sequence_steps s
@@ -132,8 +120,22 @@ export async function pauseCampaign(campaignId: string, userId: string): Promise
     WHERE ea.email IN (SELECT assigned_sender_email FROM reset_steps WHERE assigned_sender_email IS NOT NULL)
   `.catch(() => {});
 
+  // STEP 2: Pause all ACTIVE sequences for this campaign
+  await prisma.$executeRaw`
+    UPDATE sequences seq
+    SET status = 'PAUSED'
+    FROM prospects p
+    WHERE seq.prospect_id = p.id
+      AND p.campaign_id = ${campaignId}
+      AND seq.status NOT IN ('COMPLETED', 'STOPPED')
+  `.catch(() => {});
+
+  // STEP 3: Finally mark the campaign itself as PAUSED
+  await prisma.campaign.update({ where: { id: campaignId }, data: { status: 'PAUSED' } });
+
   return { success: true };
 }
+
 
 export async function completeCampaign(campaignId: string): Promise<void> {
   await prisma.campaign.update({ where: { id: campaignId }, data: { status: 'COMPLETED' } });

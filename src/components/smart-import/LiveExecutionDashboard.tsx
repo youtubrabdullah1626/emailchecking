@@ -420,17 +420,12 @@ export function LiveExecutionDashboard() {
   };
 
   const executeTogglePause = async (action: "RESUME" | "PAUSE") => {
-    // Mutation lock: block background poller for 8s to prevent stale DB reads
-    // from overwriting local state before the lifecycle update propagates to DB.
-    mutationLockUntilRef.current = Date.now() + 8000;
-    setIsResumeModalOpen(false);
+    // Optimistic UI update FIRST — instant response to user click
     const nextStatus = action === "RESUME" ? "ACTIVE" : "PAUSED";
     setCampaignStatus(nextStatus);
+    setIsResumeModalOpen(false);
 
     if (action === "RESUME") {
-      // Set to SCHEDULED (not PROCESSING) — DB still has PENDING at this point.
-      // Setting PROCESSING would cause a flicker when the DB poll returns PENDING → SCHEDULED.
-      // The scheduler will claim steps in background and DB will show PROCESSING shortly after.
       setLiveItems(prev => prev.map(item => {
         const s = item.liveStatus as string;
         if (s === "PAUSED" || s === "DAILY_LIMIT_REACHED") {
@@ -448,6 +443,9 @@ export function LiveExecutionDashboard() {
       }));
     }
 
+    // Set mutation lock ONCE for 12s — long enough for the backend lifecycle
+    // update to fully propagate across all 3 DB tables (steps → sequences → campaign)
+    mutationLockUntilRef.current = Date.now() + 12000;
 
     try {
       const targetId = activeCampaignId || "latest";
@@ -460,28 +458,37 @@ export function LiveExecutionDashboard() {
       }
 
       if (targetId) {
-        await apiClient<any>(`/api/campaigns/${encodeURIComponent(targetId)}`, {
+        const res = await apiClient<any>(`/api/campaigns/${encodeURIComponent(targetId)}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action, campaignName }),
         });
 
-        toast.success(action === "PAUSE" ? "Campaign Paused — All sending stopped" : "Campaign Resumed — Dispatching due emails");
-        // After the 8s mutation lock expires, fetch fresh DB state to confirm the transition.
-        // These delays ensure the DB has fully propagated the lifecycle change.
-        mutationLockUntilRef.current = Date.now() + 8000;
-        setTimeout(() => fetchLiveStatusFromDb(), 9000);
-        setTimeout(() => fetchLiveStatusFromDb(), 13000);
-        setTimeout(() => fetchLiveStatusFromDb(), 18000);
+        if (res?.ok === false) {
+          // Rollback optimistic update if server rejected
+          setCampaignStatus(action === "PAUSE" ? "ACTIVE" : "PAUSED");
+          toast.error(res.error || "Failed to update campaign state");
+          return;
+        }
+
+        toast.success(action === "PAUSE" ? "Campaign Paused — All sending stopped immediately" : "Campaign Resumed — Dispatching due emails");
+
+        // Single authoritative DB re-fetch 3s after lock expires (not 3 staggered fetches)
+        setTimeout(() => {
+          mutationLockUntilRef.current = 0;
+          fetchLiveStatusFromDb();
+        }, 3000);
       }
     } catch (e: any) {
       console.error("[executeTogglePause] Error:", e);
-      const errMsg = e?.message || "Failed to update campaign state";
-      toast.error(errMsg);
+      // Rollback optimistic UI on network error
+      setCampaignStatus(action === "PAUSE" ? "ACTIVE" : "PAUSED");
+      toast.error(e?.message || "Failed to update campaign state");
     } finally {
       setIsResumingCampaign(false);
     }
   };
+
 
   // Lead Journey items
   const selectedLeadItems = useMemo(() => {

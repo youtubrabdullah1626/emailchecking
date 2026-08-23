@@ -108,5 +108,7 @@ export type GmailLogEvent =
   | "gmail_human_delay"
   | "gmail_sticky_sender_unavailable"
   | "gmail_sticky_lock_failed"
-  | "gmail_send_attempt_record_skipped";
+  | "gmail_send_attempt_record_skipped"
+  | "gmail_send_aborted_step_reset";
+
 

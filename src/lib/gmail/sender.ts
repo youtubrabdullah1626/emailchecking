@@ -98,23 +98,67 @@ export async function sendStepInternal(stepId: string, cachedAuth?: any): Promis
     data: { claimed_at: new Date() },
   }).catch(() => {});
 
-  // ── 2.1 Strict Pause & Stop Safety Guards ─────────────────────────────────
-  if (step.sequence.status === "PAUSED" || step.sequence.status === "STOPPED") {
+  // ── 2.1 Strict Pause & Stop Safety Guards — Live DB Re-Read ───────────────
+  // CRITICAL: We re-read sequence AND campaign status DIRECTLY from the DB here,
+  // NOT from the `step` object (which was loaded before the pause was written).
+  // This ensures that if the user clicks Pause while the step is mid-flight,
+  // the send is aborted on the REAL, current DB state — instant emergency brake.
+  const liveStateCheck = await prisma.sequenceStep.findUnique({
+    where: { id: stepId },
+    select: {
+      status: true,
+      sequence: {
+        select: {
+          status: true,
+          assigned_sender_email: true,
+          prospect: {
+            select: {
+              campaign: { select: { status: true, id: true } }
+            }
+          }
+        }
+      }
+    }
+  }).catch(() => null);
+
+  const isSequencePaused = liveStateCheck?.sequence?.status === "PAUSED" || liveStateCheck?.sequence?.status === "STOPPED";
+  const isCampaignPaused = liveStateCheck?.sequence?.prospect?.campaign?.status === "PAUSED";
+  const isStepStillProcessing = liveStateCheck?.status === "PROCESSING";
+
+  if (!isStepStillProcessing) {
+    // Step was reset to PENDING or cancelled while we were waiting — abort cleanly
+    gmailLog("gmail_send_aborted_step_reset", { stepId, currentStatus: liveStateCheck?.status });
+    return { stepId, outcome: "ABORTED", detail: "Step was reset before send could fire. Safe to ignore." };
+  }
+
+  if (isSequencePaused || isCampaignPaused) {
+    const pauseReason = isCampaignPaused ? "Campaign is PAUSED" : `Sequence is ${liveStateCheck?.sequence?.status}`;
     gmailLog("gmail_send_aborted_sequence_paused", {
       stepId,
       sequenceId: step.sequence.id,
-      sequenceStatus: step.sequence.status,
+      reason: pauseReason,
     });
-    return { stepId, outcome: "ABORTED", detail: `Sequence is ${step.sequence.status} — send aborted.` };
+
+    // CRITICAL Bug 3 Fix: Reset step from PROCESSING → PENDING so it dispatches correctly on resume.
+    // Without this, the step stays forever stuck as PROCESSING while the campaign is paused.
+    await prisma.sequenceStep.updateMany({
+      where: { id: stepId, status: "PROCESSING" },
+      data: { status: "PENDING", claimed_at: null }
+    }).catch(() => {});
+
+    // Release reserved_count on the inbox
+    const senderEmail = liveStateCheck?.sequence?.assigned_sender_email;
+    if (senderEmail) {
+      await prisma.$executeRaw`
+        UPDATE email_accounts
+        SET reserved_count = GREATEST(0, reserved_count - 1)
+        WHERE email = ${senderEmail.toLowerCase()}
+      `.catch(() => {});
+    }
+
+    return { stepId, outcome: "ABORTED", detail: `${pauseReason} — send aborted. Step reset to PENDING for dispatch on resume.` };
   }
 
-  if ((step.sequence.prospect as any)?.campaign?.status === "PAUSED") {
-    gmailLog("gmail_send_aborted_campaign_paused", {
-      stepId,
-      campaignId: (step.sequence.prospect as any)?.campaign?.id,
-    });
-    return { stepId, outcome: "ABORTED", detail: "Campaign is PAUSED — send aborted." };
-  }
 
   // ── 2.5 Smart Sticky Sender & Multi-Inbox Rotation Engine ───────────────────
   let connectedAccount: any = null;
