@@ -52,71 +52,41 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const { action, campaignName } = body;
     const { pauseCampaign, activateCampaign } = await import("@/lib/campaign/lifecycle");
 
-    // ── Robust Campaign Resolver ──────────────────────────────────────────────
-    let campaign = null;
+    // ── Fast Campaign Resolver ────────────────────────────────────────────────
+    // When the frontend sends an exact UUID (always true after approveImport sets
+    // localStorage), this is a SINGLE indexed lookup — very fast.
+    // Only falls back to slower queries when UUID is unavailable.
+    let campaign: { id: string; status: string } | null = null;
+    const id = params.id;
+    const userId = session.user.id;
 
-    if (params.id === "latest" || params.id === "active") {
+    if (id === "latest" || id === "active") {
+      // Explicit "latest" — one query, ordered by updated_at
       campaign = await prisma.campaign.findFirst({
-        where: { user_id: session.user.id },
+        where: { user_id: userId },
         select: { id: true, status: true },
         orderBy: { updated_at: "desc" }
       });
     } else {
+      // Try exact UUID match first (fastest — indexed primary key)
       campaign = await prisma.campaign.findFirst({
-        where: {
-          OR: [
-            { id: params.id, user_id: session.user.id },
-            { name: params.id, user_id: session.user.id },
-          ]
-        },
-        select: { id: true, status: true }
+        where: { id, user_id: userId },
+        select: { id: true, status: true },
       });
-    }
 
-    if (!campaign) {
-      const job = await prisma.importJob.findFirst({
-        where: { id: params.id, userId: session.user.id },
-        select: { campaignId: true }
-      });
-      if (job?.campaignId) {
+      // Fallback: campaignName sent in body
+      if (!campaign && campaignName) {
         campaign = await prisma.campaign.findFirst({
-          where: { id: job.campaignId, user_id: session.user.id },
-          select: { id: true, status: true }
+          where: { name: campaignName, user_id: userId },
+          select: { id: true, status: true },
+          orderBy: { created_at: "desc" }
         });
       }
-    }
 
-    if (!campaign && campaignName) {
-      campaign = await prisma.campaign.findFirst({
-        where: { name: campaignName, user_id: session.user.id },
-        select: { id: true, status: true },
-        orderBy: { created_at: "desc" }
-      });
-    }
-
-    if (!campaign) {
-      campaign = await prisma.campaign.findFirst({
-        where: { user_id: session.user.id },
-        select: { id: true, status: true },
-        orderBy: { updated_at: "desc" }
-      });
-    }
-
-    const isOwnerOrAdmin = session.user.role === 'SUPER_ADMIN' || session.user.role === 'OWNER' || session.user.role === 'ADMIN';
-
-    if (!campaign && isOwnerOrAdmin) {
-      campaign = await prisma.campaign.findFirst({
-        where: {
-          OR: [
-            { id: params.id },
-            { name: params.id },
-          ]
-        },
-        select: { id: true, status: true },
-        orderBy: { updated_at: "desc" }
-      });
+      // Last resort: most-recently-updated campaign for this user
       if (!campaign) {
         campaign = await prisma.campaign.findFirst({
+          where: { user_id: userId },
           select: { id: true, status: true },
           orderBy: { updated_at: "desc" }
         });

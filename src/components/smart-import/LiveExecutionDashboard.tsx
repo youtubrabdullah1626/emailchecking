@@ -453,11 +453,12 @@ export function LiveExecutionDashboard() {
     campaignStatusOverrideRef.current = { status: nextStatus, until: Date.now() + 30000 };
 
     if (action === "PAUSE") {
-      // Clear any in-flight Send Now operations and dismiss their loading toasts
-      // so the "Sending email via Gmail..." toast doesn't stay stuck while paused.
-      sendNowInFlightRef.current.forEach(stepId => {
-        toast.dismiss(stepId);
-      });
+      // Nuclear toast dismiss — clears ALL loading/pending toasts immediately.
+      // This guarantees "Sending email via Gmail..." disappears the instant Pause is clicked,
+      // regardless of whether the send was triggered by handleSendNow or the scheduler.
+      toast.dismiss(); // dismiss ALL toasts
+
+      // Clear any tracked in-flight send-now stepIds
       sendNowInFlightRef.current.clear();
 
       setLiveItems(prev => prev.map(i => {
@@ -468,6 +469,7 @@ export function LiveExecutionDashboard() {
         return i;
       }));
     } else if (action === "RESUME") {
+
       setLiveItems(prev => prev.map(item => {
         const s = item.liveStatus as string;
         if (s === "PAUSED" || s === "DAILY_LIMIT_REACHED") {
@@ -509,25 +511,21 @@ export function LiveExecutionDashboard() {
           }
 
           apiSucceeded = true;
-          toast.success(action === "PAUSE" ? "Campaign Paused — All sending stopped immediately" : "Campaign Resumed — Dispatching due emails");
+          toast.success(action === "PAUSE" ? "Campaign Paused ✓ — All sending stopped" : "Campaign Resumed ✓ — Dispatching emails");
         } catch (e: any) {
           const isTimeout = e?.status === 408 || e?.message?.includes("Timeout") || e?.message?.includes("timeout");
-          if (isTimeout) {
-            // CRITICAL: On timeout, the DB write likely ALREADY succeeded server-side
-            // (Railway closed the connection but the SQL ran). DO NOT rollback the UI.
-            // Instead, verify the real state via fresh DB fetch in 3s.
-            console.warn("[executeTogglePause] Request timed out — verifying DB state rather than rolling back UI.");
-            toast.loading(action === "PAUSE" ? "Pausing... verifying..." : "Resuming... verifying...", { id: "pause-verify", duration: 4000 });
-            apiSucceeded = true; // Keep optimistic state until we verify
-          } else if (e?.status === 502 || e?.status === 503) {
-            // Server/gateway error — keep optimistic state and verify
-            console.warn("[executeTogglePause] Server error — verifying DB state.");
-            toast.loading("Verifying campaign state...", { id: "pause-verify", duration: 4000 });
+          const isServerError = e?.status === 502 || e?.status === 503;
+          if (isTimeout || isServerError) {
+            // On timeout/502: the DB write likely ALREADY succeeded server-side.
+            // DO NOT rollback UI. DO NOT show confusing "Pausing... verifying..."
+            // Just keep the optimistic PAUSED state and verify silently in 3s.
+            console.warn("[executeTogglePause] Request timed out — keeping optimistic state, verifying DB in 3s.");
             apiSucceeded = true;
           } else {
             // Genuine client-side error (network down, auth failure) — safe to rollback
             setCampaignStatus(action === "PAUSE" ? "ACTIVE" : "PAUSED");
             toast.error(e?.message || "Failed to update campaign state");
+
           }
         }
 

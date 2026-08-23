@@ -497,6 +497,43 @@ export async function sendStepInternal(stepId: string, cachedAuth?: any): Promis
     let attempt = 1;
     let response: any;
 
+    // ── PRE-SEND ATOMIC GATE — FINAL CHECK BEFORE GMAIL API ─────────────────
+    // This catches the narrow race window between liveStateCheck (above) and
+    // the actual Gmail send. Example: user clicked Pause 0.1s after liveStateCheck
+    // ran — without this, the email fires even though the campaign is now paused.
+    // We do a final ultra-fast DB read of just the step status + campaign status.
+    const preSendGate = await prisma.sequenceStep.findUnique({
+      where: { id: stepId },
+      select: {
+        status: true,
+        sequence: {
+          select: {
+            status: true,
+            prospect: { select: { campaign: { select: { status: true } } } }
+          }
+        }
+      }
+    }).catch(() => null);
+
+    const preSendStepOk = preSendGate?.status === "PROCESSING";
+    const preSendCampaignOk = preSendGate?.sequence?.prospect?.campaign?.status !== "PAUSED";
+    const preSendSequenceOk = preSendGate?.sequence?.status !== "PAUSED" && preSendGate?.sequence?.status !== "STOPPED";
+
+    if (!preSendStepOk || !preSendCampaignOk || !preSendSequenceOk) {
+      // Reset step to PENDING so it retries correctly on resume
+      await prisma.sequenceStep.updateMany({
+        where: { id: stepId, status: "PROCESSING" },
+        data: { status: "PENDING", claimed_at: null }
+      }).catch(() => {});
+      gmailLog("gmail_send_aborted_pre_send_gate", {
+        stepId,
+        stepStatus: preSendGate?.status,
+        campaignStatus: preSendGate?.sequence?.prospect?.campaign?.status,
+        sequenceStatus: preSendGate?.sequence?.status,
+      });
+      return { stepId, outcome: "ABORTED", detail: "Pre-send gate: campaign/sequence was paused between liveStateCheck and Gmail API call. Step reset to PENDING." };
+    }
+
     while (attempt <= MAX_API_RETRIES) {
       try {
         response = await gmail.users.messages.send({
@@ -508,6 +545,7 @@ export async function sendStepInternal(stepId: string, cachedAuth?: any): Promis
               : {}),
           },
         });
+
         // If successful, break out of retry loop
         break;
       } catch (err: any) {
