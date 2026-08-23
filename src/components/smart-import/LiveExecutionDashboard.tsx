@@ -410,15 +410,24 @@ export function LiveExecutionDashboard() {
   const handleTogglePauseDashboard = async () => {
     const isCurrentlyPaused = campaignStatus === "PAUSED";
     
-    // If currently paused and user is resuming: check if any scheduled/paused emails are overdue
+    // If currently paused and user is resuming: check if any Step 1 emails are overdue
     if (isCurrentlyPaused) {
       const now = new Date();
       const overdue = liveItems.filter(item => {
         const statusStr = item.liveStatus as string;
         if (statusStr !== "SCHEDULED" && statusStr !== "PAUSED") return false;
+
+        // 10x Smart Filter: Only Step 1 (initial outreach) can be due immediately.
+        // Follow-ups (Step 2, 3, etc.) only unlock days AFTER Step 1 is delivered.
+        const stepNum = item.sequenceStep?.stepNumber || 1;
+        if (stepNum > 1) return false;
+
         try {
-          const itemDateTime = new Date(`${item.scheduledDate} ${item.scheduledTime || "00:00"}`);
-          return itemDateTime <= now;
+          // Precise UTC comparison
+          const itemDate = item.scheduledAtUtc 
+            ? new Date(item.scheduledAtUtc) 
+            : new Date(`${item.scheduledDate} ${item.scheduledTime || "00:00"}`);
+          return itemDate.getTime() <= now.getTime();
         } catch {
           return false;
         }
@@ -429,9 +438,10 @@ export function LiveExecutionDashboard() {
           id: i.queueId,
           recipientEmail: i.recipientEmail,
           stepNumber: i.sequenceStep?.stepNumber || 1,
-          subject: i.sequenceStep?.subject || "(Follow-up)",
+          subject: i.sequenceStep?.subject || "(Initial Outreach)",
           scheduledTime: i.scheduledTime,
-          scheduledDate: i.scheduledDate
+          scheduledDate: i.scheduledDate,
+          timezone: i.timezone || undefined,
         })));
         setIsResumeModalOpen(true);
         return;
@@ -441,6 +451,7 @@ export function LiveExecutionDashboard() {
     // Otherwise directly execute resume or pause
     await executeTogglePause(isCurrentlyPaused ? "RESUME" : "PAUSE");
   };
+
 
   const executeTogglePause = async (action: "RESUME" | "PAUSE") => {
     // Optimistic UI update FIRST — instant response to user click
