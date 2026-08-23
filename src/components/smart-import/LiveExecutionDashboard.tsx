@@ -23,8 +23,6 @@ import { CapacitySentinelBadge } from "./CapacitySentinelBadge";
 import { DailyResetCountdown } from "./DailyResetCountdown";
 import { WhyNotSentModal } from "./WhyNotSentModal";
 import { resolveStepDiagnostic, StepDiagnosticContext } from "@/lib/capacity/state";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatInTimezone } from "@/lib/date-utils";
 import useSWR from "swr";
 import { apiClient } from "@/lib/api-client";
 
@@ -960,58 +958,53 @@ export function LiveExecutionDashboard() {
       </div>
 
       {/* Main Table */}
-      <Card className="border-border/80 shadow-sm flex flex-col overflow-hidden h-[600px] bg-card/95 backdrop-blur-sm rounded-xl">
-        <CardHeader className="bg-muted/15 border-b border-border/70 py-3 px-4">
-          <CardTitle className="text-sm font-semibold flex items-center justify-between">
+      <Card className="border-border shadow-md flex flex-col overflow-hidden h-[600px] bg-background">
+        <CardHeader className="bg-muted/10 border-b border-border py-4">
+          <CardTitle className="text-base font-semibold flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-primary" />
-              <span>Live Delivery Log</span>
-              <Badge variant="secondary" className="font-mono text-[10px] font-medium px-2 py-0 h-5">
-                {liveItems.length} emails
-              </Badge>
+              <Clock className="h-5 w-5 text-primary" />
+              Live Email Delivery Status
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="font-mono text-[11px] font-semibold px-2.5 py-1 text-muted-foreground border-border/80 shadow-2xs">
-                🕒 Local Time ({userTimezone === "UTC" ? "PKT" : userTimezone.split("/").pop()?.replace("_", " ") || "PKT"})
-              </Badge>
-            </div>
+            <span className="text-xs font-medium text-muted-foreground bg-background px-3 py-1.5 rounded-full border border-border shadow-sm">
+              Click any row to view the lead&apos;s full journey
+            </span>
           </CardTitle>
         </CardHeader>
         <ScrollArea className="flex-1">
           <Table>
-            <TableHeader className="bg-muted/20 sticky top-0 z-10 shadow-xs backdrop-blur-md">
-              <TableRow className="hover:bg-transparent border-b border-border/70">
-                <TableHead className="w-[28%] py-3.5 font-semibold text-xs text-muted-foreground uppercase tracking-wider">Recipient</TableHead>
-                <TableHead className="w-[12%] py-3.5 font-semibold text-xs text-muted-foreground uppercase tracking-wider">Step</TableHead>
-                <TableHead className="w-[28%] py-3.5 font-semibold text-xs text-muted-foreground uppercase tracking-wider">Scheduled Time</TableHead>
-                <TableHead className="w-[16%] py-3.5 font-semibold text-xs text-muted-foreground uppercase tracking-wider">Live Status</TableHead>
-                <TableHead className="w-[12%] py-3.5 font-semibold text-xs text-muted-foreground uppercase tracking-wider text-right">Event Time</TableHead>
-                <TableHead className="w-[4%] py-3.5 text-center"></TableHead>
+            <TableHeader className="bg-muted/20 sticky top-0 z-10 shadow-sm backdrop-blur-md">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[30%] py-4 font-semibold">Recipient</TableHead>
+                <TableHead className="w-[15%] py-4 font-semibold">Email Step</TableHead>
+                <TableHead className="w-[20%] py-4 font-semibold">Scheduled Time</TableHead>
+                <TableHead className="w-[15%] py-4 font-semibold">Live Status</TableHead>
+                <TableHead className="w-[15%] py-4 font-semibold text-right">Event Time</TableHead>
+                <TableHead className="w-[5%] py-4 text-center"></TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-border/40">
+            <TableBody className="divide-y divide-border/50">
               {isLoading && liveItems.length === 0 ? (
                 [1, 2, 3, 4].map((i) => (
                   <TableRow key={`skeleton-${i}`}>
-                    <TableCell className="py-3.5 pl-4">
+                    <TableCell className="py-4 pl-4">
                       <div className="flex items-center gap-3">
                         <div className="h-8 w-8 rounded-full bg-muted/60 animate-pulse" />
                         <div className="h-4 w-48 bg-muted/60 rounded animate-pulse" />
                       </div>
                     </TableCell>
-                    <TableCell className="py-3.5">
+                    <TableCell className="py-4">
                       <div className="h-5 w-16 bg-muted/60 rounded animate-pulse" />
                     </TableCell>
-                    <TableCell className="py-3.5">
+                    <TableCell className="py-4">
                       <div className="h-4 w-32 bg-muted/60 rounded animate-pulse" />
                     </TableCell>
-                    <TableCell className="py-3.5">
+                    <TableCell className="py-4">
                       <div className="h-6 w-24 bg-muted/60 rounded-full animate-pulse" />
                     </TableCell>
-                    <TableCell className="py-3.5 text-right">
+                    <TableCell className="py-4 text-right">
                       <div className="h-4 w-12 bg-muted/60 rounded animate-pulse ml-auto" />
                     </TableCell>
-                    <TableCell className="py-3.5" />
+                    <TableCell className="py-4" />
                   </TableRow>
                 ))
               ) : liveItems.length === 0 ? (
@@ -1026,86 +1019,38 @@ export function LiveExecutionDashboard() {
                   <TableRow
                     key={item.queueId + idx}
                     onClick={() => openLeadJourney(item.recipientEmail)}
-                    className={`hover:bg-muted/30 transition-colors duration-150 cursor-pointer group relative ${item.isNew ? 'bg-emerald-50/30 dark:bg-emerald-950/20' : ''}`}
+                    className={`hover:bg-muted/40 transition-all duration-200 cursor-pointer group relative ${item.isNew ? 'bg-emerald-50/30' : ''}`}
                   >
                     <TableCell className="font-medium py-3 relative">
                       {item.isNew && (
                         <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-emerald-500 rounded-r-md shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                       )}
-                      <div className="flex items-center gap-3 pl-1">
-                        <Avatar className={`h-7 w-7 ring-1 shadow-2xs transition-all ${item.isNew
-                            ? 'ring-emerald-300 bg-emerald-100/60 dark:bg-emerald-900/60'
-                            : 'ring-border/80 group-hover:ring-primary/40'
+                      <div className="flex items-center gap-3 pl-2">
+                        <Avatar className={`h-8 w-8 ring-1 shadow-sm transition-all ${item.isNew
+                            ? 'ring-emerald-200 bg-emerald-100/50'
+                            : 'ring-border group-hover:ring-primary/30'
                           }`}>
-                          <AvatarFallback className={`text-[11px] font-semibold ${item.isNew ? 'text-emerald-700 dark:text-emerald-300' : 'bg-primary/5 text-primary'}`}>
+                          <AvatarFallback className={`text-xs font-semibold ${item.isNew ? 'text-emerald-700 bg-emerald-100/50' : 'bg-primary/5 text-primary'}`}>
                             {item.recipientEmail.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="truncate max-w-[200px] text-xs font-semibold text-foreground tracking-tight" title={item.recipientEmail}>
+                        <span className="truncate max-w-[220px]" title={item.recipientEmail}>
                           {item.recipientEmail}
                         </span>
                         {item.isNew && (
-                          <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-300 shadow-2xs text-[9px] uppercase font-bold px-1.5 py-0 h-4">
-                            New
+                          <Badge variant="outline" className="ml-2 bg-emerald-50 text-emerald-600 border-emerald-200 shadow-sm text-[10px] uppercase font-semibold px-2 py-0 h-5">
+                            Just Added
                           </Badge>
                         )}
                       </div>
                     </TableCell>
                     <TableCell className="py-3">
-                      <Badge variant="outline" className="text-[10px] font-semibold shadow-2xs bg-muted/30 text-muted-foreground border-border/80 group-hover:border-primary/30 group-hover:text-foreground transition-colors">
-                        Step {item.sequenceStep.stepNumber}
+                      <Badge variant="outline" className="text-[10px] font-medium shadow-none bg-muted/20 text-muted-foreground group-hover:bg-background group-hover:text-foreground transition-colors">
+                        Email {item.sequenceStep.stepNumber}
                       </Badge>
                     </TableCell>
-                    <TableCell className="py-3">
-                      {(() => {
-                        const utcIso = (item as any).scheduledAtUtc;
-                        const leadTz = (item as any).timezone || "UTC";
-                        const sameTz = leadTz === userTimezone;
-
-                        if (!utcIso) {
-                          return (
-                            <span className="text-muted-foreground text-xs font-mono whitespace-nowrap">
-                              {item.scheduledDate} • {item.scheduledTime}
-                            </span>
-                          );
-                        }
-
-                        const myFormatted = formatInTimezone(utcIso, userTimezone);
-                        const leadFormatted = formatInTimezone(utcIso, leadTz);
-
-                        return (
-                          <TooltipProvider delayDuration={150}>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="cursor-default select-none">
-                                  {/* Single Clean Scheduled Time (Matches Your Pakistan Wall Clock) */}
-                                  <div className="flex items-center gap-1.5 font-mono text-xs font-medium text-foreground whitespace-nowrap">
-                                    <span className="font-semibold text-foreground">{myFormatted.date}</span>
-                                    <span className="text-muted-foreground/40">•</span>
-                                    <span className="font-bold text-foreground">{myFormatted.time}</span>
-                                    <span className="text-[10px] font-semibold text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border/60 shadow-2xs">
-                                      {myFormatted.tzAbbr}
-                                    </span>
-                                  </div>
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-[280px] p-3 space-y-1.5 text-xs shadow-md border-border/80">
-                                <p className="font-semibold text-foreground flex items-center gap-1.5">
-                                  <span>🏠 Dispatches at:</span>
-                                  <span className="text-primary font-mono">{myFormatted.time} ({myFormatted.tzAbbr})</span>
-                                </p>
-                                {!sameTz && (
-                                  <p className="text-muted-foreground flex items-center gap-1.5 pt-1 border-t border-border/50">
-                                    <span>🌍 Lands at:</span>
-                                    <span className="font-semibold text-foreground font-mono">{leadFormatted.time} ({leadFormatted.tzAbbr})</span>
-                                    <span className="text-muted-foreground/60">(lead&apos;s morning)</span>
-                                  </p>
-                                )}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        );
-                      })()}
+                    <TableCell className="text-muted-foreground text-sm font-mono py-3">
+                      {item.scheduledDate} <span className="mx-1.5 text-border">•</span> {item.scheduledTime}
                     </TableCell>
                     <TableCell className="py-3">
                       {getStatusBadge(item.liveStatus, item)}
@@ -1116,28 +1061,36 @@ export function LiveExecutionDashboard() {
                     <TableCell className="text-center py-3">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                          <Button variant="ghost" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 data-[state=open]:opacity-100 rounded-md">
+                          <Button variant="ghost" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 data-[state=open]:opacity-100">
                             <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44 text-xs font-medium shadow-md">
-                          <DropdownMenuItem onClick={() => openLeadJourney(item.recipientEmail)}>
-                            <User className="h-3.5 w-3.5 mr-2 text-primary" /> View Journey
+                        <DropdownMenuContent align="end" className="w-48 shadow-lg">
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Actions
+                          </div>
+                          <DropdownMenuItem
+                            onClick={(e) => handleSendNow(e, item.queueId)}
+                            disabled={item.liveStatus !== "SCHEDULED"}
+                            className="cursor-pointer"
+                          >
+                            <Play className="h-4 w-4 mr-2 text-emerald-500" />
+                            Send Now
                           </DropdownMenuItem>
-                          {item.liveStatus === "SCHEDULED" && (
-                            <>
-                              <DropdownMenuItem onClick={(e) => handleSendNow(e, item.queueId)}>
-                                <Play className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Send Immediately
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openReschedule(e, item); }}>
-                                <Clock className="h-3.5 w-3.5 mr-2 text-blue-500" /> Reschedule Step
-                              </DropdownMenuItem>
-                            </>
-                          )}
+                          <DropdownMenuItem
+                            onClick={(e) => openReschedule(e, item)}
+                            disabled={item.liveStatus !== "SCHEDULED"}
+                            className="cursor-pointer"
+                          >
+                            <Clock className="h-4 w-4 mr-2 text-primary" /> Reschedule
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={(e) => handleDeleteItem(e, item.queueId)} className="text-destructive focus:text-destructive">
-                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Remove from Queue
+                          <DropdownMenuItem
+                            onClick={(e) => handleDeleteItem(e, item.queueId)}
+                            className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" /> Delete Item
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
