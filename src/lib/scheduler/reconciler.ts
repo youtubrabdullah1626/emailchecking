@@ -191,3 +191,65 @@ export async function runRetryableReset(nowUtc: Date): Promise<void> {
     console.log(`[RetryableReset] Reset ${result.count} retryable steps.`);
   }
 }
+
+/**
+ * 10X Self-Healing Account Counter & Midnight Reset Reconciler
+ * 
+ * Mathematically recalculates live daily/hourly volume from EmailEvent
+ * and cleans up any leaked reservation locks on every scheduler cycle.
+ */
+export async function syncEmailAccountCounters(nowUtc: Date): Promise<void> {
+  try {
+    const { getStartOfDayInTimezone, getStartOfHour } = await import('@/lib/date-utils');
+    const accounts = await prisma.emailAccount.findMany({
+      include: {
+        users: { select: { timezone: true } }
+      }
+    });
+
+    for (const acc of accounts) {
+      const tz = acc.users?.timezone || 'UTC';
+      const startOfDay = getStartOfDayInTimezone(tz, nowUtc);
+      const startOfHour = getStartOfHour(nowUtc);
+
+      // Count live database events (Single Source of Truth)
+      const [sentToday, sentThisHour, activeProcessingSteps] = await Promise.all([
+        prisma.emailEvent.count({
+          where: {
+            event_type: 'SENT',
+            occurred_at: { gte: startOfDay },
+            step: { sequence: { assigned_sender_email: acc.email.toLowerCase() } }
+          }
+        }),
+        prisma.emailEvent.count({
+          where: {
+            event_type: 'SENT',
+            occurred_at: { gte: startOfHour },
+            step: { sequence: { assigned_sender_email: acc.email.toLowerCase() } }
+          }
+        }),
+        prisma.sequenceStep.count({
+          where: {
+            status: 'PROCESSING',
+            sequence: { assigned_sender_email: acc.email.toLowerCase() }
+          }
+        })
+      ]);
+
+      // Self-healing synchronization: update counters and heal any orphaned reservation locks
+      await prisma.emailAccount.update({
+        where: { email: acc.email },
+        data: {
+          sent_today: sentToday,
+          sent_this_hour: sentThisHour,
+          reserved_count: activeProcessingSteps,
+          last_seen_at: nowUtc,
+        }
+      }).catch(() => {});
+
+    }
+  } catch (err) {
+    console.error('[Reconciler] syncEmailAccountCounters warning:', err);
+  }
+}
+

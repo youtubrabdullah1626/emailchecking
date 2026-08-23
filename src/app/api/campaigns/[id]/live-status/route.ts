@@ -134,8 +134,12 @@ export async function GET(
       }
 
       if (step.delay_reason === "DAILY_LIMIT_REACHED" && step.status === "RETRYABLE_FAILURE") {
-        return "DAILY_LIMIT_REACHED";
+        if (step.retry_at && new Date(step.retry_at).getTime() > Date.now()) {
+          return "DAILY_LIMIT_REACHED";
+        }
+        return "SCHEDULED";
       }
+
 
       switch (step.status) {
         case "SENT":       return "SENT";

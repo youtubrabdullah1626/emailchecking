@@ -12,8 +12,9 @@
 
 import { randomUUID } from "crypto";
 import { findCandidateSteps, findStaleProcessingSteps } from "./query";
-import { runStaleMonitor, runSelfHealingSweeper, runRetryableReset } from "./reconciler";
+import { runStaleMonitor, runSelfHealingSweeper, runRetryableReset, syncEmailAccountCounters } from "./reconciler";
 import { isStepFullyEligible } from "./eligibility";
+
 import { claimStep } from "./claim";
 import { log } from "./logger";
 import prisma from "@/lib/prisma";
@@ -137,9 +138,11 @@ export async function runScheduler(
 
     // Phase 0: Background maintenance (non-fatal)
     const nowUtc = new Date();
+    await syncEmailAccountCounters(nowUtc).catch((e) => log("scheduler_config_fetch_warning", { runId, error: "syncEmailAccountCounters: " + String(e) }));
     await runRetryableReset(nowUtc).catch((e) => log("scheduler_config_fetch_warning", { runId, error: "runRetryableReset: " + String(e) }));
     await runStaleMonitor(nowUtc).catch((e) => log("scheduler_config_fetch_warning", { runId, error: "runStaleMonitor: " + String(e) }));
     await runSelfHealingSweeper().catch((e) => log("scheduler_config_fetch_warning", { runId, error: "runSelfHealingSweeper: " + String(e) }));
+
 
     // Phase 1: Query candidates (over-fetch for tier waterfall)
     const candidates = await findCandidateSteps(nowUtc, maxClaims * 3);
