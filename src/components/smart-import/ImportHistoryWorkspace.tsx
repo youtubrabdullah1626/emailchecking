@@ -32,8 +32,10 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow, format } from "date-fns";
 import { Input } from "@/components/ui/input";
-import { useSWRConfig } from "swr";
+import useSWR, { useSWRConfig } from "swr";
+import { apiClient } from "@/lib/api-client";
 import {
+
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -76,6 +78,20 @@ export function ImportHistoryWorkspace() {
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState<"24h" | "7d" | "30d" | "all">("all");
   const [isClearing, setIsClearing] = useState(false);
+
+  // ── Feature Flag: Campaign Pause/Resume ──────────────────────────────────
+  const { data: featureFlags } = useSWR(
+    "/api/feature-flags?keys=campaign_pause_resume",
+    (url: string) => apiClient<Record<string, boolean>>(url),
+    {
+      revalidateOnFocus: true,
+      refreshInterval: 10000,
+      dedupingInterval: 5000,
+    }
+  );
+  const pauseResumeEnabled = featureFlags?.["campaign_pause_resume"] ?? true;
+
+
 
   const loadSessions = useCallback(async () => {
     let all = storage.getAllSessions();
@@ -237,8 +253,12 @@ export function ImportHistoryWorkspace() {
   };
 
   const handleTogglePause = async (session: ImportSessionMetadata) => {
+    // If pause/resume is disabled via platform config, do nothing
+    if (!pauseResumeEnabled) return;
+
     const isCurrentlyPaused = session.status === "PAUSED" || (session.lastCheckpoint as string) === "PAUSED";
     const nextAction = isCurrentlyPaused ? "RESUME" : "PAUSE";
+
     
     // 1. Instant Optimistic UI Update (0ms latency!)
     const prevStatus = session.status;
@@ -516,7 +536,7 @@ export function ImportHistoryWorkspace() {
                     className="flex items-center gap-1.5 shrink-0 self-end sm:self-center opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {isLive && (
+                    {pauseResumeEnabled && isLive && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -528,7 +548,7 @@ export function ImportHistoryWorkspace() {
                       </Button>
                     )}
 
-                    {isPaused && (
+                    {pauseResumeEnabled && isPaused && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -573,7 +593,7 @@ export function ImportHistoryWorkspace() {
                           <FileText className="h-3.5 w-3.5 mr-2" />
                           View Full Details
                         </DropdownMenuItem>
-                        {(isLive || isPaused) && (
+                        {pauseResumeEnabled && (isLive || isPaused) && (
                           <DropdownMenuItem onClick={() => handleTogglePause(session)}>
                             {isPaused ? <Play className="h-3.5 w-3.5 mr-2 text-emerald-600" /> : <Pause className="h-3.5 w-3.5 mr-2 text-amber-600" />}
                             {isPaused ? "Resume Sending" : "Pause Sending"}
@@ -583,6 +603,7 @@ export function ImportHistoryWorkspace() {
                           <Play className="h-3.5 w-3.5 mr-2" />
                           Resume / Reload
                         </DropdownMenuItem>
+
                         <DropdownMenuItem onClick={() => handleRename(session.sessionId, session.campaignName || "Draft Campaign")}>
                           <Edit2 className="h-3.5 w-3.5 mr-2" />
                           Rename

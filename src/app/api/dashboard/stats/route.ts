@@ -566,6 +566,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(payload);
   } catch (err) {
+    console.error("[GET /api/dashboard/stats] Error:", err);
     const msg = err instanceof Error ? err.message : "Failed to load dashboard metrics";
     return NextResponse.json(
       { error: "Failed to load dashboard stats.", detail: msg },
@@ -573,4 +574,5 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
 

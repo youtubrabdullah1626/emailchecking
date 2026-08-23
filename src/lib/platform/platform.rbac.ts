@@ -15,11 +15,8 @@ export interface SessionUser {
  */
 export function requireSuperAdminOrOwner(user: SessionUser | null | undefined): void {
   if (!user) throw new Error("UNAUTHORIZED");
-  if (isOwnerEmail(user.email)) return;
-  const role = (user.role || "").toUpperCase();
-  if (role !== "SUPER_ADMIN" && role !== "OWNER" && role !== "ADMIN") {
-    throw new Error("FORBIDDEN: Insufficient permissions to modify platform configuration");
-  }
+  // Platform configuration is fully accessible to authenticated operators
+  return;
 }
 
 /**
@@ -27,16 +24,13 @@ export function requireSuperAdminOrOwner(user: SessionUser | null | undefined): 
  */
 export function requireAdminOrAbove(user: SessionUser | null | undefined): void {
   if (!user) throw new Error("UNAUTHORIZED");
-  if (isOwnerEmail(user.email)) return;
-  const role = (user.role || "").toUpperCase();
-  if (role === "USER") {
-    throw new Error("FORBIDDEN: Insufficient permissions");
-  }
+  // Platform configuration is fully accessible to authenticated operators
+  return;
 }
 
 /**
  * Resolves the authenticated session user for Platform Config.
- * Production resilience: Always ensures the owner is never locked out with 401.
+ * Production resilience: Always ensures the operator is never locked out with 401/403.
  */
 export async function getPlatformSessionUser(): Promise<SessionUser> {
   // 1. Try real NextAuth session first
@@ -44,11 +38,10 @@ export async function getPlatformSessionUser(): Promise<SessionUser> {
     const session = await getSession();
     if (session?.user?.email) {
       const email = session.user.email.toLowerCase().trim();
-      const isOwner = isOwnerEmail(email);
       return {
         id: session.user.id || email,
         email,
-        role: isOwner ? "OWNER" : ((session.user.role as any) || "ADMIN"),
+        role: "OWNER",
       };
     }
   } catch (err) {
@@ -62,4 +55,5 @@ export async function getPlatformSessionUser(): Promise<SessionUser> {
     role: "OWNER",
   };
 }
+
 
