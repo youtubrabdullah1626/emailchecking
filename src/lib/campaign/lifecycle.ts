@@ -111,14 +111,25 @@ export async function pauseCampaign(campaignId: string, userId: string): Promise
   `.catch(() => {});
 
   // 3. Immediately reset any in-flight PROCESSING steps back to PENDING
+  //    and release their reserved_count on email_accounts.
+  //    Without releasing reserved_count, capacity stays permanently inflated
+  //    and new sends are blocked even though no email is actively being sent.
   await prisma.$executeRaw`
-    UPDATE sequence_steps s
-    SET status = 'PENDING', claimed_at = NULL
-    FROM sequences seq
-    JOIN prospects p ON seq.prospect_id = p.id
-    WHERE s.sequence_id = seq.id
-      AND p.campaign_id = ${campaignId}
-      AND s.status = 'PROCESSING'
+    WITH reset_steps AS (
+      UPDATE sequence_steps s
+      SET status = 'PENDING', claimed_at = NULL
+      FROM sequences seq
+      JOIN prospects p ON seq.prospect_id = p.id
+      WHERE s.sequence_id = seq.id
+        AND p.campaign_id = ${campaignId}
+        AND s.status = 'PROCESSING'
+      RETURNING seq.assigned_sender_email
+    )
+    UPDATE email_accounts ea
+    SET reserved_count = GREATEST(0, ea.reserved_count - (
+      SELECT COUNT(*) FROM reset_steps rs WHERE rs.assigned_sender_email = ea.email
+    ))
+    WHERE ea.email IN (SELECT assigned_sender_email FROM reset_steps WHERE assigned_sender_email IS NOT NULL)
   `.catch(() => {});
 
   return { success: true };

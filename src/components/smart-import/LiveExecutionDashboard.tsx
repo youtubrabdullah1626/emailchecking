@@ -99,7 +99,13 @@ export function LiveExecutionDashboard() {
   const dailyLimit = effectiveStats?.dailyLimit || 6;
   const sentThisHour = effectiveStats?.emailsSentThisHour ?? 0;
   const hourlyLimit = effectiveStats?.hourlyLimit ?? 60;
-  const userTimezone = liveUserTimezone || effectiveStats?.userTimezone || "UTC";
+  const userTimezone = liveUserTimezone && liveUserTimezone !== "UTC"
+    ? liveUserTimezone
+    : effectiveStats?.userTimezone && effectiveStats.userTimezone !== "UTC"
+      ? effectiveStats.userTimezone
+      // Fall back to browser's detected timezone — better UX than showing UTC for users
+      // who haven't configured their timezone in Settings yet.
+      : (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC");
 
   // Authoritative campaign ID: from bulkProgress, session meta, localStorage, or latest active campaign
   const activeCampaignId: string = (bulkProgress as any)?.campaignId ?? currentSessionMeta?.campaignId ?? (typeof window !== "undefined" ? localStorage.getItem("silaer_active_campaign_id") : null) ?? "latest";
