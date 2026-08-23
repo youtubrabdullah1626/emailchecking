@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Send, MailOpen, Reply, AlertCircle, Clock, Activity, Calendar as CalendarIcon, User, MoreHorizontal, Play, Pause, Loader2, ArrowLeft, Trash2, RefreshCw, Ban } from "lucide-react";
+import { Send, MailOpen, Reply, AlertCircle, Clock, Activity, Calendar as CalendarIcon, User, MoreHorizontal, Play, Pause, PauseCircle, Loader2, ArrowLeft, Trash2, RefreshCw, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { StorageEngine } from "@/lib/storage/StorageEngine";
@@ -178,8 +178,10 @@ export function LiveExecutionDashboard() {
   // retries, or any client-side state inconsistencies.
   const [dbFetchError, setDbFetchError] = useState(false);
   const isFetchingLiveStatusRef = React.useRef(false);
+  const mutationLockUntilRef = React.useRef<number>(0);
 
   const fetchLiveStatusFromDb = React.useCallback(async () => {
+    if (Date.now() < mutationLockUntilRef.current) return;
     if (isFetchingLiveStatusRef.current) return;
     isFetchingLiveStatusRef.current = true;
     const campaignId = activeCampaignId || "latest";
@@ -390,7 +392,8 @@ export function LiveExecutionDashboard() {
   };
 
   const executeTogglePause = async (action: "RESUME" | "PAUSE") => {
-    // 10X Ultra-Fast: Close modal and set active status in 0ms
+    // 10X Ultra-Fast: Set mutation lock to prevent background poller flicker
+    mutationLockUntilRef.current = Date.now() + 3000;
     setIsResumeModalOpen(false);
     const nextStatus = action === "RESUME" ? "ACTIVE" : "PAUSED";
     setCampaignStatus(nextStatus);
@@ -398,7 +401,7 @@ export function LiveExecutionDashboard() {
     if (action === "RESUME") {
       setLiveItems(prev => prev.map(item => {
         const s = item.liveStatus as string;
-        if (s === "PAUSED" || s === "SCHEDULED") {
+        if (s === "PAUSED" || s === "SCHEDULED" || s === "DAILY_LIMIT_REACHED") {
           return { ...item, liveStatus: "PROCESSING" as any, lastEventTime: "Just now" };
         }
         return item;
@@ -431,13 +434,10 @@ export function LiveExecutionDashboard() {
         });
 
         toast.success(action === "PAUSE" ? "Campaign Paused — All sending stopped" : "Campaign Resumed — Dispatching due emails");
-        await fetchLiveStatusFromDb();
-        if (action === "RESUME") {
-          setTimeout(() => fetchLiveStatusFromDb(), 600);
-          setTimeout(() => fetchLiveStatusFromDb(), 1500);
-          setTimeout(() => fetchLiveStatusFromDb(), 3000);
-          setTimeout(() => fetchLiveStatusFromDb(), 5000);
-        }
+        mutationLockUntilRef.current = Date.now() + 1000;
+        setTimeout(() => fetchLiveStatusFromDb(), 1200);
+        setTimeout(() => fetchLiveStatusFromDb(), 2500);
+        setTimeout(() => fetchLiveStatusFromDb(), 5000);
       }
     } catch (e: any) {
       console.error("[executeTogglePause] Error:", e);
@@ -678,6 +678,8 @@ export function LiveExecutionDashboard() {
       case "SENT": return <Badge variant="secondary" className="bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200/80 font-medium text-xs shadow-2xs"><Send className="h-3 w-3 mr-1 text-sky-500" /> Sent</Badge>;
       case "OPENED": return <Badge variant="secondary" className="bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/80 font-medium text-xs shadow-2xs"><MailOpen className="h-3 w-3 mr-1 text-purple-500" /> Opened</Badge>;
       case "REPLIED": return <Badge variant="secondary" className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300/80 font-semibold text-xs shadow-2xs"><Reply className="h-3 w-3 mr-1 text-emerald-600" /> Replied</Badge>;
+      case "PAUSED": return <Badge variant="secondary" className="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/60 font-medium text-xs"><PauseCircle className="h-3 w-3 mr-1 text-amber-500" /> Paused by User</Badge>;
+      case "DAILY_LIMIT_REACHED": return <Badge variant="secondary" className="bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 font-medium text-xs"><Clock className="h-3 w-3 mr-1 text-amber-500" /> Daily Cap (Resets Midnight)</Badge>;
       case "CANCELLED": return <Badge variant="secondary" className="bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 font-medium text-xs"><Ban className="h-3 w-3 mr-1 text-zinc-400" /> Stopped (Replied)</Badge>;
       case "BOUNCED": return <Badge variant="secondary" className="bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 font-medium text-xs shadow-2xs"><AlertCircle className="h-3 w-3 mr-1 text-rose-500" /> Failed</Badge>;
       case "SCHEDULED":

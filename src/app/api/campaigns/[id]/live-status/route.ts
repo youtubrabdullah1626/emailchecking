@@ -140,6 +140,10 @@ export async function GET(
         return "PAUSED";
       }
 
+      if (step.delay_reason === "DAILY_LIMIT_REACHED" && step.status === "RETRYABLE_FAILURE") {
+        return "DAILY_LIMIT_REACHED";
+      }
+
       switch (step.status) {
         case "SENT":       return "SENT";
         case "PROCESSING": return "PROCESSING";

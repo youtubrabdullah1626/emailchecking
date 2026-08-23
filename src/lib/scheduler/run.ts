@@ -240,13 +240,75 @@ export async function runScheduler(
 
       let reservedEmail = step.sequence.assigned_sender_email;
       if (reservedEmail) {
-        const reserved = await prisma.$executeRaw`
+        let reserved = await prisma.$executeRaw`
           UPDATE email_accounts 
           SET reserved_count = reserved_count + 1 
           WHERE email = ${reservedEmail.toLowerCase()} AND (sent_today + reserved_count) < daily_limit
         `;
         if (reserved === 0) {
-          log("step_skipped_sender_capacity", { runId, stepId: step.id });
+          // Smart Fleet Overflow: Check if any other connected inbox in the user's fleet has capacity
+          const fleetInboxes = await prisma.emailAccount.findMany({
+            where: {
+              connection_status: "CONNECTED",
+              ...(step.sequence.user_id ? { user_id: step.sequence.user_id } : {}),
+            },
+            select: { email: true },
+          });
+
+          let overflowAssigned = false;
+          for (const inbox of fleetInboxes) {
+            if (inbox.email.toLowerCase() === reservedEmail.toLowerCase()) continue;
+            const res = await prisma.$executeRaw`
+              UPDATE email_accounts 
+              SET reserved_count = reserved_count + 1 
+              WHERE email = ${inbox.email.toLowerCase()} AND (sent_today + reserved_count) < daily_limit
+            `;
+            if (res > 0) {
+              overflowAssigned = true;
+              log("step_overflow_reserved", { runId, stepId: step.id, originalSender: reservedEmail, overflowSender: inbox.email });
+              await prisma.sequence.update({
+                where: { id: step.sequence.id },
+                data: { assigned_sender_email: inbox.email.toLowerCase() }
+              }).catch(() => {});
+              break;
+            }
+          }
+
+          if (!overflowAssigned) {
+            log("step_skipped_sender_capacity", { runId, stepId: step.id });
+            skippedSteps++;
+            continue;
+          }
+        }
+      } else {
+        // Step 1: Reserve any available connected inbox in the fleet
+        const fleetInboxes = await prisma.emailAccount.findMany({
+          where: {
+            connection_status: "CONNECTED",
+            ...(step.sequence.user_id ? { user_id: step.sequence.user_id } : {}),
+          },
+          select: { email: true },
+        });
+
+        let anyReserved = false;
+        for (const inbox of fleetInboxes) {
+          const res = await prisma.$executeRaw`
+            UPDATE email_accounts 
+            SET reserved_count = reserved_count + 1 
+            WHERE email = ${inbox.email.toLowerCase()} AND (sent_today + reserved_count) < daily_limit
+          `;
+          if (res > 0) {
+            anyReserved = true;
+            await prisma.sequence.update({
+              where: { id: step.sequence.id },
+              data: { assigned_sender_email: inbox.email.toLowerCase() }
+            }).catch(() => {});
+            break;
+          }
+        }
+
+        if (!anyReserved && fleetInboxes.length > 0) {
+          log("step_skipped_no_fleet_capacity", { runId, stepId: step.id });
           skippedSteps++;
           continue;
         }

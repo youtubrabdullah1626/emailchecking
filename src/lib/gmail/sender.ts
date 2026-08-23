@@ -207,7 +207,7 @@ export async function sendStepInternal(stepId: string, cachedAuth?: any): Promis
     }
   }
 
-  const senderEmail = connectedAccount?.email || config.senderEmail || process.env.GMAIL_SENDER_EMAIL;
+  let senderEmail = connectedAccount?.email || config.senderEmail || process.env.GMAIL_SENDER_EMAIL;
 
   if (!senderEmail) {
     gmailLog("gmail_send_failed", { stepId, detail: "No connected Gmail sending account found in DB." });
@@ -250,27 +250,62 @@ export async function sendStepInternal(stepId: string, cachedAuth?: any): Promis
   }
 
   // ── 4.5 Reputation Protection Guard ─────────────────────────────────────────
-  const reputationResult = await canSendEmail(senderEmail);
-  if (!reputationResult.allowed) {
-    gmailLog("gmail_send_aborted_limit", {
-      stepId,
-      detail: `Reputation guard delayed sending. Reason: ${reputationResult.reason}`
-    });
-    
-    await prisma.sequenceStep.update({
-      where: { id: stepId },
-      data: {
-        status: "RETRYABLE_FAILURE",
-        delay_reason: reputationResult.reason,
-        retry_at: reputationResult.retryAt
-      }
+  const initialReputationResult = await canSendEmail(senderEmail);
+  if (!initialReputationResult.allowed) {
+    const blockedReason = initialReputationResult.reason;
+    const blockedRetryAt = initialReputationResult.retryAt;
+
+    // Smart Fleet Overflow: Check if any other connected inbox in the user's fleet has capacity
+    let fallbackAccount: any = null;
+    const fleetInboxes = await prisma.emailAccount.findMany({
+      where: {
+        connection_status: "CONNECTED",
+        ...(step.sequence.user_id ? { user_id: step.sequence.user_id } : {}),
+      },
     });
 
-    return {
-      stepId,
-      outcome: "ABORTED",
-      detail: `Sending delayed by reputation guard: ${reputationResult.reason}`,
-    };
+    for (const alt of fleetInboxes) {
+      if (alt.email.toLowerCase() === senderEmail.toLowerCase()) continue;
+      const altRep = await canSendEmail(alt.email);
+      if (altRep.allowed) {
+        fallbackAccount = alt;
+        break;
+      }
+    }
+
+    if (fallbackAccount) {
+      connectedAccount = fallbackAccount;
+      senderEmail = fallbackAccount.email;
+      await prisma.sequence.update({
+        where: { id: step.sequence.id },
+        data: { assigned_sender_email: fallbackAccount.email.toLowerCase() }
+      }).catch(() => {});
+      gmailLog("gmail_send_aborted_limit", {
+        stepId,
+        fromEmail: senderEmail,
+        detail: `Original sender at capacity. Dynamically routed to ${senderEmail}.`
+      });
+    } else {
+      gmailLog("gmail_send_aborted_limit", {
+        stepId,
+        detail: `Reputation guard delayed sending. Reason: ${blockedReason}`
+      });
+      
+      await prisma.sequenceStep.update({
+        where: { id: stepId },
+        data: {
+          status: "RETRYABLE_FAILURE",
+          delay_reason: blockedReason,
+          retry_at: blockedRetryAt
+        }
+      });
+
+      return {
+        stepId,
+        outcome: "ABORTED",
+        detail: `Sending delayed by reputation guard: ${blockedReason}`,
+      };
+    }
   }
 
   // ── 4.6 Deliverability Pipeline V2 (Feature Flag & Health Check) ───────────

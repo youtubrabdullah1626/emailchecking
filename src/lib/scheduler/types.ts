@@ -102,7 +102,9 @@ export type SchedulerLogEvent =
   | "scheduler_limit_check_failed"
   | "scheduler_config_fetch_warning"
   | "step_skipped_user_capacity_exhausted"
-  | "step_skipped_sender_capacity";
+  | "step_skipped_sender_capacity"
+  | "step_overflow_reserved"
+  | "step_skipped_no_fleet_capacity";
 
 // ── Smart Scheduler Pure Engine Types ─────────────────────────────────────────
 
