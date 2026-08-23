@@ -499,12 +499,31 @@ export function LiveExecutionDashboard() {
   const handleSendNow = async (e: React.MouseEvent, queueId: string) => {
     e.stopPropagation();
 
-    const targetItem = liveItems.find(i => i.queueId === queueId || (i as any).realStepId === queueId);
+    const targetItem = liveItems.find(i => 
+      i.queueId === queueId || 
+      (i as any).realStepId === queueId ||
+      (i as any).id === queueId
+    );
     if (!targetItem) return;
 
+    const targetEmail = (targetItem.recipientEmail || "").toLowerCase().trim();
+    const targetStepNumber = targetItem.sequenceStep?.stepNumber || 1;
+
+    // 1. Instant (0ms) Optimistic UI Update: Show Processing + Spinner Immediately!
     setLiveItems(prev => prev.map(item => {
-      if (item.queueId === targetItem.queueId || (item as any).realStepId === targetItem.queueId) {
-        return { ...item, liveStatus: "PROCESSING", lastEventTime: "In route to Gmail..." };
+      const isMatch =
+        item.queueId === targetItem.queueId ||
+        (Boolean((targetItem as any).realStepId) && (item as any).realStepId === (targetItem as any).realStepId) ||
+        ((item.recipientEmail || "").toLowerCase().trim() === targetEmail &&
+         (item.sequenceStep?.stepNumber || 1) === targetStepNumber);
+
+      if (isMatch) {
+        return { 
+          ...item, 
+          liveStatus: "PROCESSING" as any, 
+          lastEventTime: "In route to Gmail...",
+          scheduledAtUtc: new Date().toISOString()
+        };
       }
       return item;
     }));
@@ -520,7 +539,7 @@ export function LiveExecutionDashboard() {
           stepId,
           queueId: targetItem.queueId,
           recipientEmail: targetItem.recipientEmail,
-          stepNumber: targetItem.sequenceStep?.stepNumber || 1,
+          stepNumber: targetStepNumber,
         })
       });
       const data = await res.json().catch(() => ({}));
@@ -531,14 +550,19 @@ export function LiveExecutionDashboard() {
           const isMatch =
             item.queueId === targetItem.queueId ||
             (item as any).realStepId === data.stepId ||
-            ((item.recipientEmail || "").toLowerCase().trim() === (targetItem.recipientEmail || "").toLowerCase().trim() &&
-             (item.sequenceStep?.stepNumber || 1) === (targetItem.sequenceStep?.stepNumber || 1));
+            ((item.recipientEmail || "").toLowerCase().trim() === targetEmail &&
+             (item.sequenceStep?.stepNumber || 1) === targetStepNumber);
           if (isMatch) {
-            return { ...item, realStepId: data.stepId || (item as any).realStepId, liveStatus: "SENT" as any, lastEventTime: "Just now" };
+            return { 
+              ...item, 
+              realStepId: data.stepId || (item as any).realStepId, 
+              liveStatus: "SENT" as any, 
+              lastEventTime: "Just now" 
+            };
           }
           return item;
         }));
-        fetchLiveStatusFromDb();
+        setTimeout(() => fetchLiveStatusFromDb(), 1000);
       } else {
         toast.error("Delivery Failed", { id: queueId, description: data.detail || data.error || "Send failed" });
         await fetchLiveStatusFromDb();
@@ -548,6 +572,7 @@ export function LiveExecutionDashboard() {
       await fetchLiveStatusFromDb();
     }
   };
+
 
   const openReschedule = (e: React.MouseEvent, item: LiveItem) => {
     e.stopPropagation();
