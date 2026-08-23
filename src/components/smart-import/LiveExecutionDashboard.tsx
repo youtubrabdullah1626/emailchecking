@@ -25,6 +25,8 @@ import { WhyNotSentModal } from "./WhyNotSentModal";
 import { resolveStepDiagnostic, StepDiagnosticContext } from "@/lib/capacity/state";
 import useSWR from "swr";
 import { apiClient } from "@/lib/api-client";
+import { formatInTimezone, getTimezoneShortLabel } from "@/lib/date-utils";
+
 
 type LiveItem = ExecutionQueueItem & {
   liveStatus: "SCHEDULED" | "PROCESSING" | "SENT" | "OPENED" | "REPLIED" | "BOUNCED" | "CANCELLED" | "PAUSED";
@@ -402,17 +404,21 @@ export function LiveExecutionDashboard() {
   };
 
   const executeTogglePause = async (action: "RESUME" | "PAUSE") => {
-    // 10X Ultra-Fast: Set mutation lock to prevent background poller flicker
-    mutationLockUntilRef.current = Date.now() + 3000;
+    // Mutation lock: block background poller for 8s to prevent stale DB reads
+    // from overwriting local state before the lifecycle update propagates to DB.
+    mutationLockUntilRef.current = Date.now() + 8000;
     setIsResumeModalOpen(false);
     const nextStatus = action === "RESUME" ? "ACTIVE" : "PAUSED";
     setCampaignStatus(nextStatus);
 
     if (action === "RESUME") {
+      // Set to SCHEDULED (not PROCESSING) — DB still has PENDING at this point.
+      // Setting PROCESSING would cause a flicker when the DB poll returns PENDING → SCHEDULED.
+      // The scheduler will claim steps in background and DB will show PROCESSING shortly after.
       setLiveItems(prev => prev.map(item => {
         const s = item.liveStatus as string;
-        if (s === "PAUSED" || s === "SCHEDULED" || s === "DAILY_LIMIT_REACHED") {
-          return { ...item, liveStatus: "PROCESSING" as any, lastEventTime: "Just now" };
+        if (s === "PAUSED" || s === "DAILY_LIMIT_REACHED") {
+          return { ...item, liveStatus: "SCHEDULED" as any };
         }
         return item;
       }));
@@ -425,6 +431,7 @@ export function LiveExecutionDashboard() {
         return i;
       }));
     }
+
 
     try {
       const targetId = activeCampaignId || "latest";
@@ -444,10 +451,12 @@ export function LiveExecutionDashboard() {
         });
 
         toast.success(action === "PAUSE" ? "Campaign Paused — All sending stopped" : "Campaign Resumed — Dispatching due emails");
-        mutationLockUntilRef.current = Date.now() + 1000;
-        setTimeout(() => fetchLiveStatusFromDb(), 1200);
-        setTimeout(() => fetchLiveStatusFromDb(), 2500);
-        setTimeout(() => fetchLiveStatusFromDb(), 5000);
+        // After the 8s mutation lock expires, fetch fresh DB state to confirm the transition.
+        // These delays ensure the DB has fully propagated the lifecycle change.
+        mutationLockUntilRef.current = Date.now() + 8000;
+        setTimeout(() => fetchLiveStatusFromDb(), 9000);
+        setTimeout(() => fetchLiveStatusFromDb(), 13000);
+        setTimeout(() => fetchLiveStatusFromDb(), 18000);
       }
     } catch (e: any) {
       console.error("[executeTogglePause] Error:", e);
@@ -976,7 +985,7 @@ export function LiveExecutionDashboard() {
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-[30%] py-4 font-semibold">Recipient</TableHead>
                 <TableHead className="w-[15%] py-4 font-semibold">Email Step</TableHead>
-                <TableHead className="w-[20%] py-4 font-semibold">Scheduled Time</TableHead>
+                <TableHead className="w-[20%] py-4 font-semibold">Scheduled (Your Clock)</TableHead>
                 <TableHead className="w-[15%] py-4 font-semibold">Live Status</TableHead>
                 <TableHead className="w-[15%] py-4 font-semibold text-right">Event Time</TableHead>
                 <TableHead className="w-[5%] py-4 text-center"></TableHead>
@@ -1049,8 +1058,40 @@ export function LiveExecutionDashboard() {
                         Email {item.sequenceStep.stepNumber}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm font-mono py-3">
-                      {item.scheduledDate} <span className="mx-1.5 text-border">•</span> {item.scheduledTime}
+                    <TableCell className="py-3">
+                      {(() => {
+                        const utcIso = (item as any).scheduledAtUtc;
+                        const leadTz = (item as any).timezone;
+                        if (utcIso && userTimezone) {
+                          // Primary: user's local clock (what they see on their device)
+                          const userLocal = formatInTimezone(utcIso, userTimezone);
+                          const leadLocal = leadTz ? formatInTimezone(utcIso, leadTz) : null;
+                          const showLeadNote = leadTz && leadTz !== userTimezone && leadLocal;
+                          const userTzLabel = getTimezoneShortLabel(userTimezone);
+                          return (
+                            <div>
+                              <div className="flex items-center gap-1.5 font-mono text-sm font-semibold text-foreground whitespace-nowrap">
+                                {userLocal.date} • {userLocal.time}
+                                <span className="text-[10px] font-medium text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border border-border/50 font-sans">
+                                  {userTzLabel}
+                                </span>
+                              </div>
+                              {showLeadNote && (
+                                <div className="text-[10px] text-muted-foreground whitespace-nowrap mt-0.5 flex items-center gap-1">
+                                  <Globe className="h-2.5 w-2.5 shrink-0" />
+                                  {leadLocal!.time} {leadLocal!.tzAbbr} (lead&apos;s time)
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+                        // Fallback: show raw date + time when no UTC available
+                        return (
+                          <span className="text-muted-foreground text-sm font-mono whitespace-nowrap">
+                            {item.scheduledDate} <span className="mx-1.5 text-border">•</span> {item.scheduledTime}
+                          </span>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="py-3">
                       {getStatusBadge(item.liveStatus, item)}

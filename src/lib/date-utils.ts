@@ -253,3 +253,105 @@ export function toUtcFromZonedTime(dateStr: string, timeStr: string = "09:00", t
     return new Date(`${dateStr}T${timeStr}:00Z`);
   }
 }
+
+/**
+ * Converts a fixed time in a lead's timezone to what the user's local clock shows.
+ * Used by the wizard smart preview tip to show: "9:00 AM NY = 6:00 PM on your clock"
+ *
+ * @param leadTime  - "HH:MM" string (e.g. "09:00")
+ * @param leadTz    - IANA timezone of the lead (e.g. "America/New_York")
+ * @param userTz    - IANA timezone of the user (e.g. "Asia/Karachi")
+ * @returns         - Formatted local time string (e.g. "06:00 PM")
+ */
+export function convertLeadTimeToUserLocal(
+  leadTime: string = "09:00",
+  leadTz: string = "UTC",
+  userTz: string = "UTC"
+): string {
+  try {
+    // Use today's date as a reference anchor — we only care about the time conversion
+    const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" }).format(new Date());
+    // Convert the lead's scheduled time to UTC
+    const utcDate = localDateTimeToUtc(todayStr, leadTime, leadTz);
+    // Format the UTC date in the user's timezone
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: userTz,
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(utcDate);
+  } catch {
+    return leadTime;
+  }
+}
+
+/**
+ * Checks whether a given UTC moment falls within business hours (8 AM – 6 PM, Mon–Fri)
+ * in the lead's local timezone. Used by the business hours guard in the import pipeline.
+ *
+ * @param utcDate  - The UTC Date object to test
+ * @param leadTz   - IANA timezone of the lead (e.g. "America/New_York")
+ * @returns        - true if within business hours, false otherwise
+ */
+export function isInLeadBusinessHours(utcDate: Date, leadTz: string = "UTC"): boolean {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: leadTz,
+      hour: "numeric",
+      weekday: "short",
+      hourCycle: "h23",
+    }).formatToParts(utcDate);
+
+    const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 9);
+    const weekday = parts.find((p) => p.type === "weekday")?.value ?? "Mon";
+    const isWeekday = !["Sat", "Sun"].includes(weekday);
+    const inWorkHours = hour >= 8 && hour < 18;
+    return isWeekday && inWorkHours;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Advances a UTC date to the next business-day 9:00 AM in the lead's timezone.
+ * Skips weekends. Used when a scheduled send time falls outside business hours.
+ *
+ * @param utcDate  - The current/proposed UTC send time
+ * @param leadTz   - IANA timezone of the lead
+ * @returns        - New UTC Date that corresponds to next business 9:00 AM in leadTz
+ */
+export function nextBusinessSlotUtc(utcDate: Date, leadTz: string = "UTC"): Date {
+  try {
+    // Walk forward in 1-day increments until we find a Monday–Friday slot
+    let candidate = new Date(utcDate);
+
+    for (let i = 0; i < 7; i++) {
+      const localDateStr = new Intl.DateTimeFormat("en-CA", {
+        timeZone: leadTz,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(candidate);
+
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: leadTz,
+        weekday: "short",
+      }).formatToParts(candidate);
+
+      const weekday = parts.find((p) => p.type === "weekday")?.value ?? "Mon";
+      if (!["Sat", "Sun"].includes(weekday)) {
+        // Schedule at 9:00 AM in the lead's timezone on this date
+        return localDateTimeToUtc(localDateStr, "09:00", leadTz);
+      }
+
+      // Advance one day
+      candidate = new Date(candidate.getTime() + 24 * 60 * 60 * 1000);
+    }
+
+    // Fallback: just return original date unchanged
+    return utcDate;
+  } catch {
+    return utcDate;
+  }
+}
+

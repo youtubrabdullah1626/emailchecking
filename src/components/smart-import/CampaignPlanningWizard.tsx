@@ -17,9 +17,12 @@ import {
   Clock,
   ShieldCheck,
   Calendar,
-  Globe
+  Globe,
+  Lightbulb
 } from "lucide-react";
 import { format } from "date-fns";
+import { convertLeadTimeToUserLocal, getTimezoneShortLabel } from "@/lib/date-utils";
+
 
 export function CampaignPlanningWizard() {
   const { summary, startSequenceBuild } = useImport() as any;
@@ -78,6 +81,30 @@ export function CampaignPlanningWizard() {
       return true;
     }
   }, [config.timezone]);
+
+  // ── Smart Timezone Preview Tip ─────────────────────────────────────────────
+  // Detects the user's home timezone from the browser and computes the exact
+  // local clock time equivalent of 9:00 AM in the lead's timezone.
+  // This is pure Intl math — 0ms, no API call.
+  const userHomeTz = useMemo(() => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return "UTC"; }
+  }, []);
+
+  const smartPreview = useMemo(() => {
+    try {
+      const leadTz = config.timezone;
+      const userTz = userHomeTz;
+      // No tip needed when lead and user are in the same timezone
+      if (leadTz === userTz) return null;
+      const userLocalTime = convertLeadTimeToUserLocal("09:00", leadTz, userTz);
+      const leadTzLabel = getTimezoneShortLabel(leadTz);
+      const userTzLabel = getTimezoneShortLabel(userTz);
+      return { userLocalTime, leadTzLabel, userTzLabel, leadTz, userTz };
+    } catch {
+      return null;
+    }
+  }, [config.timezone, userHomeTz]);
+
 
   const protections = [
     {
@@ -176,6 +203,21 @@ export function CampaignPlanningWizard() {
                     <p className="text-[10px] text-muted-foreground leading-relaxed">
                       Select your <strong>prospect&apos;s</strong> timezone. Emails will arrive at 9 AM their business time, regardless of where you are.
                     </p>
+                    {/* ── Smart Timezone Preview Tip ── */}
+                    {smartPreview && (
+                      <div className="flex items-start gap-1.5 mt-2 px-2.5 py-2 rounded-lg bg-primary/5 border border-primary/15">
+                        <Lightbulb className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <span className="text-[11px] font-semibold text-foreground">
+                            09:00 AM {smartPreview.leadTzLabel} = {smartPreview.userLocalTime} on your clock
+                          </span>
+                          <p className="text-[10px] text-muted-foreground leading-relaxed mt-0.5">
+                            Lands as your leads open their morning inbox — dispatches at {smartPreview.userLocalTime} ({smartPreview.userTzLabel}) on your device.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                   </div>
                 </div>
 

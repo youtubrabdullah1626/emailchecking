@@ -111,14 +111,19 @@ export const POST = withObservability(async (request: NextRequest) => {
 
     const result = await runScheduler({ dryRun, maxClaims });
     
-    // Actually send the sequence emails if not a dry run and steps were claimed
+    // Fire sendBatch FULLY non-blocking — the 15-45s human delays between emails
+    // would cause Railway to kill the HTTP request mid-send, leaving steps stuck
+    // in PROCESSING. We return the scheduler result immediately and let sending
+    // happen in the background. The stale monitor handles any orphaned sends.
     if (!dryRun && result.claimedStepIds.length > 0) {
-      const { sendBatch } = await import("@/lib/gmail/sender");
-      try {
-        await sendBatch(result.claimedStepIds);
-      } catch (err) {
-        logger.error("Failed to send batch after manual scheduler run", { error: err });
-      }
+      const claimedIds = [...result.claimedStepIds]; // snapshot before async handoff
+      import("@/lib/gmail/sender").then(async ({ sendBatch }) => {
+        try {
+          await sendBatch(claimedIds);
+        } catch (err) {
+          logger.error("[SCHEDULER/RUN] Background sendBatch failed", { error: err });
+        }
+      }).catch(() => {});
     }
 
     // Also process any due scheduled adhoc composer emails
