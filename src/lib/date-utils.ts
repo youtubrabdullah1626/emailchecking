@@ -142,21 +142,37 @@ export function formatInTimezone(
   }
 }
 
+const TIMEZONE_ABBR_MAP: Record<string, string> = {
+  "Asia/Karachi": "PKT",
+  "Asia/Kolkata": "IST",
+  "Asia/Dubai": "GST",
+  "Asia/Singapore": "SGT",
+  "Asia/Tokyo": "JST",
+  "UTC": "UTC",
+};
+
 /**
  * Returns a short human-readable timezone abbreviation (e.g. "PKT", "EDT", "GMT").
- * Uses the 'short' timeZoneName which gives the proper localized abbreviation.
+ * Uses clean 3-letter code mapping or localized abbreviation.
  */
 export function getTimezoneShortLabel(timezone: string, at: Date = new Date()): string {
   try {
+    if (TIMEZONE_ABBR_MAP[timezone]) {
+      return TIMEZONE_ABBR_MAP[timezone];
+    }
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
       timeZoneName: "short",
     }).formatToParts(at);
-    return parts.find((p) => p.type === "timeZoneName")?.value ?? "TZ";
+    const val = parts.find((p) => p.type === "timeZoneName")?.value ?? "TZ";
+    // Replace GMT+5 / GMT+05:00 with clean label if available
+    if (timezone.includes("Karachi")) return "PKT";
+    return val;
   } catch {
     return "TZ";
   }
 }
+
 
 /**
  * Returns a human-friendly city or region name for a timezone identifier.
