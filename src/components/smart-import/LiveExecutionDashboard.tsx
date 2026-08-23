@@ -91,8 +91,15 @@ export function LiveExecutionDashboard() {
   const [diagnosticStep, setDiagnosticStep] = useState<StepDiagnosticContext | null>(null);
   const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
 
-  // User's home timezone sourced from live-status API (overrides stats fallback)
-  const [liveUserTimezone, setLiveUserTimezone] = useState<string>("UTC");
+  // User's home timezone sourced from live-status API (overrides stats fallback).
+  // Seeded from localStorage for instant render — eliminates UTC flash on page load.
+  const [liveUserTimezone, setLiveUserTimezone] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("silaer_user_timezone");
+      if (cached && cached !== "UTC") return cached;
+    }
+    return "UTC";
+  });
 
   const effectiveStats = statsData || cachedStats;
   const sentToday = effectiveStats?.emailsSentToday ?? 0;
@@ -253,8 +260,11 @@ export function LiveExecutionDashboard() {
         };
       });
 
-      // Capture user's home timezone from the API
-      if (data.userTimezone) {
+      // Capture user's home timezone from the API and cache for instant next-load render
+      if (data.userTimezone && data.userTimezone !== "UTC") {
+        setLiveUserTimezone(data.userTimezone);
+        try { localStorage.setItem("silaer_user_timezone", data.userTimezone); } catch {}
+      } else if (data.userTimezone) {
         setLiveUserTimezone(data.userTimezone);
       }
 
