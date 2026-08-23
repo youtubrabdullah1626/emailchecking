@@ -151,7 +151,7 @@ export function CampaignPlanningWizard() {
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                       <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                      Timezone
+                      Lead&apos;s Timezone
                     </Label>
                     <Select value={config.timezone} onValueChange={(val) => setConfig({...config, timezone: val})}>
                       <SelectTrigger className="text-xs h-9 bg-background border-border shadow-2xs">
@@ -159,10 +159,10 @@ export function CampaignPlanningWizard() {
                       </SelectTrigger>
                       <SelectContent className="max-h-[260px] text-xs">
                         <SelectItem value="UTC">UTC (Coordinated Universal Time)</SelectItem>
-                        <SelectItem value="America/New_York">Eastern Time (US & Canada - New York)</SelectItem>
-                        <SelectItem value="America/Chicago">Central Time (US & Canada - Chicago)</SelectItem>
-                        <SelectItem value="America/Denver">Mountain Time (US & Canada - Denver)</SelectItem>
-                        <SelectItem value="America/Los_Angeles">Pacific Time (US & Canada - Los Angeles)</SelectItem>
+                        <SelectItem value="America/New_York">Eastern Time (US &amp; Canada - New York)</SelectItem>
+                        <SelectItem value="America/Chicago">Central Time (US &amp; Canada - Chicago)</SelectItem>
+                        <SelectItem value="America/Denver">Mountain Time (US &amp; Canada - Denver)</SelectItem>
+                        <SelectItem value="America/Los_Angeles">Pacific Time (US &amp; Canada - Los Angeles)</SelectItem>
                         <SelectItem value="Europe/London">London (GMT / BST)</SelectItem>
                         <SelectItem value="Europe/Paris">Paris, Berlin, Rome (CET / CEST)</SelectItem>
                         <SelectItem value="Asia/Dubai">Dubai, Gulf (GST)</SelectItem>
@@ -173,6 +173,9 @@ export function CampaignPlanningWizard() {
                         <SelectItem value="Australia/Sydney">Sydney, Melbourne (AEST / AEDT)</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      Select your <strong>prospect&apos;s</strong> timezone. Emails will arrive at 9 AM their business time, regardless of where you are.
+                    </p>
                   </div>
                 </div>
 

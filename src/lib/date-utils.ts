@@ -102,6 +102,65 @@ export function localDateTimeToUtc(dateStr: string, timeStr: string = "09:00", t
   }
 }
 
+/**
+ * Formats a UTC ISO string into a local date and time in a given IANA timezone.
+ * Returns date (YYYY-MM-DD), time (hh:mm AM/PM), and offset label (e.g. "PKT", "EDT").
+ */
+export function formatInTimezone(
+  utcIso: string,
+  timezone: string = "UTC"
+): { date: string; time: string; offset: string; tzAbbr: string } {
+  try {
+    const d = new Date(utcIso);
+    if (isNaN(d.getTime())) throw new Error("invalid");
+
+    const dateStr = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+
+    const timeStr = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }).format(d);
+
+    const tzAbbr = getTimezoneShortLabel(timezone, d);
+
+    // UTC offset for display (e.g. UTC+5)
+    const offsetMin = -d.getTimezoneOffset(); // NOTE: browser tz, not target tz
+    // Use Intl to get the real offset in the target timezone
+    const offsetParts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      timeZoneName: "shortOffset",
+    }).formatToParts(d);
+    const offsetLabel = offsetParts.find((p) => p.type === "timeZoneName")?.value ?? "UTC";
+
+    return { date: dateStr, time: timeStr.replace(" AM", " AM").replace(" PM", " PM"), offset: offsetLabel, tzAbbr };
+  } catch {
+    return { date: "—", time: "—", offset: "UTC", tzAbbr: "UTC" };
+  }
+}
+
+/**
+ * Returns a short human-readable timezone abbreviation (e.g. "PKT", "EDT", "GMT").
+ * Uses the 'short' timeZoneName which gives the proper localized abbreviation.
+ */
+export function getTimezoneShortLabel(timezone: string, at: Date = new Date()): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      timeZoneName: "short",
+    }).formatToParts(at);
+    return parts.find((p) => p.type === "timeZoneName")?.value ?? "TZ";
+  } catch {
+    return "TZ";
+  }
+}
+
 export interface CooldownStatus {
   canChange: boolean;
   remainingDays: number;

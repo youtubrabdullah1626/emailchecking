@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Send, MailOpen, Reply, AlertCircle, Clock, Activity, Calendar as CalendarIcon, User, MoreHorizontal, Play, Pause, PauseCircle, Loader2, ArrowLeft, Trash2, RefreshCw, Ban } from "lucide-react";
+import { Send, MailOpen, Reply, AlertCircle, Clock, Activity, Calendar as CalendarIcon, User, MoreHorizontal, Play, Pause, PauseCircle, Loader2, ArrowLeft, Trash2, RefreshCw, Ban, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { StorageEngine } from "@/lib/storage/StorageEngine";
@@ -23,6 +23,8 @@ import { CapacitySentinelBadge } from "./CapacitySentinelBadge";
 import { DailyResetCountdown } from "./DailyResetCountdown";
 import { WhyNotSentModal } from "./WhyNotSentModal";
 import { resolveStepDiagnostic, StepDiagnosticContext } from "@/lib/capacity/state";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatInTimezone } from "@/lib/date-utils";
 import useSWR from "swr";
 import { apiClient } from "@/lib/api-client";
 
@@ -89,12 +91,24 @@ export function LiveExecutionDashboard() {
   const [diagnosticStep, setDiagnosticStep] = useState<StepDiagnosticContext | null>(null);
   const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
 
+  // Timezone View Toggle — "lead" shows lead's local time, "mine" shows user's home time
+  const [tzView, setTzView] = useState<"lead" | "mine">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("silaer_tz_view_pref");
+      if (saved === "lead" || saved === "mine") return saved;
+    }
+    return "lead";
+  });
+
+  // User's home timezone sourced from live-status API (overrides stats fallback)
+  const [liveUserTimezone, setLiveUserTimezone] = useState<string>("UTC");
+
   const effectiveStats = statsData || cachedStats;
   const sentToday = Math.max(effectiveStats?.emailsSentToday ?? 0, 4);
   const dailyLimit = effectiveStats?.dailyLimit || 6;
   const sentThisHour = effectiveStats?.emailsSentThisHour ?? 0;
   const hourlyLimit = effectiveStats?.hourlyLimit ?? 60;
-  const userTimezone = effectiveStats?.userTimezone ?? "UTC";
+  const userTimezone = liveUserTimezone || effectiveStats?.userTimezone || "UTC";
 
   // Authoritative campaign ID: from bulkProgress, session meta, localStorage, or latest active campaign
   const activeCampaignId: string = (bulkProgress as any)?.campaignId ?? currentSessionMeta?.campaignId ?? (typeof window !== "undefined" ? localStorage.getItem("silaer_active_campaign_id") : null) ?? "latest";
@@ -233,11 +247,18 @@ export function LiveExecutionDashboard() {
           },
           scheduledDate: cleanDate,
           scheduledTime: dbItem.scheduledTimeLocal || "09:00",
+          scheduledAtUtc: dbItem.scheduledAt ?? null,      // UTC ISO for precision timezone display
+          timezone: dbItem.timezone ?? null,               // Lead's IANA timezone
           liveStatus: (dbItem.liveStatus as any) || "SCHEDULED",
           lastEventTime: resolvedEventTime,
           retryCount: dbItem.retryCount ?? 0,
         };
       });
+
+      // Capture user's home timezone from the API
+      if (data.userTimezone) {
+        setLiveUserTimezone(data.userTimezone);
+      }
 
       setLiveItems(formattedItems);
       if (typeof window !== "undefined") {
@@ -927,9 +948,26 @@ export function LiveExecutionDashboard() {
               <Clock className="h-5 w-5 text-primary" />
               Live Email Delivery Status
             </div>
-            <span className="text-xs font-medium text-muted-foreground bg-background px-3 py-1.5 rounded-full border border-border shadow-sm">
-              Click any row to view the lead&apos;s full journey
-            </span>
+            <div className="flex items-center gap-2">
+              {/* Timezone view toggle */}
+              <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-0.5 shadow-sm">
+                <button
+                  onClick={() => { setTzView("lead"); if (typeof window !== "undefined") localStorage.setItem("silaer_tz_view_pref", "lead"); }}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${tzView === "lead" ? "bg-background shadow text-foreground border border-border" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <Globe className="h-3 w-3" />Lead Time
+                </button>
+                <button
+                  onClick={() => { setTzView("mine"); if (typeof window !== "undefined") localStorage.setItem("silaer_tz_view_pref", "mine"); }}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${tzView === "mine" ? "bg-background shadow text-foreground border border-border" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  🏠 My Time
+                </button>
+              </div>
+              <span className="text-xs font-medium text-muted-foreground bg-background px-3 py-1.5 rounded-full border border-border shadow-sm hidden sm:block">
+                Click any row to view the lead&apos;s full journey
+              </span>
+            </div>
           </CardTitle>
         </CardHeader>
         <ScrollArea className="flex-1">
@@ -938,7 +976,12 @@ export function LiveExecutionDashboard() {
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-[30%] py-4 font-semibold">Recipient</TableHead>
                 <TableHead className="w-[15%] py-4 font-semibold">Email Step</TableHead>
-                <TableHead className="w-[20%] py-4 font-semibold">Scheduled Time</TableHead>
+                <TableHead className="w-[20%] py-4 font-semibold">
+                  <div className="flex items-center gap-1.5">
+                    <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                    {tzView === "lead" ? "Scheduled (Lead's Time)" : "Scheduled (Your Time)"}
+                  </div>
+                </TableHead>
                 <TableHead className="w-[15%] py-4 font-semibold">Live Status</TableHead>
                 <TableHead className="w-[15%] py-4 font-semibold text-right">Event Time</TableHead>
                 <TableHead className="w-[5%] py-4 text-center"></TableHead>
@@ -1013,8 +1056,69 @@ export function LiveExecutionDashboard() {
                         Email {item.sequenceStep.stepNumber}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm font-mono py-3">
-                      {item.scheduledDate} <span className="mx-1.5 text-border">•</span> {item.scheduledTime}
+                    <TableCell className="py-3">
+                      {(() => {
+                        const utcIso = (item as any).scheduledAtUtc;
+                        const leadTz = (item as any).timezone || "UTC";
+                        const sameTz = leadTz === userTimezone;
+
+                        if (!utcIso) {
+                          return (
+                            <span className="text-muted-foreground text-sm font-mono">
+                              {item.scheduledDate} <span className="mx-1 text-border">•</span> {item.scheduledTime}
+                            </span>
+                          );
+                        }
+
+                        const leadFormatted = formatInTimezone(utcIso, leadTz);
+                        const myFormatted = formatInTimezone(utcIso, userTimezone);
+                        const primary = tzView === "lead" ? leadFormatted : myFormatted;
+                        const secondary = tzView === "lead" ? (sameTz ? null : myFormatted) : (sameTz ? null : leadFormatted);
+                        const secondaryLabel = tzView === "lead" ? "your time" : "lead's time";
+
+                        return (
+                          <TooltipProvider delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="space-y-0.5 cursor-default">
+                                  {/* Primary time line */}
+                                  <div className="flex items-center gap-1.5 font-mono text-sm text-foreground">
+                                    <span className="font-medium">{primary.date}</span>
+                                    <span className="text-border">•</span>
+                                    <span className="font-semibold">{primary.time}</span>
+                                    <span className="text-[10px] font-semibold text-primary/70 bg-primary/8 px-1.5 py-0.5 rounded-md border border-primary/15">
+                                      {primary.tzAbbr}
+                                    </span>
+                                  </div>
+                                  {/* Secondary time line (only if different timezone) */}
+                                  {secondary && (
+                                    <div className="flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
+                                      <span>{secondary.time}</span>
+                                      <span className="text-[10px] font-medium text-muted-foreground/70 bg-muted/40 px-1 py-0.5 rounded">
+                                        {secondary.tzAbbr}
+                                      </span>
+                                      <span className="text-muted-foreground/50">({secondaryLabel})</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-[260px] p-3 space-y-1.5 text-xs">
+                                <p className="font-semibold text-foreground">
+                                  🌍 Lead receives this at <span className="text-primary">{leadFormatted.time} {leadFormatted.tzAbbr}</span>
+                                </p>
+                                {!sameTz && (
+                                  <p className="text-muted-foreground">
+                                    🏠 That&apos;s <span className="font-semibold text-foreground">{myFormatted.time} {myFormatted.tzAbbr}</span> on your clock
+                                  </p>
+                                )}
+                                <p className="text-muted-foreground/70 pt-1 border-t border-border text-[10px]">
+                                  UTC: {utcIso ? new Date(utcIso).toISOString().replace("T", " ").slice(0, 16) : "—"}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="py-3">
                       {getStatusBadge(item.liveStatus, item)}

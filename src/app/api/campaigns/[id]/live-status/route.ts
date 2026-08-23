@@ -198,10 +198,19 @@ export async function GET(
     const repliedCount = items.filter(i => i.liveStatus === "REPLIED").length;
     const failedCount  = items.filter(i => i.liveStatus === "BOUNCED").length;
 
+    // Fetch user's home timezone from the users table
+    const userRecord = await prisma.users.findFirst({
+      where: { id: userId },
+      select: { timezone: true },
+    }).catch(() => null);
+
+    const userTimezone = userRecord?.timezone || "UTC";
+
     return NextResponse.json({
       campaignId,
       campaignStatus: campaign.status,
       campaignName: campaign.name,
+      userTimezone,
       stats: { sent: sentCount, opened: openedCount, replied: repliedCount, failed: failedCount },
       items,
       fetchedAt: new Date().toISOString(),
