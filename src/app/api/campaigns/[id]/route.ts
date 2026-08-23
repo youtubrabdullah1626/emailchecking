@@ -130,12 +130,43 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const resolvedCampaignId = campaign.id;
 
     if (action === "PAUSE") {
-      const result = await pauseCampaign(resolvedCampaignId, session.user.id);
-      if (!result.success) {
-        return NextResponse.json({ ok: false, error: result.message || "Failed to pause campaign" }, { status: 400 });
-      }
-      return NextResponse.json({ ok: true, message: "Campaign paused successfully" });
+      // Step 1: Immediately reset PROCESSING steps → PENDING + release reserved_count
+      // This is the critical "emergency brake" — do it FIRST before anything else
+      await prisma.$executeRaw`
+        WITH reset_steps AS (
+          UPDATE sequence_steps s
+          SET status = 'PENDING', claimed_at = NULL
+          FROM sequences seq
+          JOIN prospects p ON seq.prospect_id = p.id
+          WHERE s.sequence_id = seq.id
+            AND p.campaign_id = ${resolvedCampaignId}
+            AND s.status = 'PROCESSING'
+          RETURNING seq.assigned_sender_email
+        )
+        UPDATE email_accounts ea
+        SET reserved_count = GREATEST(0, ea.reserved_count - (
+          SELECT COUNT(*) FROM reset_steps rs WHERE rs.assigned_sender_email = ea.email
+        ))
+        WHERE ea.email IN (SELECT assigned_sender_email FROM reset_steps WHERE assigned_sender_email IS NOT NULL)
+      `.catch(() => {});
+
+      // Step 2: Mark campaign PAUSED immediately so sender.ts live re-read sees it
+      await prisma.campaign.update({ where: { id: resolvedCampaignId }, data: { status: 'PAUSED' } });
+
+      // Step 3: Return success NOW — no waiting for sequence updates
+      // Sequence pause runs in background (non-critical for the brake, just for state cleanup)
+      prisma.$executeRaw`
+        UPDATE sequences seq
+        SET status = 'PAUSED'
+        FROM prospects p
+        WHERE seq.prospect_id = p.id
+          AND p.campaign_id = ${resolvedCampaignId}
+          AND seq.status NOT IN ('COMPLETED', 'STOPPED')
+      `.catch(() => {});
+
+      return NextResponse.json({ ok: true, status: "PAUSED", message: "Campaign paused successfully" });
     }
+
 
     if (action === "RESUME" || action === "ACTIVATE") {
       const result = await activateCampaign(resolvedCampaignId, session.user.id);

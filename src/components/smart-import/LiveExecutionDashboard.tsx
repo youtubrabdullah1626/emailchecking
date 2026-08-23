@@ -458,36 +458,61 @@ export function LiveExecutionDashboard() {
       }
 
       if (targetId) {
-        const res = await apiClient<any>(`/api/campaigns/${encodeURIComponent(targetId)}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action, campaignName }),
-        });
+        let apiSucceeded = false;
+        try {
+          const res = await apiClient<any>(`/api/campaigns/${encodeURIComponent(targetId)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action, campaignName }),
+            timeoutMs: 20000, // 20s — Railway needs time for DB ops
+          });
 
-        if (res?.ok === false) {
-          // Rollback optimistic update if server rejected
-          setCampaignStatus(action === "PAUSE" ? "ACTIVE" : "PAUSED");
-          toast.error(res.error || "Failed to update campaign state");
-          return;
+          if (res?.ok === false) {
+            // Server explicitly rejected — rollback optimistic UI
+            setCampaignStatus(action === "PAUSE" ? "ACTIVE" : "PAUSED");
+            toast.error(res.error || "Failed to update campaign state");
+            return;
+          }
+
+          apiSucceeded = true;
+          toast.success(action === "PAUSE" ? "Campaign Paused — All sending stopped immediately" : "Campaign Resumed — Dispatching due emails");
+        } catch (e: any) {
+          const isTimeout = e?.status === 408 || e?.message?.includes("Timeout") || e?.message?.includes("timeout");
+          if (isTimeout) {
+            // CRITICAL: On timeout, the DB write likely ALREADY succeeded server-side
+            // (Railway closed the connection but the SQL ran). DO NOT rollback the UI.
+            // Instead, verify the real state via fresh DB fetch in 3s.
+            console.warn("[executeTogglePause] Request timed out — verifying DB state rather than rolling back UI.");
+            toast.loading(action === "PAUSE" ? "Pausing... verifying..." : "Resuming... verifying...", { id: "pause-verify", duration: 4000 });
+            apiSucceeded = true; // Keep optimistic state until we verify
+          } else if (e?.status === 502 || e?.status === 503) {
+            // Server/gateway error — keep optimistic state and verify
+            console.warn("[executeTogglePause] Server error — verifying DB state.");
+            toast.loading("Verifying campaign state...", { id: "pause-verify", duration: 4000 });
+            apiSucceeded = true;
+          } else {
+            // Genuine client-side error (network down, auth failure) — safe to rollback
+            setCampaignStatus(action === "PAUSE" ? "ACTIVE" : "PAUSED");
+            toast.error(e?.message || "Failed to update campaign state");
+          }
         }
 
-        toast.success(action === "PAUSE" ? "Campaign Paused — All sending stopped immediately" : "Campaign Resumed — Dispatching due emails");
-
-        // Single authoritative DB re-fetch 3s after lock expires (not 3 staggered fetches)
-        setTimeout(() => {
-          mutationLockUntilRef.current = 0;
-          fetchLiveStatusFromDb();
-        }, 3000);
+        if (apiSucceeded) {
+          // Always do one authoritative DB re-fetch 3s later to confirm real DB state
+          setTimeout(() => {
+            mutationLockUntilRef.current = 0;
+            fetchLiveStatusFromDb().then(() => {
+              toast.dismiss("pause-verify");
+            });
+          }, 3000);
+        }
       }
-    } catch (e: any) {
-      console.error("[executeTogglePause] Error:", e);
-      // Rollback optimistic UI on network error
-      setCampaignStatus(action === "PAUSE" ? "ACTIVE" : "PAUSED");
-      toast.error(e?.message || "Failed to update campaign state");
     } finally {
       setIsResumingCampaign(false);
     }
   };
+
+
 
 
   // Lead Journey items
@@ -506,12 +531,19 @@ export function LiveExecutionDashboard() {
   const handleSendNow = async (e: React.MouseEvent, queueId: string) => {
     e.stopPropagation();
 
+    // Guard: Never allow manual send when campaign is paused
+    if (campaignStatus === "PAUSED") {
+      toast.error("Campaign is Paused", { description: "Resume the campaign first before sending." });
+      return;
+    }
+
     const targetItem = liveItems.find(i => 
       i.queueId === queueId || 
       (i as any).realStepId === queueId ||
       (i as any).id === queueId
     );
     if (!targetItem) return;
+
 
     const targetEmail = (targetItem.recipientEmail || "").toLowerCase().trim();
     const targetStepNumber = targetItem.sequenceStep?.stepNumber || 1;
