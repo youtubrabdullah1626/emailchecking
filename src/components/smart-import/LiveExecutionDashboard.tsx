@@ -156,12 +156,19 @@ export function LiveExecutionDashboard() {
   const [isSyncing, setIsSyncing] = useState(false);
 
   // ── Feature Flag: Campaign Pause/Resume ──────────────────────────────────
-  // Reads from Platform Config → Feature Flags. Defaults true while loading
-  // so the button never flickers away on page load.
+  // Direct DB read — admin toggle takes effect within 10s on all user panels.
+  // refreshInterval: polls every 10s in the background.
+  // revalidateOnFocus: re-checks immediately when user switches back to tab.
+  // dedupingInterval: 5s prevents request storms on rapid re-renders.
   const { data: featureFlags } = useSWR(
     "/api/feature-flags?keys=campaign_pause_resume",
     (url: string) => apiClient<Record<string, boolean>>(url),
-    { revalidateOnFocus: false, dedupingInterval: 60000 }
+    {
+      revalidateOnFocus: true,      // instant on tab switch
+      refreshInterval: 10000,       // background poll every 10s
+      dedupingInterval: 5000,       // prevent request storm
+      revalidateOnReconnect: true,  // refresh when coming back online
+    }
   );
   const pauseResumeEnabled = featureFlags?.["campaign_pause_resume"] ?? true;
 

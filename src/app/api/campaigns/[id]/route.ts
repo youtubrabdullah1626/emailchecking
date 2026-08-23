@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth/session";
-import { featureFlagService } from "@/lib/platform/feature-flag.service";
 
 export const dynamic = "force-dynamic";
+
 
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
@@ -55,13 +55,19 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const { pauseCampaign, activateCampaign } = await import("@/lib/campaign/lifecycle");
 
     // ── Feature Flag Gate: Campaign Pause/Resume ──────────────────────────────
-    // If the platform admin has disabled pause/resume via Platform Config → Feature Flags,
-    // reject the action immediately. Cache-first isEnabled() = ~0ms overhead.
+    // DEEP-LEVEL FIX: Read directly from DB — not in-memory cache.
+    // In-memory cache is per-server-instance (unreliable on Railway multi-dyno).
+    // Direct DB read guarantees admin toggle takes effect instantly.
     if (action === "PAUSE" || action === "RESUME") {
-      const pauseResumeEnabled = featureFlagService.isEnabled("campaign_pause_resume");
+      const pauseFlag = await prisma.feature_flags.findFirst({
+        where: { key: "campaign_pause_resume", environment: "production" },
+        select: { enabled: true },
+      }).catch(() => null);
+      // Fail-open: if flag row not found, allow the action (enabled by default)
+      const pauseResumeEnabled = pauseFlag ? pauseFlag.enabled : true;
       if (!pauseResumeEnabled) {
         return NextResponse.json(
-          { ok: false, error: "Campaign pause/resume is currently disabled by platform configuration. Campaigns run to completion — delete the campaign to stop sending." },
+          { ok: false, error: "Campaign pause/resume is disabled by platform configuration. Campaigns run to completion — delete the campaign to stop sending." },
           { status: 403 }
         );
       }
