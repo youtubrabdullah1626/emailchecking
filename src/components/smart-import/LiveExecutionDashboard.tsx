@@ -893,124 +893,162 @@ export function LiveExecutionDashboard() {
         </div>
       </div>
 
-      {/* Progress & Stats */}
-      <Card className="border-border shadow-sm overflow-hidden">
-        <CardContent className="p-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="space-y-1 border-r border-border/50 pr-4">
-              <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Send className="h-4 w-4" /> Sent
-              </p>
-              {isLoading && liveItems.length === 0 ? (
-                <div className="h-9 w-12 bg-muted/60 animate-pulse rounded my-1" />
-              ) : (
-                <p className="text-3xl font-bold">{stats.sent}</p>
-              )}
-            </div>
-            <div className="space-y-1 border-r border-border/50 pr-4">
-              <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <MailOpen className="h-4 w-4 text-blue-500" /> Opened
-              </p>
-              {isLoading && liveItems.length === 0 ? (
-                <div className="h-9 w-12 bg-muted/60 animate-pulse rounded my-1" />
-              ) : (
-                <p className="text-3xl font-bold">{stats.opened}</p>
-              )}
-            </div>
-            <div className="space-y-1 border-r border-border/50 pr-4">
-              <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Reply className="h-4 w-4 text-emerald-500" /> Replied
-              </p>
-              {isLoading && liveItems.length === 0 ? (
-                <div className="h-9 w-12 bg-muted/60 animate-pulse rounded my-1" />
-              ) : (
-                <p className="text-3xl font-bold text-emerald-600">{stats.replied}</p>
-              )}
-            </div>
+      {/* Progress & Stats Cards (Sleek SaaS Cockpit) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Sent Card */}
+        <Card className="border-border/70 shadow-xs bg-card/80 backdrop-blur-xs relative overflow-hidden group hover:border-primary/30 transition-all duration-300">
+          <div className="p-4 flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-red-500" /> Failed
-              </p>
-              {isLoading && liveItems.length === 0 ? (
-                <div className="h-9 w-12 bg-muted/60 animate-pulse rounded my-1" />
-              ) : (
-                <p className="text-3xl font-bold">{stats.bounced}</p>
-              )}
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sent</span>
+              <div className="text-2xl font-bold text-foreground font-mono">
+                {isLoading && liveItems.length === 0 ? "—" : stats.sent}
+              </div>
+              <span className="text-[11px] text-muted-foreground/80 font-medium">
+                {stats.sent > 0 ? "100% delivered" : "0 sent"}
+              </span>
+            </div>
+            <div className="h-10 w-10 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shadow-2xs">
+              <Send className="h-5 w-5" />
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </Card>
+
+        {/* Opened Card */}
+        <Card className="border-border/70 shadow-xs bg-card/80 backdrop-blur-xs relative overflow-hidden group hover:border-purple-500/30 transition-all duration-300">
+          <div className="p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Opened</span>
+              <div className="text-2xl font-bold text-foreground font-mono">
+                {isLoading && liveItems.length === 0 ? "—" : stats.opened}
+              </div>
+              <span className="text-[11px] text-purple-600 dark:text-purple-400 font-medium">
+                {stats.sent > 0 ? `${Math.round((stats.opened / stats.sent) * 100)}% open rate` : "0% open rate"}
+              </span>
+            </div>
+            <div className="h-10 w-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shadow-2xs">
+              <MailOpen className="h-5 w-5" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Replied Card */}
+        <Card className="border-border/70 shadow-xs bg-card/80 backdrop-blur-xs relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-300">
+          <div className="p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Replied</span>
+              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                {isLoading && liveItems.length === 0 ? "—" : stats.replied}
+              </div>
+              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                {stats.sent > 0 ? `${Math.round((stats.replied / stats.sent) * 100)}% reply rate` : "0% reply rate"}
+              </span>
+            </div>
+            <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-2xs">
+              <Reply className="h-5 w-5" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Failed / Bounced Card */}
+        <Card className="border-border/70 shadow-xs bg-card/80 backdrop-blur-xs relative overflow-hidden group hover:border-rose-500/30 transition-all duration-300">
+          <div className="p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Failed</span>
+              <div className="text-2xl font-bold text-rose-600 dark:text-rose-400 font-mono">
+                {isLoading && liveItems.length === 0 ? "—" : stats.bounced}
+              </div>
+              <span className="text-[11px] text-muted-foreground/80 font-medium">
+                {stats.bounced === 0 ? "0 bounces (healthy)" : `${stats.bounced} delivery issue`}
+              </span>
+            </div>
+            <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shadow-2xs">
+              <AlertCircle className="h-5 w-5" />
+            </div>
+          </div>
+        </Card>
+      </div>
 
       {/* Main Table */}
-      <Card className="border-border shadow-md flex flex-col overflow-hidden h-[600px] bg-background">
-        <CardHeader className="bg-muted/10 border-b border-border py-4">
-          <CardTitle className="text-base font-semibold flex items-center justify-between">
+      <Card className="border-border/80 shadow-sm flex flex-col overflow-hidden h-[600px] bg-card/95 backdrop-blur-sm rounded-xl">
+        <CardHeader className="bg-muted/15 border-b border-border/70 py-3 px-4">
+          <CardTitle className="text-sm font-semibold flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
-              Live Email Delivery Status
+              <Clock className="h-4 w-4 text-primary" />
+              <span>Live Delivery Log</span>
+              <Badge variant="secondary" className="font-mono text-[10px] font-medium px-2 py-0 h-5">
+                {liveItems.length} emails
+              </Badge>
             </div>
             <div className="flex items-center gap-2">
-              {/* Timezone view toggle */}
-              <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-0.5 shadow-sm">
+              {/* Sleek Segmented Timezone Toggle */}
+              <div className="inline-flex items-center rounded-lg border border-border/80 bg-muted/40 p-0.5 shadow-2xs">
                 <button
+                  type="button"
                   onClick={() => { setTzView("lead"); if (typeof window !== "undefined") localStorage.setItem("silaer_tz_view_pref", "lead"); }}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${tzView === "lead" ? "bg-background shadow text-foreground border border-border" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all duration-200 ${
+                    tzView === "lead"
+                      ? "bg-background text-foreground shadow-xs border border-border/60"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
                 >
-                  <Globe className="h-3 w-3" />Lead Time
+                  <Globe className="h-3 w-3 text-primary" />
+                  <span>Lead Time</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => { setTzView("mine"); if (typeof window !== "undefined") localStorage.setItem("silaer_tz_view_pref", "mine"); }}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${tzView === "mine" ? "bg-background shadow text-foreground border border-border" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all duration-200 ${
+                    tzView === "mine"
+                      ? "bg-background text-foreground shadow-xs border border-border/60"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
                 >
-                  🏠 My Time
+                  <span>🏠 My Clock</span>
                 </button>
               </div>
-              <span className="text-xs font-medium text-muted-foreground bg-background px-3 py-1.5 rounded-full border border-border shadow-sm hidden sm:block">
-                Click any row to view the lead&apos;s full journey
-              </span>
             </div>
           </CardTitle>
         </CardHeader>
         <ScrollArea className="flex-1">
           <Table>
-            <TableHeader className="bg-muted/20 sticky top-0 z-10 shadow-sm backdrop-blur-md">
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[30%] py-4 font-semibold">Recipient</TableHead>
-                <TableHead className="w-[15%] py-4 font-semibold">Email Step</TableHead>
-                <TableHead className="w-[20%] py-4 font-semibold">
-                  <div className="flex items-center gap-1.5">
+            <TableHeader className="bg-muted/20 sticky top-0 z-10 shadow-xs backdrop-blur-md">
+              <TableRow className="hover:bg-transparent border-b border-border/70">
+                <TableHead className="w-[28%] py-3.5 font-semibold text-xs text-muted-foreground uppercase tracking-wider">Recipient</TableHead>
+                <TableHead className="w-[12%] py-3.5 font-semibold text-xs text-muted-foreground uppercase tracking-wider">Step</TableHead>
+                <TableHead className="w-[28%] py-3.5 font-semibold text-xs text-muted-foreground uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5 whitespace-nowrap">
                     <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                    {tzView === "lead" ? "Scheduled (Lead's Time)" : "Scheduled (Your Time)"}
+                    <span>{tzView === "lead" ? "Scheduled (Lead Time)" : "Scheduled (Your Time)"}</span>
                   </div>
                 </TableHead>
-                <TableHead className="w-[15%] py-4 font-semibold">Live Status</TableHead>
-                <TableHead className="w-[15%] py-4 font-semibold text-right">Event Time</TableHead>
-                <TableHead className="w-[5%] py-4 text-center"></TableHead>
+                <TableHead className="w-[16%] py-3.5 font-semibold text-xs text-muted-foreground uppercase tracking-wider">Live Status</TableHead>
+                <TableHead className="w-[12%] py-3.5 font-semibold text-xs text-muted-foreground uppercase tracking-wider text-right">Event Time</TableHead>
+                <TableHead className="w-[4%] py-3.5 text-center"></TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-border/50">
+            <TableBody className="divide-y divide-border/40">
               {isLoading && liveItems.length === 0 ? (
                 [1, 2, 3, 4].map((i) => (
                   <TableRow key={`skeleton-${i}`}>
-                    <TableCell className="py-4 pl-4">
+                    <TableCell className="py-3.5 pl-4">
                       <div className="flex items-center gap-3">
                         <div className="h-8 w-8 rounded-full bg-muted/60 animate-pulse" />
                         <div className="h-4 w-48 bg-muted/60 rounded animate-pulse" />
                       </div>
                     </TableCell>
-                    <TableCell className="py-4">
+                    <TableCell className="py-3.5">
                       <div className="h-5 w-16 bg-muted/60 rounded animate-pulse" />
                     </TableCell>
-                    <TableCell className="py-4">
+                    <TableCell className="py-3.5">
                       <div className="h-4 w-32 bg-muted/60 rounded animate-pulse" />
                     </TableCell>
-                    <TableCell className="py-4">
+                    <TableCell className="py-3.5">
                       <div className="h-6 w-24 bg-muted/60 rounded-full animate-pulse" />
                     </TableCell>
-                    <TableCell className="py-4 text-right">
+                    <TableCell className="py-3.5 text-right">
                       <div className="h-4 w-12 bg-muted/60 rounded animate-pulse ml-auto" />
                     </TableCell>
-                    <TableCell className="py-4" />
+                    <TableCell className="py-3.5" />
                   </TableRow>
                 ))
               ) : liveItems.length === 0 ? (
@@ -1025,36 +1063,34 @@ export function LiveExecutionDashboard() {
                   <TableRow
                     key={item.queueId + idx}
                     onClick={() => openLeadJourney(item.recipientEmail)}
-                    className={`hover:bg-muted/40 transition-all duration-200 cursor-pointer group relative ${item.isNew ? 'bg-emerald-50/30' : ''
-                      }`}
+                    className={`hover:bg-muted/30 transition-colors duration-150 cursor-pointer group relative ${item.isNew ? 'bg-emerald-50/30 dark:bg-emerald-950/20' : ''}`}
                   >
                     <TableCell className="font-medium py-3 relative">
                       {item.isNew && (
                         <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-emerald-500 rounded-r-md shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                       )}
-                      <div className="flex items-center gap-3 pl-2">
-                        <Avatar className={`h-8 w-8 ring-1 shadow-sm transition-all ${item.isNew
-                            ? 'ring-emerald-200 bg-emerald-100/50'
-                            : 'ring-border group-hover:ring-primary/30'
+                      <div className="flex items-center gap-3 pl-1">
+                        <Avatar className={`h-7 w-7 ring-1 shadow-2xs transition-all ${item.isNew
+                            ? 'ring-emerald-300 bg-emerald-100/60 dark:bg-emerald-900/60'
+                            : 'ring-border/80 group-hover:ring-primary/40'
                           }`}>
-                          <AvatarFallback className={`text-xs font-semibold ${item.isNew ? 'text-emerald-700 bg-emerald-100/50' : 'bg-primary/5 text-primary'
-                            }`}>
+                          <AvatarFallback className={`text-[11px] font-semibold ${item.isNew ? 'text-emerald-700 dark:text-emerald-300' : 'bg-primary/5 text-primary'}`}>
                             {item.recipientEmail.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="truncate max-w-[220px]" title={item.recipientEmail}>
+                        <span className="truncate max-w-[200px] text-xs font-semibold text-foreground tracking-tight" title={item.recipientEmail}>
                           {item.recipientEmail}
                         </span>
                         {item.isNew && (
-                          <Badge variant="outline" className="ml-2 bg-emerald-50 text-emerald-600 border-emerald-200 shadow-sm text-[10px] uppercase font-semibold px-2 py-0 h-5">
-                            Just Added
+                          <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-300 shadow-2xs text-[9px] uppercase font-bold px-1.5 py-0 h-4">
+                            New
                           </Badge>
                         )}
                       </div>
                     </TableCell>
                     <TableCell className="py-3">
-                      <Badge variant="outline" className="text-[10px] font-medium shadow-none bg-muted/20 text-muted-foreground group-hover:bg-background group-hover:text-foreground transition-colors">
-                        Email {item.sequenceStep.stepNumber}
+                      <Badge variant="outline" className="text-[10px] font-semibold shadow-2xs bg-muted/30 text-muted-foreground border-border/80 group-hover:border-primary/30 group-hover:text-foreground transition-colors">
+                        Step {item.sequenceStep.stepNumber}
                       </Badge>
                     </TableCell>
                     <TableCell className="py-3">
@@ -1065,8 +1101,8 @@ export function LiveExecutionDashboard() {
 
                         if (!utcIso) {
                           return (
-                            <span className="text-muted-foreground text-sm font-mono">
-                              {item.scheduledDate} <span className="mx-1 text-border">•</span> {item.scheduledTime}
+                            <span className="text-muted-foreground text-xs font-mono whitespace-nowrap">
+                              {item.scheduledDate} • {item.scheduledTime}
                             </span>
                           );
                         }
@@ -1075,46 +1111,43 @@ export function LiveExecutionDashboard() {
                         const myFormatted = formatInTimezone(utcIso, userTimezone);
                         const primary = tzView === "lead" ? leadFormatted : myFormatted;
                         const secondary = tzView === "lead" ? (sameTz ? null : myFormatted) : (sameTz ? null : leadFormatted);
-                        const secondaryLabel = tzView === "lead" ? "your time" : "lead's time";
+                        const secondaryLabel = tzView === "lead" ? "Your Time" : "Lead Time";
 
                         return (
-                          <TooltipProvider delayDuration={200}>
+                          <TooltipProvider delayDuration={150}>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="space-y-0.5 cursor-default">
-                                  {/* Primary time line */}
-                                  <div className="flex items-center gap-1.5 font-mono text-sm text-foreground">
-                                    <span className="font-medium">{primary.date}</span>
-                                    <span className="text-border">•</span>
-                                    <span className="font-semibold">{primary.time}</span>
-                                    <span className="text-[10px] font-semibold text-primary/70 bg-primary/8 px-1.5 py-0.5 rounded-md border border-primary/15">
+                                <div className="space-y-0.5 cursor-default select-none">
+                                  {/* Primary Time Line (Crystal Clear, Single Line, Never Wraps) */}
+                                  <div className="flex items-center gap-1.5 font-mono text-xs font-medium text-foreground whitespace-nowrap">
+                                    <span className="font-semibold text-foreground">{primary.date}</span>
+                                    <span className="text-muted-foreground/40">•</span>
+                                    <span className="font-bold text-foreground">{primary.time}</span>
+                                    <span className="text-[10px] font-semibold text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border/60 shadow-2xs">
                                       {primary.tzAbbr}
                                     </span>
                                   </div>
-                                  {/* Secondary time line (only if different timezone) */}
+                                  {/* Secondary Time Line (Subtle & Crisp) */}
                                   {secondary && (
-                                    <div className="flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
+                                    <div className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground/80 whitespace-nowrap">
                                       <span>{secondary.time}</span>
-                                      <span className="text-[10px] font-medium text-muted-foreground/70 bg-muted/40 px-1 py-0.5 rounded">
-                                        {secondary.tzAbbr}
-                                      </span>
+                                      <span className="text-[9px] text-muted-foreground/60">{secondary.tzAbbr}</span>
                                       <span className="text-muted-foreground/50">({secondaryLabel})</span>
                                     </div>
                                   )}
                                 </div>
                               </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-[260px] p-3 space-y-1.5 text-xs">
-                                <p className="font-semibold text-foreground">
-                                  🌍 Lead receives this at <span className="text-primary">{leadFormatted.time} {leadFormatted.tzAbbr}</span>
+                              <TooltipContent side="top" className="max-w-[260px] p-3 space-y-1.5 text-xs shadow-md border-border/80">
+                                <p className="font-semibold text-foreground flex items-center gap-1.5">
+                                  <span>🌍 Lead receives:</span>
+                                  <span className="text-primary font-mono">{leadFormatted.date}, {leadFormatted.time} ({leadFormatted.tzAbbr})</span>
                                 </p>
                                 {!sameTz && (
-                                  <p className="text-muted-foreground">
-                                    🏠 That&apos;s <span className="font-semibold text-foreground">{myFormatted.time} {myFormatted.tzAbbr}</span> on your clock
+                                  <p className="text-muted-foreground flex items-center gap-1.5">
+                                    <span>🏠 Your clock:</span>
+                                    <span className="font-semibold text-foreground font-mono">{myFormatted.date}, {myFormatted.time} ({myFormatted.tzAbbr})</span>
                                   </p>
                                 )}
-                                <p className="text-muted-foreground/70 pt-1 border-t border-border text-[10px]">
-                                  UTC: {utcIso ? new Date(utcIso).toISOString().replace("T", " ").slice(0, 16) : "—"}
-                                </p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -1130,36 +1163,28 @@ export function LiveExecutionDashboard() {
                     <TableCell className="text-center py-3">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                          <Button variant="ghost" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 data-[state=open]:opacity-100">
+                          <Button variant="ghost" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 data-[state=open]:opacity-100 rounded-md">
                             <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
+                            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 shadow-lg">
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                            Actions
-                          </div>
-                          <DropdownMenuItem
-                            onClick={(e) => handleSendNow(e, item.queueId)}
-                            disabled={item.liveStatus !== "SCHEDULED"}
-                            className="cursor-pointer"
-                          >
-                            <Play className="h-4 w-4 mr-2 text-emerald-500" />
-                            Send Now
+                        <DropdownMenuContent align="end" className="w-44 text-xs font-medium shadow-md">
+                          <DropdownMenuItem onClick={() => openLeadJourney(item.recipientEmail)}>
+                            <User className="h-3.5 w-3.5 mr-2 text-primary" /> View Journey
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => openReschedule(e, item)}
-                            disabled={item.liveStatus !== "SCHEDULED"}
-                            className="cursor-pointer"
-                          >
-                            <Clock className="h-4 w-4 mr-2 text-primary" /> Reschedule
-                          </DropdownMenuItem>
+                          {item.liveStatus === "SCHEDULED" && (
+                            <>
+                              <DropdownMenuItem onClick={(e) => handleSendNow(e, item.queueId)}>
+                                <Play className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Send Immediately
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openReschedule(e, item); }}>
+                                <Clock className="h-3.5 w-3.5 mr-2 text-blue-500" /> Reschedule Step
+                              </DropdownMenuItem>
+                            </>
+                          )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={(e) => handleDeleteItem(e, item.queueId)}
-                            className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" /> Delete Item
+                          <DropdownMenuItem onClick={(e) => handleDeleteItem(e, item.queueId)} className="text-destructive focus:text-destructive">
+                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Remove from Queue
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -1171,7 +1196,6 @@ export function LiveExecutionDashboard() {
           </Table>
         </ScrollArea>
       </Card>
-
       {/* Reschedule Dialog */}
       <Dialog open={!!rescheduleItem} onOpenChange={(open) => !open && setRescheduleItem(null)}>
         <DialogContent className="sm:max-w-[425px]">

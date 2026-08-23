@@ -114,24 +114,21 @@ export function formatInTimezone(
     const d = new Date(utcIso);
     if (isNaN(d.getTime())) throw new Error("invalid");
 
-    const dateStr = new Intl.DateTimeFormat("en-CA", {
+    const dateStr = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
+      month: "short",
+      day: "numeric",
     }).format(d);
 
     const timeStr = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
-      hour: "2-digit",
+      hour: "numeric",
       minute: "2-digit",
       hour12: true,
     }).format(d);
 
     const tzAbbr = getTimezoneShortLabel(timezone, d);
 
-    // UTC offset for display (e.g. UTC+5)
-    const offsetMin = -d.getTimezoneOffset(); // NOTE: browser tz, not target tz
     // Use Intl to get the real offset in the target timezone
     const offsetParts = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
@@ -139,7 +136,7 @@ export function formatInTimezone(
     }).formatToParts(d);
     const offsetLabel = offsetParts.find((p) => p.type === "timeZoneName")?.value ?? "UTC";
 
-    return { date: dateStr, time: timeStr.replace(" AM", " AM").replace(" PM", " PM"), offset: offsetLabel, tzAbbr };
+    return { date: dateStr, time: timeStr, offset: offsetLabel, tzAbbr };
   } catch {
     return { date: "—", time: "—", offset: "UTC", tzAbbr: "UTC" };
   }
