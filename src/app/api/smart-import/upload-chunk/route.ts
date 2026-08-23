@@ -140,21 +140,17 @@ export async function POST(request: NextRequest) {
 
     // ── STEP 4: Stop only OLD sequences (not from this import run) ─────────────
     const prospectIds = existingProspects.map(p => p.id);
-    const newSequenceIds = new Set(validProspectData.map(p => emailToSeqMap.get(p.email)?.recordId).filter(Boolean));
+    const newSequenceIds = Array.from(new Set(validProspectData.map(p => emailToSeqMap.get(p.email)?.recordId).filter(Boolean))) as string[];
     
-    if (prospectIds.length > 0) {
-      // Only stop sequences that are NOT part of this import run
-      const allSequences = await prisma.sequence.findMany({
-        where: { prospect_id: { in: prospectIds }, status: { in: ["ACTIVE", "DRAFT"] } },
-        select: { id: true }
-      });
-      const idsToStop = allSequences.map(s => s.id).filter(id => !newSequenceIds.has(id));
-      if (idsToStop.length > 0) {
-        await prisma.sequence.updateMany({
-          where: { id: { in: idsToStop } },
-          data: { status: "STOPPED", stopped_at: new Date() }
-        });
-      }
+    if (prospectIds.length > 0 && newSequenceIds.length > 0) {
+      await prisma.sequence.updateMany({
+        where: {
+          prospect_id: { in: prospectIds },
+          status: { in: ["ACTIVE", "DRAFT"] },
+          id: { notIn: newSequenceIds }
+        },
+        data: { status: "STOPPED", stopped_at: new Date() }
+      }).catch(() => {});
     }
 
     // ── STEP 5: Bulk create sequences ─────────────────────────────────────────
@@ -179,12 +175,8 @@ export async function POST(request: NextRequest) {
     // Single SQL INSERT for all sequences in this chunk
     if (sequenceInserts.length > 0) {
       await prisma.sequence.createMany({ data: sequenceInserts, skipDuplicates: true });
-      // Ensure created sequences are ACTIVE (in case of skipDuplicates hitting existing)
-      await prisma.sequence.updateMany({
-        where: { id: { in: sequenceInserts.map(s => s.id) } },
-        data: { status: "ACTIVE" }
-      });
     }
+
 
     // ── STEP 6: Bulk create sequence steps ────────────────────────────────────
     const stepInserts: Array<{

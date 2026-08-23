@@ -31,6 +31,7 @@ export function SchedulingPreviewWorkspace() {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const duplicateCheckPromiseRef = React.useRef<Promise<any> | null>(null);
   const precomputedDuplicatesRef = React.useRef<{ done: boolean; duplicates: any[] }>({ done: false, duplicates: [] });
+  const [isLaunching, setIsLaunching] = useState(false);
 
   const connectedAccounts: string[] = useMemo(() => {
     if (accountStats?.accounts && Array.isArray(accountStats.accounts) && accountStats.accounts.length > 0) {
@@ -76,23 +77,26 @@ export function SchedulingPreviewWorkspace() {
       });
   }, [getSequences, appendTargetSessionId]);
 
-  const [isLaunching, setIsLaunching] = useState(false);
-
   const handleExecuteStrategy = async () => {
     setIsCheckingDuplicates(true);
     try {
       const sequences = getSequences();
-      const [res] = await Promise.all([
-        fetch("/api/smart-import/check-duplicates", {
+      
+      // 1. Ultra-Fast: Check if background precomputed duplicate check is already complete (0ms)
+      let dups: any[] = [];
+      if (precomputedDuplicatesRef.current?.done) {
+        dups = precomputedDuplicatesRef.current.duplicates || [];
+      } else if (duplicateCheckPromiseRef.current) {
+        dups = await duplicateCheckPromiseRef.current;
+      } else {
+        const res = await fetch("/api/smart-import/check-duplicates", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sequences, targetCampaignId: appendTargetSessionId || null })
-        }),
-        new Promise((resolve) => setTimeout(resolve, 400)) // smooth visual feedback
-      ]);
-
-      const data = await res.json().catch(() => ({}));
-      const dups = data.duplicates || [];
+        });
+        const data = await res.json().catch(() => ({}));
+        dups = data.duplicates || [];
+      }
 
       if (dups.length > 0) {
         setDuplicateList(dups);
@@ -113,6 +117,7 @@ export function SchedulingPreviewWorkspace() {
       setIsLaunching(false);
     }
   };
+
 
   const handleConfirmDuplicates = async (selectedEmailsToKeep: string[]) => {
     const keepSet = new Set(selectedEmailsToKeep);

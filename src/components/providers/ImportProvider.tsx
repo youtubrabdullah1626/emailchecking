@@ -105,7 +105,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
 
   // Enterprise Bulk Progress (chunked upload tracking)
   const [bulkProgress, setBulkProgress] = useState<BulkImportProgress | null>(null);
-  const CHUNK_SIZE = 250; // 250 sequences per chunk — safe for all hosting tiers
+  const CHUNK_SIZE = 500; // 500 sequences per chunk — ultra-fast single payload for most imports
   const [appendTargetSessionId, setAppendTargetSessionIdState] = useState<string | null>(null);
 
   React.useEffect(() => {
@@ -505,10 +505,9 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     const executionQueue = queueRef.current || [];
     const totalRows = Math.max(1, sequences.length > 0 ? sequences.length : (recordsRef.current?.length || 1));
 
-    // FIX 4: Dynamic chunk sizing — Vercel has a hard 4.5MB request body limit.
-    // We measure actual byte size of a 5-row sample to compute a safe chunk size.
+    // Dynamic chunk sizing — safe up to 3.5MB payload
     const MAX_SAFE_PAYLOAD_BYTES = 3_500_000;
-    const MIN_CHUNK_SIZE = 10;
+    const MIN_CHUNK_SIZE = 50;
     let dynamicChunkSize = CHUNK_SIZE;
     if (sequences.length > 0) {
       try {
@@ -522,7 +521,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         const bytesPerRow = sampleBytes / sampleCount;
         const calculated = Math.floor(MAX_SAFE_PAYLOAD_BYTES / bytesPerRow);
         dynamicChunkSize = Math.max(MIN_CHUNK_SIZE, Math.min(CHUNK_SIZE, calculated));
-      } catch { dynamicChunkSize = 100; }
+      } catch { dynamicChunkSize = 250; }
     }
     const totalChunks = Math.max(1, Math.ceil(totalRows / dynamicChunkSize));
 
@@ -554,11 +553,8 @@ export function ImportProvider({ children }: { children: ReactNode }) {
       };
       setBulkProgress({ ...progress });
 
-      // ── PHASE 2: Upload chunks sequentially ───────────────────────────────────
-      for (let i = 0; i < totalChunks; i++) {
-        // Safety: if user somehow aborted, stop sending
-        if (progress.isAborted) break;
-
+      // ── PHASE 2: Parallel Chunk Upload (Blazing Fast) ───────────────────────
+      const chunkUploadPromises = Array.from({ length: totalChunks }, async (_, i) => {
         const start = i * dynamicChunkSize;
         const chunkSequences = sequences.slice(start, start + dynamicChunkSize);
         const chunkIds = new Set(chunkSequences.map((s: any) => s.recordId));
@@ -579,7 +575,6 @@ export function ImportProvider({ children }: { children: ReactNode }) {
 
         if (!chunkRes.ok) {
           const e = await chunkRes.json().catch(() => ({}));
-          // Non-fatal: log and continue — one bad chunk does not abort all
           console.error(`[import] Chunk ${i} failed:`, e.error);
           progress.failureCount += chunkSequences.length;
         } else {
@@ -588,9 +583,11 @@ export function ImportProvider({ children }: { children: ReactNode }) {
           progress.failureCount += result.failed || 0;
         }
 
-        progress.chunksLoaded = i + 1;
+        progress.chunksLoaded += 1;
         setBulkProgress({ ...progress });
-      }
+      });
+
+      await Promise.all(chunkUploadPromises);
 
       // ── PHASE 3: Mark complete & bind authoritative campaign ID ───────────────
       progress.isComplete = true;
@@ -600,26 +597,24 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("silaer_active_campaign_id", campaignId);
       }
 
-      // Save checkpoint for live execution state
+      // Save checkpoint asynchronously (non-blocking for UI)
       if (sessionId) {
-        await recoveryEngine.saveCheckpoint("EXECUTION_STARTED", {
+        recoveryEngine.saveCheckpoint("EXECUTION_STARTED", {
           status: "EXECUTING",
           heavyData: { campaignId, executionQueue }
-        });
+        }).catch(() => {});
         setSessionId(null);
       }
 
       setBulkProgress(null);
-      // ONLY switch to EXECUTING now that DB has 100% of all rows committed
+      // Switch to EXECUTING instantly
       setStatus("EXECUTING");
       toast.success("Campaign launched successfully!", {
         description: `${progress.successCount || totalRows} contacts saved — dispatching emails now...`,
-        duration: 5000,
+        duration: 4000,
       });
 
       // ── PHASE 4: Immediately trigger scheduler so due steps go NOW ────────────
-      // Do NOT wait for the cron tick (which may be minutes away).
-      // Fire-and-forget: errors here are non-fatal.
       fetch("/api/scheduler/run", { method: "POST" }).catch(() => {});
 
     } catch (error: any) {
@@ -629,6 +624,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
       setBulkProgress(null);
     }
   };
+
 
   const updateQueueItemState = async (queueId: string, liveStatus: any, lastEventTime: string) => {
     let updated = false;
