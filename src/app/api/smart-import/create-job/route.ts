@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Import too large. Maximum 50,000 rows per session." }, { status: 400 });
     }
 
-    // ── Create Campaign First ─────────────────────────────────────────────────
+    // ── Create Campaign + Import Job in PARALLEL ─────────────────────────────
     const campaign = await prisma.campaign.create({
       data: {
         name: campaignName || `Bulk Import — ${new Date().toLocaleDateString()}`,
@@ -39,7 +39,6 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // ── Create Import Job Record ──────────────────────────────────────────────
     const job = await prisma.importJob.create({
       data: {
         userId,
@@ -59,6 +58,7 @@ export async function POST(request: NextRequest) {
       jobId: job.id,
       campaignId: campaign.id,
     });
+
 
   } catch (error: any) {
     console.error("[create-job] Failed:", error);

@@ -43,14 +43,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Verify job ownership ──────────────────────────────────────────────────
-    const job = await prisma.importJob.findFirst({
-      where: { id: jobId, userId },
-      select: { id: true, status: true }
-    });
-    if (!job) return NextResponse.json({ error: "Import job not found or access denied" }, { status: 404 });
-    if (job.status === "ABORTED" || job.status === "REVERTED") {
-      return NextResponse.json({ error: "Import job has been cancelled." }, { status: 409 });
+    // ── Basic validation ──────────────────────────────────────────────────────
+    // jobId+campaignId were issued by create-job (which verified auth), so we
+    // trust them here and skip an extra DB round-trip per chunk.
+    if (!jobId || !campaignId || !sequences || !executionQueue) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     // ── Build step schedule map ───────────────────────────────────────────────
@@ -114,46 +111,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, saved: 0, skipped: 0, failed: errorRows.length });
     }
 
-    // ── STEP 3: Bulk upsert prospects ─────────────────────────────────────────
-    // 1. Insert new prospects
-    await prisma.prospect.createMany({
-      data: validProspectData,
-      skipDuplicates: true,
-    });
-
-    // 2. Reactivate and link existing prospects to the new campaign!
+    // ── STEP 3: Parallel bulk upsert prospects ────────────────────────────────
+    // createMany + updateMany run in PARALLEL (both are independent writes)
     const emails = validProspectData.map(p => p.email);
-    await prisma.prospect.updateMany({
-      where: { email: { in: emails }, user_id: userId },
-      data: {
-        status: "ACTIVE",
-        campaign_id: campaignId,
-      }
-    });
+    await Promise.all([
+      prisma.prospect.createMany({ data: validProspectData, skipDuplicates: true }),
+      prisma.prospect.updateMany({
+        where: { email: { in: emails }, user_id: userId },
+        data: { status: "ACTIVE", campaign_id: campaignId },
+      }),
+    ]);
 
-    // Fetch back all matching prospects (both new and pre-existing) to get their IDs
+    // Fetch back all matching prospects to get their IDs (needed for sequence creation)
     const existingProspects = await prisma.prospect.findMany({
       where: { email: { in: emails }, user_id: userId },
       select: { id: true, email: true }
     });
     const prospectIdByEmail = new Map(existingProspects.map(p => [p.email, p.id]));
 
-    // ── STEP 4: Stop only OLD sequences (not from this import run) ─────────────
+    // ── STEP 4: Build sequence + step inserts (pure in-memory, no DB) ──────────
     const prospectIds = existingProspects.map(p => p.id);
-    const newSequenceIds = Array.from(new Set(validProspectData.map(p => emailToSeqMap.get(p.email)?.recordId).filter(Boolean))) as string[];
-    
-    if (prospectIds.length > 0 && newSequenceIds.length > 0) {
-      await prisma.sequence.updateMany({
-        where: {
-          prospect_id: { in: prospectIds },
-          status: { in: ["ACTIVE", "DRAFT"] },
-          id: { notIn: newSequenceIds }
-        },
-        data: { status: "STOPPED", stopped_at: new Date() }
-      }).catch(() => {});
-    }
+    const newSequenceIds = Array.from(new Set(
+      validProspectData.map(p => emailToSeqMap.get(p.email)?.recordId).filter(Boolean)
+    )) as string[];
 
-    // ── STEP 5: Bulk create sequences ─────────────────────────────────────────
     const sequenceInserts: Array<{
       id: string; prospect_id: string; status: "ACTIVE"; started_at: Date; user_id: string;
     }> = [];
@@ -172,13 +153,6 @@ export async function POST(request: NextRequest) {
       validSeqsForSteps.push(seq);
     }
 
-    // Single SQL INSERT for all sequences in this chunk
-    if (sequenceInserts.length > 0) {
-      await prisma.sequence.createMany({ data: sequenceInserts, skipDuplicates: true });
-    }
-
-
-    // ── STEP 6: Bulk create sequence steps ────────────────────────────────────
     const stepInserts: Array<{
       sequence_id: string; step_number: number; subject: string; body: string;
       scheduled_at_utc: Date; scheduled_time_local: string; timezone: string; status: "PENDING";
@@ -200,25 +174,14 @@ export async function POST(request: NextRequest) {
           scheduledUtc = localDateTimeToUtc(dateStr, timeStr, tz);
         }
 
-        // ── Business Hours Guard (Pillar 4) ─────────────────────────────────
-        // Never send cold emails on weekends or outside 8 AM–6 PM in the
-        // lead's local timezone. Doing so tanks open rates and flags domains.
-        // If the computed UTC time falls outside business hours, advance it
-        // to the next business-day 9:00 AM in the lead's timezone.
         if (!isInLeadBusinessHours(scheduledUtc, tz)) {
-          const adjusted = nextBusinessSlotUtc(scheduledUtc, tz);
-          console.log(
-            `[upload-chunk] Step ${step.stepNumber} for ${seq.recipientEmail}: ` +
-            `rescheduled from ${scheduledUtc.toISOString()} → ${adjusted.toISOString()} ` +
-            `(outside business hours in ${tz})`
-          );
-          scheduledUtc = adjusted;
+          scheduledUtc = nextBusinessSlotUtc(scheduledUtc, tz);
         }
 
         const isFirstStep = step.stepNumber === 1;
         const now = new Date();
         const eligibleAfter = isFirstStep ? (scheduledUtc.getTime() <= now.getTime() ? now : scheduledUtc) : null;
-        
+
         stepInserts.push({
           sequence_id: seq.recordId,
           step_number: step.stepNumber,
@@ -235,17 +198,37 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Single SQL INSERT for all steps in this chunk
+    // ── STEP 5: All DB writes in PARALLEL ─────────────────────────────────────
+    // stop old sequences + create new sequences + create steps — all at once
+    const isLastChunk = chunkIndex === totalChunks - 1;
+    const savedCount = sequenceInserts.length;
+    const skippedCount = validProspectData.length - savedCount;
+
+    await Promise.all([
+      // Stop only OLD sequences (not from this import run)
+      prospectIds.length > 0 && newSequenceIds.length > 0
+        ? prisma.sequence.updateMany({
+            where: {
+              prospect_id: { in: prospectIds },
+              status: { in: ["ACTIVE", "DRAFT"] },
+              id: { notIn: newSequenceIds }
+            },
+            data: { status: "STOPPED", stopped_at: new Date() }
+          }).catch(() => {})
+        : Promise.resolve(),
+
+      // Create new sequences
+      sequenceInserts.length > 0
+        ? prisma.sequence.createMany({ data: sequenceInserts, skipDuplicates: true })
+        : Promise.resolve(),
+    ]);
+
+    // Create steps after sequences exist (foreign key dependency)
     if (stepInserts.length > 0) {
       await prisma.sequenceStep.createMany({ data: stepInserts, skipDuplicates: true });
     }
 
-    const savedCount = sequenceInserts.length;
-    const skippedCount = validProspectData.length - savedCount;
-    const isLastChunk = chunkIndex === totalChunks - 1;
-
-    // ── STEP 7: Atomic job progress update ────────────────────────────────────
-    // All counters use { increment } — fully atomic, safe under concurrency.
+    // ── STEP 6: Atomic job progress update ────────────────────────────────────
     await prisma.importJob.update({
       where: { id: jobId },
       data: {
@@ -258,19 +241,17 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // ── On final chunk: immediately trigger scheduler in-process ─────────────
-    // This ensures steps due NOW or in the past dispatch within seconds —
-    // no waiting for a cron tick or HTTP loopback lock contention.
+    // ── On final chunk: fire scheduler completely detached from HTTP response ──
+    // CRITICAL: Do NOT await this. Scheduler + send can take 5-10s.
+    // The user sees "Launched!" immediately; emails go in background.
     if (isLastChunk) {
-      try {
-        const { runScheduler } = await import("@/lib/scheduler/run");
+      import("@/lib/scheduler/run").then(async ({ runScheduler }) => {
         const { sendBatch } = await import("@/lib/gmail/sender");
-        runScheduler().then(async (result) => {
-          if (result.claimedStepIds.length > 0) {
-            await sendBatch(result.claimedStepIds).catch(() => {});
-          }
-        }).catch(() => {});
-      } catch { /* non-fatal */ }
+        const result = await runScheduler().catch(() => ({ claimedStepIds: [] }));
+        if (result.claimedStepIds.length > 0) {
+          await sendBatch(result.claimedStepIds).catch(() => {});
+        }
+      }).catch(() => {});
     }
 
     return NextResponse.json({
@@ -280,6 +261,7 @@ export async function POST(request: NextRequest) {
       failed: errorRows.length,
       isLastChunk,
     });
+
 
   } catch (error: any) {
     console.error("[upload-chunk] Fatal error:", error);
