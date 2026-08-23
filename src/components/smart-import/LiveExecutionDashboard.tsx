@@ -197,6 +197,15 @@ export function LiveExecutionDashboard() {
   const isFetchingLiveStatusRef = React.useRef(false);
   const mutationLockUntilRef = React.useRef<number>(0);
 
+  // After a Pause/Resume click, the UI owns campaign status for 30s.
+  // DB polls must NOT overwrite this — race conditions on slow DB writes
+  // would otherwise flip the button back immediately.
+  const campaignStatusOverrideRef = React.useRef<{ status: string; until: number } | null>(null);
+
+  // While a manual Send Now is in flight, block poller from overwriting
+  // the optimistic PROCESSING state with stale DB PENDING/SCHEDULED data.
+  const sendNowInFlightRef = React.useRef<Set<string>>(new Set());
+
   const fetchLiveStatusFromDb = React.useCallback(async () => {
     if (Date.now() < mutationLockUntilRef.current) return;
     if (isFetchingLiveStatusRef.current) return;
@@ -232,13 +241,22 @@ export function LiveExecutionDashboard() {
         }
       }
 
-      // Format authoritative DB items
+      // Format authoritative DB items — but preserve optimistic PROCESSING state
+      // for any steps that have a manual Send Now in-flight right now.
       const formattedItems = data.items.map((dbItem: any) => {
         const cleanDate = dbItem.scheduledAt ? (dbItem.scheduledAt.includes("T") ? dbItem.scheduledAt.split("T")[0] : dbItem.scheduledAt) : "";
         const isDispatched = ["SENT", "OPENED", "REPLIED", "BOUNCED"].includes(dbItem.liveStatus);
         const resolvedEventTime = isDispatched
           ? (dbItem.lastEventTime || (dbItem.liveStatus === "SENT" ? "Just now" : "—"))
           : "—";
+
+        // Bug 1+2 Fix: If this step has a send-now in flight, keep showing PROCESSING
+        // instead of reverting to the stale DB status (PENDING/SCHEDULED).
+        // This prevents the 2-second flicker where the spinner disappears.
+        const isStepInFlight = sendNowInFlightRef.current.has(dbItem.stepId);
+        const effectiveLiveStatus = isStepInFlight && dbItem.liveStatus !== "SENT"
+          ? "PROCESSING"
+          : ((dbItem.liveStatus as any) || "SCHEDULED");
 
         return {
           queueId: dbItem.stepId,
@@ -252,9 +270,9 @@ export function LiveExecutionDashboard() {
           },
           scheduledDate: cleanDate,
           scheduledTime: dbItem.scheduledTimeLocal || "09:00",
-          scheduledAtUtc: dbItem.scheduledAt ?? null,      // UTC ISO for precision timezone display
-          timezone: dbItem.timezone ?? null,               // Lead's IANA timezone
-          liveStatus: (dbItem.liveStatus as any) || "SCHEDULED",
+          scheduledAtUtc: dbItem.scheduledAt ?? null,
+          timezone: dbItem.timezone ?? null,
+          liveStatus: effectiveLiveStatus,
           lastEventTime: resolvedEventTime,
           retryCount: dbItem.retryCount ?? 0,
         };
@@ -277,8 +295,12 @@ export function LiveExecutionDashboard() {
 
       initialized.current = true;
 
-      // Sync campaign status from DB
-      if (data.campaignStatus === "PAUSED" || data.campaignStatus === "ACTIVE") {
+      // Bug 3 Fix: Sync campaign status from DB ONLY if no active override.
+      // After a Pause/Resume click, campaignStatusOverrideRef owns the status for 30s
+      // so that slow DB commits or race conditions don't flip the button back.
+      const override = campaignStatusOverrideRef.current;
+      const overrideActive = override && Date.now() < override.until;
+      if (!overrideActive && (data.campaignStatus === "PAUSED" || data.campaignStatus === "ACTIVE")) {
         setCampaignStatus(data.campaignStatus);
         if (typeof window !== "undefined") {
           try {
@@ -294,6 +316,7 @@ export function LiveExecutionDashboard() {
       isFetchingLiveStatusRef.current = false;
       setIsLoading(false);
     }
+
   }, [activeCampaignId]);
 
   // Initialize Queue: DB is the authoritative single source of truth
@@ -425,21 +448,32 @@ export function LiveExecutionDashboard() {
     setCampaignStatus(nextStatus);
     setIsResumeModalOpen(false);
 
-    if (action === "RESUME") {
-      setLiveItems(prev => prev.map(item => {
-        const s = item.liveStatus as string;
-        if (s === "PAUSED" || s === "DAILY_LIMIT_REACHED") {
-          return { ...item, liveStatus: "SCHEDULED" as any };
-        }
-        return item;
-      }));
-    } else if (action === "PAUSE") {
+    // UI owns campaign status for 30s — DB polls cannot overwrite this.
+    // This is the permanent fix for the PAUSED→ACTIVE auto-flip bug.
+    campaignStatusOverrideRef.current = { status: nextStatus, until: Date.now() + 30000 };
+
+    if (action === "PAUSE") {
+      // Clear any in-flight Send Now operations and dismiss their loading toasts
+      // so the "Sending email via Gmail..." toast doesn't stay stuck while paused.
+      sendNowInFlightRef.current.forEach(stepId => {
+        toast.dismiss(stepId);
+      });
+      sendNowInFlightRef.current.clear();
+
       setLiveItems(prev => prev.map(i => {
         const s = i.liveStatus as string;
         if (s === "PROCESSING" || s === "SCHEDULED") {
           return { ...i, liveStatus: "PAUSED" as any };
         }
         return i;
+      }));
+    } else if (action === "RESUME") {
+      setLiveItems(prev => prev.map(item => {
+        const s = item.liveStatus as string;
+        if (s === "PAUSED" || s === "DAILY_LIMIT_REACHED") {
+          return { ...item, liveStatus: "SCHEDULED" as any };
+        }
+        return item;
       }));
     }
 
@@ -567,10 +601,14 @@ export function LiveExecutionDashboard() {
       return item;
     }));
 
-    toast.loading("Sending email via Gmail...", { id: queueId });
+    // Register this step as "in-flight" so the DB poller preserves PROCESSING state
+    const stepId = (targetItem as any).realStepId || targetItem.queueId;
+    sendNowInFlightRef.current.add(stepId);
+    // Use the stepId as the toast ID so success/error always dismisses the loader
+    const toastId = stepId;
+    toast.loading("Sending email via Gmail...", { id: toastId });
 
     try {
-      const stepId = (targetItem as any).realStepId || targetItem.queueId;
       const res = await fetch("/api/steps/send-now", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -584,7 +622,7 @@ export function LiveExecutionDashboard() {
       const data = await res.json().catch(() => ({}));
       
       if (res.ok && data.ok) {
-        toast.success("Email Delivered!", { id: queueId, description: `Sent to ${targetItem.recipientEmail}` });
+        toast.success("Email Delivered!", { id: toastId, description: `Sent to ${targetItem.recipientEmail}` });
         setLiveItems(prev => prev.map(item => {
           const isMatch =
             item.queueId === targetItem.queueId ||
@@ -603,14 +641,18 @@ export function LiveExecutionDashboard() {
         }));
         setTimeout(() => fetchLiveStatusFromDb(), 1000);
       } else {
-        toast.error("Delivery Failed", { id: queueId, description: data.detail || data.error || "Send failed" });
+        toast.error("Delivery Failed", { id: toastId, description: data.detail || data.error || "Send failed" });
         await fetchLiveStatusFromDb();
       }
     } catch (err: any) {
-      toast.error("Network Error", { id: queueId, description: err.message || "Failed to reach backend." });
+      toast.error("Network Error", { id: toastId, description: err.message || "Failed to reach backend." });
       await fetchLiveStatusFromDb();
+    } finally {
+      // Always unregister the step — poller can now use real DB status
+      sendNowInFlightRef.current.delete(stepId);
     }
   };
+
 
 
   const openReschedule = (e: React.MouseEvent, item: LiveItem) => {
