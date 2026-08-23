@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSessionUser } from "@/lib/audit/rbac";
+import { localDateTimeToUtc } from "@/lib/date-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -204,12 +205,7 @@ export async function POST(request: NextRequest) {
         if (scheduleInfo?.timestamp && !isNaN(scheduleInfo.timestamp)) {
           scheduledUtc = new Date(scheduleInfo.timestamp);
         } else {
-          try {
-            scheduledUtc = new Date(`${dateStr}T${timeStr.length === 5 ? timeStr + ":00" : timeStr}`);
-            if (isNaN(scheduledUtc.getTime())) scheduledUtc = new Date(`${dateStr}T09:00:00Z`);
-          } catch {
-            scheduledUtc = new Date(`${dateStr}T09:00:00Z`);
-          }
+          scheduledUtc = localDateTimeToUtc(dateStr, timeStr, tz);
         }
 
         const isFirstStep = step.stepNumber === 1;

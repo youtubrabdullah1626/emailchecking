@@ -107,7 +107,6 @@ export function LiveExecutionDashboard() {
         const found = all.find(s => s.sessionId === activeId);
         if (found) {
           setCurrentSessionMeta(found);
-          setCampaignStatus(found.status === "PAUSED" ? "PAUSED" : "ACTIVE");
         }
       }
     };

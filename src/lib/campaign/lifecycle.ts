@@ -73,16 +73,16 @@ export async function activateCampaign(campaignId: string, userId: string): Prom
       AND seq.status != 'COMPLETED'
   `.catch(() => {});
 
-  // 4. Set eligible_after_utc = now for any due steps so they are ready for dispatch immediately
+  // 4. Set eligible_after_utc = now and scheduled_at_utc = now for pending steps so they dispatch immediately on resume
   await prisma.$executeRaw`
     UPDATE sequence_steps s
-    SET eligible_after_utc = NOW()
+    SET scheduled_at_utc = LEAST(s.scheduled_at_utc, NOW()),
+        eligible_after_utc = NOW()
     FROM sequences seq
     JOIN prospects p ON seq.prospect_id = p.id
     WHERE s.sequence_id = seq.id
       AND p.campaign_id = ${campaignId}
       AND s.status = 'PENDING'
-      AND s.scheduled_at_utc <= NOW()
   `.catch(() => {});
 
   return { success: true, activeCount: activeCount + 1, limit: maxAllowed };

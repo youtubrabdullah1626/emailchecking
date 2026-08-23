@@ -66,6 +66,42 @@ export function getStartOfDayInTimezone(timezone: string = "UTC", now: Date = ne
   }
 }
 
+/**
+ * Converts a local date string (YYYY-MM-DD) and local time string (HH:MM) in a given IANA timezone into an exact UTC Date.
+ */
+export function localDateTimeToUtc(dateStr: string, timeStr: string = "09:00", timezone: string = "UTC"): Date {
+  try {
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    const naiveUtc = Date.UTC(year, month - 1, day, hours || 0, minutes || 0, 0, 0);
+
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone || "UTC",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+      hourCycle: "h23",
+    }).formatToParts(new Date(naiveUtc));
+
+    const pYear = Number(parts.find((p) => p.type === "year")?.value);
+    const pMonth = Number(parts.find((p) => p.type === "month")?.value);
+    const pDay = Number(parts.find((p) => p.type === "day")?.value);
+    const pHour = Number(parts.find((p) => p.type === "hour")?.value);
+    const pMinute = Number(parts.find((p) => p.type === "minute")?.value);
+    const pSecond = Number(parts.find((p) => p.type === "second")?.value);
+
+    const targetAsUtc = Date.UTC(pYear, pMonth - 1, pDay, pHour, pMinute, pSecond || 0, 0);
+    const diffMs = targetAsUtc - naiveUtc;
+
+    return new Date(naiveUtc - diffMs);
+  } catch {
+    return new Date(`${dateStr}T${timeStr.length === 5 ? timeStr + ":00" : timeStr}Z`);
+  }
+}
+
 export interface CooldownStatus {
   canChange: boolean;
   remainingDays: number;
