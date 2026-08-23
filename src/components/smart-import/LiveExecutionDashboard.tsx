@@ -156,21 +156,40 @@ export function LiveExecutionDashboard() {
   const [isSyncing, setIsSyncing] = useState(false);
 
   // ── Feature Flag: Campaign Pause/Resume ──────────────────────────────────
-  // Direct DB read — admin toggle takes effect within 10s on all user panels.
-  // refreshInterval: polls every 10s in the background.
-  // revalidateOnFocus: re-checks immediately when user switches back to tab.
-  // dedupingInterval: 5s prevents request storms on rapid re-renders.
+  // Instant 0ms cache from localStorage + live background sync via /api/feature-flags
+  const [cachedFlag, setCachedFlag] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const v = localStorage.getItem("silaer_flag_campaign_pause_resume");
+      if (v !== null) return v === "true";
+    }
+    return true;
+  });
+
   const { data: featureFlags } = useSWR(
     "/api/feature-flags?keys=campaign_pause_resume",
-    (url: string) => apiClient<Record<string, boolean>>(url),
+    (url: string) => fetch(url).then(r => r.json()),
     {
-      revalidateOnFocus: true,      // instant on tab switch
-      refreshInterval: 10000,       // background poll every 10s
-      dedupingInterval: 5000,       // prevent request storm
-      revalidateOnReconnect: true,  // refresh when coming back online
+      revalidateOnFocus: true,
+      refreshInterval: 5000,
+      dedupingInterval: 2000,
     }
   );
-  const pauseResumeEnabled = featureFlags?.["campaign_pause_resume"] ?? true;
+
+  const pauseResumeEnabled = featureFlags && typeof featureFlags["campaign_pause_resume"] === "boolean"
+    ? featureFlags["campaign_pause_resume"]
+    : cachedFlag;
+
+  useEffect(() => {
+    if (featureFlags && typeof featureFlags["campaign_pause_resume"] === "boolean") {
+      const val = featureFlags["campaign_pause_resume"];
+      setCachedFlag(val);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("silaer_flag_campaign_pause_resume", String(val));
+      }
+    }
+  }, [featureFlags]);
+
+
 
   // Reschedule Dialog State
   const [rescheduleItem, setRescheduleItem] = useState<LiveItem | null>(null);
@@ -428,6 +447,7 @@ export function LiveExecutionDashboard() {
   const [isResumingCampaign, setIsResumingCampaign] = useState(false);
 
   const handleTogglePauseDashboard = async () => {
+    if (!pauseResumeEnabled) return;
     const isCurrentlyPaused = campaignStatus === "PAUSED";
     
     // If currently paused and user is resuming: check if any Step 1 emails are overdue
@@ -474,10 +494,15 @@ export function LiveExecutionDashboard() {
 
 
   const executeTogglePause = async (action: "RESUME" | "PAUSE") => {
+    if (!pauseResumeEnabled) {
+      setIsResumeModalOpen(false);
+      return;
+    }
     // Optimistic UI update FIRST — instant response to user click
     const nextStatus = action === "RESUME" ? "ACTIVE" : "PAUSED";
     setCampaignStatus(nextStatus);
     setIsResumeModalOpen(false);
+
 
     // UI owns campaign status for 30s — DB polls cannot overwrite this.
     // This is the permanent fix for the PAUSED→ACTIVE auto-flip bug.

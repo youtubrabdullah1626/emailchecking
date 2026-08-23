@@ -80,16 +80,40 @@ export function ImportHistoryWorkspace() {
   const [isClearing, setIsClearing] = useState(false);
 
   // ── Feature Flag: Campaign Pause/Resume ──────────────────────────────────
+  // Instant 0ms cache from localStorage + live background sync via /api/feature-flags
+  const [cachedFlag, setCachedFlag] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const v = localStorage.getItem("silaer_flag_campaign_pause_resume");
+      if (v !== null) return v === "true";
+    }
+    return true;
+  });
+
   const { data: featureFlags } = useSWR(
     "/api/feature-flags?keys=campaign_pause_resume",
-    (url: string) => apiClient<Record<string, boolean>>(url),
+    (url: string) => fetch(url).then(r => r.json()),
     {
       revalidateOnFocus: true,
-      refreshInterval: 10000,
-      dedupingInterval: 5000,
+      refreshInterval: 5000, // Sync every 5s
+      dedupingInterval: 2000,
     }
   );
-  const pauseResumeEnabled = featureFlags?.["campaign_pause_resume"] ?? true;
+
+  const pauseResumeEnabled = featureFlags && typeof featureFlags["campaign_pause_resume"] === "boolean"
+    ? featureFlags["campaign_pause_resume"]
+    : cachedFlag;
+
+  useEffect(() => {
+    if (featureFlags && typeof featureFlags["campaign_pause_resume"] === "boolean") {
+      const val = featureFlags["campaign_pause_resume"];
+      setCachedFlag(val);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("silaer_flag_campaign_pause_resume", String(val));
+      }
+    }
+  }, [featureFlags]);
+
+
 
 
 
@@ -460,8 +484,8 @@ export function ImportHistoryWorkspace() {
           ) : (
             filteredSessions.map((session) => {
               const isCompleted = session.status === "COMPLETED";
-              const isPaused = session.status === "PAUSED" || (session.lastCheckpoint as string) === "PAUSED";
-              const isLive = !isCompleted && !isPaused && (session.lastCheckpoint === "EXECUTION_STARTED" || session.status === "EXECUTING");
+              const isPaused = pauseResumeEnabled && (session.status === "PAUSED" || (session.lastCheckpoint as string) === "PAUSED");
+              const isLive = !isCompleted && !isPaused && (session.lastCheckpoint === "EXECUTION_STARTED" || session.status === "EXECUTING" || session.status === "PAUSED" || (session.lastCheckpoint as string) === "PAUSED");
 
               return (
                 <motion.div
@@ -495,6 +519,7 @@ export function ImportHistoryWorkspace() {
                         <FolderOpen className="h-4 w-4" />
                       )}
                     </div>
+
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">

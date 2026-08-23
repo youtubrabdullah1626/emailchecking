@@ -14,18 +14,12 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const keysParam = req.nextUrl.searchParams.get("keys") ?? "";
     const requestedKeys = keysParam
       .split(",")
@@ -36,42 +30,32 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({}, { status: 200 });
     }
 
-    // ── Direct DB read — guaranteed to reflect the latest toggle ──────────
-    // Single query fetches all requested flags at once (indexed by key).
+    // Direct DB query across all matching keys without environment restriction
     const rows = await prisma.feature_flags.findMany({
       where: {
         key: { in: requestedKeys },
-        environment: "production",
       },
       select: { key: true, enabled: true },
     });
 
-    // Build key→boolean map. Any key not found in DB defaults to true
-    // (fail-open: if the flag row doesn't exist yet, the feature stays ON).
     const result: Record<string, boolean> = {};
     for (const key of requestedKeys) {
       const row = rows.find((r) => r.key === key);
-      result[key] = row ? row.enabled : true;
+      // If row found, use its enabled value. If not found in DB, default to true.
+      result[key] = row ? Boolean(row.enabled) : true;
     }
 
     return NextResponse.json(result, {
       status: 200,
       headers: {
-        // No CDN caching — always fresh. Browser may cache for max 5s only.
-        "Cache-Control": "private, no-store",
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
       },
     });
   } catch (err: any) {
-    console.error("[feature-flags GET]", err);
-    // Fail open — if DB is down, return true (features stay enabled)
-    return NextResponse.json(
-      Object.fromEntries(
-        (req.nextUrl.searchParams.get("keys") ?? "")
-          .split(",")
-          .filter(Boolean)
-          .map((k) => [k.trim(), true])
-      ),
-      { status: 200 }
-    );
+    console.error("[feature-flags GET] Error:", err);
+    return NextResponse.json({}, { status: 200 });
   }
 }
+
