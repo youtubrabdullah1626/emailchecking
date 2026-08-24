@@ -624,18 +624,6 @@ export function ImportHistoryWorkspace() {
                       </Button>
                     )}
 
-                    {isLive && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleAppendClick(session.sessionId)}
-                        className="h-7 px-2.5 text-xs font-semibold bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 border-emerald-200 rounded-lg gap-1"
-                      >
-                        <Plus className="h-3 w-3" />
-                        Add Leads
-                      </Button>
-                    )}
-
                     <Button
                       variant="outline"
                       size="sm"
@@ -653,10 +641,6 @@ export function ImportHistoryWorkspace() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg">
-                        <DropdownMenuItem onClick={() => handleOpenDetails(session)}>
-                          <FileText className="h-3.5 w-3.5 mr-2" />
-                          View Full Details
-                        </DropdownMenuItem>
                         {pauseResumeEnabled && (isLive || isPaused) && (
                           <DropdownMenuItem onClick={() => handleTogglePause(session)}>
                             {isPaused ? <Play className="h-3.5 w-3.5 mr-2 text-emerald-600" /> : <Pause className="h-3.5 w-3.5 mr-2 text-amber-600" />}
