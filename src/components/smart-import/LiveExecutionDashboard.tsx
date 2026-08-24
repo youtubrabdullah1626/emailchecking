@@ -156,7 +156,8 @@ export function LiveExecutionDashboard() {
   const [isSyncing, setIsSyncing] = useState(false);
 
   // ── Feature Flag: Campaign Pause/Resume ──────────────────────────────────
-  // Instant 0ms cache from localStorage + live background sync via /api/feature-flags
+  // Reads the live value from DB every 5s.
+  // localStorage cache gives 0ms initial value so UI never flickers on load.
   const [cachedFlag, setCachedFlag] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       const v = localStorage.getItem("silaer_flag_campaign_pause_resume");
@@ -168,26 +169,56 @@ export function LiveExecutionDashboard() {
   const { data: featureFlags } = useSWR(
     "/api/feature-flags?keys=campaign_pause_resume",
     (url: string) => fetch(url).then(r => r.json()),
-    {
-      revalidateOnFocus: true,
-      refreshInterval: 5000,
-      dedupingInterval: 2000,
-    }
+    { revalidateOnFocus: true, refreshInterval: 5000, dedupingInterval: 2000 }
   );
 
   const pauseResumeEnabled = featureFlags && typeof featureFlags["campaign_pause_resume"] === "boolean"
     ? featureFlags["campaign_pause_resume"]
     : cachedFlag;
 
+  // Persist latest flag value to localStorage so next load is instant
   useEffect(() => {
     if (featureFlags && typeof featureFlags["campaign_pause_resume"] === "boolean") {
       const val = featureFlags["campaign_pause_resume"];
       setCachedFlag(val);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("silaer_flag_campaign_pause_resume", String(val));
-      }
+      try { localStorage.setItem("silaer_flag_campaign_pause_resume", String(val)); } catch {}
     }
   }, [featureFlags]);
+
+  // AUTO-RESUME: When admin disables the feature AND campaign is PAUSED,
+  // immediately resume the campaign so it runs to completion.
+  // This is the key fix — without this, PAUSED campaigns stay frozen in DB forever.
+  const autoResumedRef = React.useRef(false);
+  useEffect(() => {
+    if (!pauseResumeEnabled && campaignStatus === "PAUSED" && !autoResumedRef.current) {
+      autoResumedRef.current = true;
+      const campaignId = activeCampaignId || "latest";
+      // Force ACTIVE in UI immediately (no flicker)
+      setCampaignStatus("ACTIVE");
+      campaignStatusOverrideRef.current = { status: "ACTIVE", until: Date.now() + 60000 };
+      // Remove cached PAUSED status so reloads don't flash pause
+      try { localStorage.removeItem("silaer_cached_campaign_status"); } catch {}
+      // Tell the backend to resume the campaign
+      fetch(`/api/campaigns/${encodeURIComponent(campaignId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "RESUME" }),
+      }).then(res => {
+        if (res.ok) {
+          // Also un-pause any PAUSED row statuses in liveItems
+          setLiveItems(prev => prev.map(i =>
+            (i.liveStatus as string) === "PAUSED"
+              ? { ...i, liveStatus: "SCHEDULED" as any }
+              : i
+          ));
+        }
+      }).catch(() => {});
+    }
+    // Reset the flag when feature is re-enabled so next disable triggers again
+    if (pauseResumeEnabled) autoResumedRef.current = false;
+  }, [pauseResumeEnabled, campaignStatus, activeCampaignId]);
+
+
 
 
 
@@ -339,14 +370,13 @@ export function LiveExecutionDashboard() {
       // so that slow DB commits or race conditions don't flip the button back.
       const override = campaignStatusOverrideRef.current;
       const overrideActive = override && Date.now() < override.until;
+      // When pause/resume feature is disabled, NEVER sync PAUSED from DB — always stay ACTIVE
       if (!overrideActive && (data.campaignStatus === "PAUSED" || data.campaignStatus === "ACTIVE")) {
-        setCampaignStatus(data.campaignStatus);
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem("silaer_cached_campaign_status", data.campaignStatus);
-          } catch {}
-        }
+        const resolvedStatus = (!pauseResumeEnabled && data.campaignStatus === "PAUSED") ? "ACTIVE" : data.campaignStatus;
+        setCampaignStatus(resolvedStatus);
+        try { localStorage.setItem("silaer_cached_campaign_status", resolvedStatus); } catch {}
       }
+
 
     } catch (err) {
       console.error("[LiveDashboard] Failed to fetch DB live status", err);

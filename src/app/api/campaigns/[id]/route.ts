@@ -55,23 +55,25 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const { pauseCampaign, activateCampaign } = await import("@/lib/campaign/lifecycle");
 
     // ── Feature Flag Gate: Campaign Pause/Resume ──────────────────────────────
-    // DEEP-LEVEL FIX: Read directly from DB — not in-memory cache.
-    // In-memory cache is per-server-instance (unreliable on Railway multi-dyno).
-    // Direct DB read guarantees admin toggle takes effect instantly.
-    if (action === "PAUSE" || action === "RESUME") {
+    // When the feature is DISABLED:
+    //   - PAUSE is blocked (users cannot pause campaigns)
+    //   - RESUME is always allowed (to un-stuck any campaigns paused before flag was turned off)
+    // This ensures disabling the feature doesn't leave campaigns permanently frozen.
+    if (action === "PAUSE") {
       const pauseFlag = await prisma.feature_flags.findFirst({
-        where: { key: "campaign_pause_resume", environment: "production" },
+        where: { key: "campaign_pause_resume" },
         select: { enabled: true },
       }).catch(() => null);
-      // Fail-open: if flag row not found, allow the action (enabled by default)
-      const pauseResumeEnabled = pauseFlag ? pauseFlag.enabled : true;
-      if (!pauseResumeEnabled) {
+      const pauseEnabled = pauseFlag ? pauseFlag.enabled : true;
+      if (!pauseEnabled) {
         return NextResponse.json(
-          { ok: false, error: "Campaign pause/resume is disabled by platform configuration. Campaigns run to completion — delete the campaign to stop sending." },
+          { ok: false, error: "Pausing campaigns is disabled by platform configuration. Campaigns run to completion." },
           { status: 403 }
         );
       }
     }
+    // NOTE: RESUME is intentionally NOT gated — admin disabling the feature should
+    // allow stuck-PAUSED campaigns to resume and run normally to completion.
 
     // ── Fast Campaign Resolver ────────────────────────────────────────────────
     // When the frontend sends an exact UUID (always true after approveImport sets

@@ -151,17 +151,56 @@ export function ImportHistoryWorkspace() {
     return () => clearInterval(interval);
   }, [sessionId, loadSessions]);
 
+  // AUTO-RESUME: When feature is disabled, silently resume all PAUSED sessions
+  const autoResumedSessionsRef = React.useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!pauseResumeEnabled && sessions.length > 0) {
+      sessions.forEach(session => {
+        const isPaused = session.status === "PAUSED" || (session.lastCheckpoint as string) === "PAUSED";
+        if (isPaused && !autoResumedSessionsRef.current.has(session.sessionId)) {
+          autoResumedSessionsRef.current.add(session.sessionId);
+          handleAutoResume(session);
+        }
+      });
+    }
+    if (pauseResumeEnabled) autoResumedSessionsRef.current.clear();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pauseResumeEnabled, sessions]);
+
+
+
   // Track hidden sessions (optimistic delete) and timers
   const [hiddenSessions, setHiddenSessions] = useState<Set<string>>(new Set());
   const [sessionToDelete, setSessionToDelete] = useState<{ id: string; name: string } | null>(null);
   const deleteTimers = React.useRef<Record<string, NodeJS.Timeout>>({});
 
-  const handleResume = (id: string) => {
+  // Opens the Live Execution Dashboard for this campaign (reloads with session pointer set)
+  const handleOpenDashboard = (id: string) => {
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.setItem("smart_import_active_session_id", id);
     }
     window.location.reload();
   };
+
+  // Auto-resumes a PAUSED campaign silently (used when pause/resume feature is disabled)
+  const handleAutoResume = async (session: ImportSessionMetadata) => {
+    try {
+      const dataset = await storage.loadHeavyDataset(session.sessionId).catch(() => null);
+      const targetId = dataset?.campaignId || session.sessionId;
+      await fetch(`/api/campaigns/${encodeURIComponent(targetId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "RESUME", campaignName: session.campaignName }),
+      });
+      // Update local session status so UI reflects LIVE immediately
+      session.status = "EXECUTING";
+      session.lastCheckpoint = "EXECUTION_STARTED";
+      storage.saveSessionMetadata(session);
+      setSessions(prev => [...prev]);
+    } catch { /* silent — scheduler will pick up on next tick */ }
+  };
+
+
 
   const handleOpenDetails = async (session: ImportSessionMetadata) => {
     setActiveDetailsSession(session);
@@ -624,9 +663,9 @@ export function ImportHistoryWorkspace() {
                             {isPaused ? "Resume Sending" : "Pause Sending"}
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onClick={() => handleResume(session.sessionId)}>
+                        <DropdownMenuItem onClick={() => handleOpenDashboard(session.sessionId)}>
                           <Play className="h-3.5 w-3.5 mr-2" />
-                          Resume / Reload
+                          Open Dashboard
                         </DropdownMenuItem>
 
                         <DropdownMenuItem onClick={() => handleRename(session.sessionId, session.campaignName || "Draft Campaign")}>
@@ -752,7 +791,7 @@ export function ImportHistoryWorkspace() {
               <DialogFooter className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <Button
                   size="sm"
-                  onClick={() => handleResume(activeDetailsSession.sessionId)}
+                  onClick={() => handleOpenDashboard(activeDetailsSession.sessionId)}
                   className="rounded-xl text-xs bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
                 >
                   <Play className="h-3.5 w-3.5 mr-1.5" />
