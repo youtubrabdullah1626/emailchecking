@@ -143,6 +143,26 @@ export async function runScheduler(
     await runStaleMonitor(nowUtc).catch((e) => log("scheduler_config_fetch_warning", { runId, error: "runStaleMonitor: " + String(e) }));
     await runSelfHealingSweeper().catch((e) => log("scheduler_config_fetch_warning", { runId, error: "runSelfHealingSweeper: " + String(e) }));
 
+    // Auto-heal: If campaign_pause_resume is disabled, automatically activate all PAUSED campaigns & sequences
+    try {
+      const pauseFlag = await prisma.feature_flags.findFirst({
+        where: { key: "campaign_pause_resume" },
+        select: { enabled: true },
+      });
+      if (pauseFlag && !pauseFlag.enabled) {
+        await prisma.campaign.updateMany({
+          where: { status: "PAUSED" },
+          data: { status: "ACTIVE" }
+        });
+        await prisma.sequence.updateMany({
+          where: { status: "PAUSED" },
+          data: { status: "ACTIVE" }
+        }).catch(() => {});
+      }
+    } catch {}
+
+
+
 
     // Phase 1: Query candidates (over-fetch for tier waterfall)
     const candidates = await findCandidateSteps(nowUtc, maxClaims * 3);

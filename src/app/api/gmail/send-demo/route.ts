@@ -59,9 +59,20 @@ export async function POST(request: NextRequest) {
         select: { status: true }
       });
       if (parentCampaign && parentCampaign.status === "PAUSED") {
-        return NextResponse.json({ error: "Campaign is currently paused. Please resume the campaign to send emails." }, { status: 400 });
+        const pauseFlag = await prisma.feature_flags.findFirst({
+          where: { key: "campaign_pause_resume" },
+          select: { enabled: true },
+        }).catch(() => null);
+        const pauseResumeEnabled = pauseFlag ? pauseFlag.enabled : true;
+        if (pauseResumeEnabled) {
+          return NextResponse.json({ error: "Campaign is currently paused. Please resume the campaign to send emails." }, { status: 400 });
+        } else {
+          // Feature disabled: auto-activate campaign in DB
+          await prisma.campaign.update({ where: { id: prospect.campaign_id }, data: { status: "ACTIVE" } }).catch(() => {});
+        }
       }
     }
+
 
     let sequence;
     let step;

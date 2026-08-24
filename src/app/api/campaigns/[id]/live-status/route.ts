@@ -113,6 +113,23 @@ export async function GET(
       trackedEmails.map((t) => [t.source_id!, t])
     );
 
+    // Check if campaign_pause_resume feature is enabled
+    const pauseFlag = await prisma.feature_flags.findFirst({
+      where: { key: "campaign_pause_resume" },
+      select: { enabled: true },
+    }).catch(() => null);
+    const pauseResumeEnabled = pauseFlag ? pauseFlag.enabled : true;
+
+    // When pause/resume is disabled: auto-heal any PAUSED campaign to ACTIVE in DB
+    if (!pauseResumeEnabled && campaign.status === "PAUSED") {
+      campaign.status = "ACTIVE";
+      prisma.campaign.update({ where: { id: campaign.id }, data: { status: "ACTIVE" } }).catch(() => {});
+      prisma.sequence.updateMany({
+        where: { prospect: { campaign_id: campaign.id }, status: "PAUSED" },
+        data: { status: "ACTIVE" }
+      }).catch(() => {});
+    }
+
     // Map DB step status → dashboard liveStatus
     function mapLiveStatus(step: typeof stepsWithSeq[0]): string {
       const prospectStatus = step.sequence.prospect.status;
@@ -126,7 +143,7 @@ export async function GET(
         if (step.status === "SENT") return "OPENED";
       }
 
-      if (campaign?.status === "PAUSED" || step.sequence.status === "PAUSED") {
+      if (pauseResumeEnabled && (campaign?.status === "PAUSED" || step.sequence.status === "PAUSED")) {
         if (["SENT", "OPENED", "REPLIED", "FAILED", "CANCELLED", "SKIPPED"].includes(step.status)) {
           return step.status === "FAILED" ? "BOUNCED" : (step.status === "SKIPPED" ? "CANCELLED" : step.status);
         }
@@ -139,6 +156,7 @@ export async function GET(
         }
         return "SCHEDULED";
       }
+
 
 
       switch (step.status) {
