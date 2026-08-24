@@ -52,6 +52,7 @@ export async function apiClient<T>(url: string, options: FetchOptions = {}): Pro
         response.status === 401 &&
         typeof window !== 'undefined' &&
         window.location.pathname !== '/login' &&
+        !window.location.pathname.startsWith('/report') &&
         !window.location.pathname.startsWith('/dashboard') &&
         !window.location.pathname.startsWith('/admin') &&
         !window.location.pathname.startsWith('/prospects') &&

@@ -31,8 +31,10 @@ function localStorageProvider() {
 export function AppShell({ children, fallbackHeaderStats }: { children: React.ReactNode, fallbackHeaderStats?: any }) {
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const pathname = usePathname();
+  // Don't render app chrome on the login page or public report pages
+  const isStandalonePage = pathname === '/login' || pathname?.startsWith('/report');
 
-  const { data: stats } = useSWR("/api/dashboard/stats", (url: string) => apiClient<any>(url).catch(() => null), {
+  const { data: stats } = useSWR(!isStandalonePage ? "/api/dashboard/stats" : null, (url: string) => apiClient<any>(url).catch(() => null), {
     refreshInterval: 30000,
     dedupingInterval: 5000,
     revalidateOnFocus: false,
@@ -52,6 +54,7 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
 
   // 100% Honest "Last Online" Tracker (Ultra-lightweight, 0 CPU overhead)
   useEffect(() => {
+    if (isStandalonePage) return;
     let lastTracked = 0;
     const TRACKING_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -80,10 +83,7 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
       window.removeEventListener("pointerdown", trackActivity);
       window.removeEventListener("keydown", trackActivity);
     };
-  }, []);
-
-  // Don't render app chrome on the login page or public report pages
-  const isStandalonePage = pathname === '/login' || pathname?.startsWith('/report');
+  }, [isStandalonePage]);
 
   return (
     <SessionProvider>
