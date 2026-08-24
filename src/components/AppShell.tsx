@@ -82,8 +82,8 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
     };
   }, []);
 
-  // Don't render app chrome on the login page
-  const isLoginPage = pathname === '/login';
+  // Don't render app chrome on the login page or public report pages
+  const isStandalonePage = pathname === '/login' || pathname?.startsWith('/report');
 
   return (
     <SessionProvider>
@@ -97,7 +97,7 @@ export function AppShell({ children, fallbackHeaderStats }: { children: React.Re
           fetcher: (url: string) => apiClient<any>(url).catch(() => null)
         }}
       >
-        {isLoginPage ? (
+        {isStandalonePage ? (
           <>{children}</>
         ) : (
           <div className="flex h-screen w-full bg-background overflow-hidden transition-colors duration-500" suppressHydrationWarning>

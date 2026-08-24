@@ -1,11 +1,7 @@
 import React from "react";
-import { notFound } from "next/navigation";
 import { verifyReportToken } from "@/lib/reports/token";
 import { getCampaignReportData } from "@/lib/reports/aggregator";
-import { ReportHeader } from "@/components/reports/ReportHeader";
-import { ClientReportCards } from "@/components/reports/ClientReportCard";
-import { CampaignRecapSection } from "@/components/reports/CampaignRecapSection";
-import { ReportFooterBadge } from "@/components/reports/ReportFooterBadge";
+import { ExecutiveReportViewer } from "@/components/reports/ExecutiveReportViewer";
 import { ShieldAlert, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
@@ -33,28 +29,7 @@ export default async function ClientReportPage({ params }: ReportPageProps) {
     return <InvalidReportScreen message="The campaign for this report could not be found or has been archived." />;
   }
 
-  return (
-    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-300">
-      {/* 1. Header with Co-Branding & Action Buttons */}
-      <ReportHeader
-        agencyName={report.agencyName}
-        clientName={report.clientName}
-        campaignName={report.campaignName}
-        dateRange={report.dateRange}
-        status={report.status}
-        shareToken={report.shareToken}
-      />
-
-      {/* 2. The 4 Hero KPI Cards (Contacted, Opened, Real Replies, Domain Health) */}
-      <ClientReportCards metrics={report.metrics} />
-
-      {/* 3. Factual Campaign Narrative Recap */}
-      <CampaignRecapSection summaryPoints={report.summaryPoints} />
-
-      {/* 4. Viral Growth Flywheel Footer */}
-      <ReportFooterBadge referralUrl={report.referralUrl} />
-    </div>
-  );
+  return <ExecutiveReportViewer report={report} />;
 }
 
 function InvalidReportScreen({ message }: { message: string }) {
