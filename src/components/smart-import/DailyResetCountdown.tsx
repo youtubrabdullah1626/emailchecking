@@ -77,13 +77,15 @@ export function DailyResetCountdown({
               <span><strong>{headroom} Slots Ready</strong> • {sentToday} / {dailyLimit} Sent Today</span>
             </div>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="max-w-xs text-xs space-y-1 p-3">
-            <p className="font-bold text-emerald-600 dark:text-emerald-400">⚡ Dispatch Capacity Active</p>
-            <p className="text-muted-foreground leading-relaxed">
-              <strong>{sentToday}</strong> of <strong>{dailyLimit}</strong> emails sent today. <strong>{headroom}</strong> slots ready for automated dispatch.
+          <TooltipContent side="bottom" className="max-w-xs text-xs space-y-1.5 p-3.5 bg-popover text-popover-foreground border border-border shadow-xl rounded-xl">
+            <p className="font-bold text-foreground flex items-center gap-1.5">
+              <Zap className="h-3.5 w-3.5 text-emerald-500" />
+              Dispatch Capacity Active
+            </p>
+            <p className="text-muted-foreground leading-relaxed text-[11px]">
+              <strong className="text-foreground">{sentToday}</strong> of <strong className="text-foreground">{dailyLimit}</strong> emails sent today. <strong className="text-emerald-600 dark:text-emerald-400">{headroom} slots</strong> ready for automated dispatch.
             </p>
           </TooltipContent>
-
         </Tooltip>
       </TooltipProvider>
     );
@@ -112,14 +114,18 @@ export function DailyResetCountdown({
               </span>
             </div>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="max-w-xs text-xs space-y-1 p-3">
-            <p className="font-bold text-amber-600 dark:text-amber-400">Account Safety Sentinel Active</p>
-            <p className="text-muted-foreground leading-relaxed">
-              To keep your Gmail inbox 100% healthy, sending is paused after safely reaching your daily cap of {sentToday}/{dailyLimit} emails today.
-              Dispatches automatically resume at midnight ({userTimezone.split("/").pop() || "UTC"}). Click for diagnostic breakdown.
+          <TooltipContent side="bottom" className="max-w-xs text-xs space-y-2 p-3.5 bg-popover text-popover-foreground border border-border shadow-xl rounded-xl">
+            <p className="font-bold text-foreground flex items-center gap-1.5">
+              <ShieldCheck className="h-4 w-4 text-amber-500" />
+              Account Safety Sentinel Active
             </p>
-            <div className="pt-1 text-primary font-semibold flex items-center gap-1">
-              Want to send more today? Connect another inbox &rarr;
+            <p className="text-muted-foreground leading-relaxed text-[11px]">
+              To keep your Gmail inbox 100% healthy, sending is paused after reaching your daily cap of <strong className="text-foreground">{sentToday}/{dailyLimit}</strong> emails today.
+              Dispatches automatically resume at midnight ({userTimezone.split("/").pop() || "UTC"}).
+            </p>
+            <div className="pt-1.5 border-t border-border/50 text-[11px] text-primary font-medium flex items-center justify-between">
+              <span>Click for diagnostic breakdown</span>
+              <span>&rarr;</span>
             </div>
           </TooltipContent>
         </Tooltip>
@@ -145,10 +151,13 @@ export function DailyResetCountdown({
               </span>
             </div>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="max-w-xs text-xs space-y-1 p-3">
-            <p className="font-bold text-blue-600 dark:text-blue-400">Hourly Velocity Governor Active</p>
-            <p className="text-muted-foreground leading-relaxed">
-              Dispatched <strong>{sentThisHour}</strong> of <strong>{hourlyLimit}</strong> emails allowed this hour. Pacing resets at the top of the hour to safeguard Gmail inbox reputation. Click for details.
+          <TooltipContent side="bottom" className="max-w-xs text-xs space-y-1.5 p-3.5 bg-popover text-popover-foreground border border-border shadow-xl rounded-xl">
+            <p className="font-bold text-foreground flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5 text-blue-500" />
+              Hourly Velocity Governor Active
+            </p>
+            <p className="text-muted-foreground leading-relaxed text-[11px]">
+              Dispatched <strong className="text-foreground">{sentThisHour}</strong> of <strong className="text-foreground">{hourlyLimit}</strong> emails allowed this hour. Pacing resets at the top of the hour to safeguard Gmail inbox reputation.
             </p>
           </TooltipContent>
         </Tooltip>
