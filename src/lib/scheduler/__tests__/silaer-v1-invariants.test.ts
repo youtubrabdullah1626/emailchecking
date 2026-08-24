@@ -83,9 +83,56 @@ describe('SILAER V1 Invariants', () => {
     });
   });
 
-  describe('Group F: Self-healing sweeper idempotency', () => {
-    test('running sweeper twice does not double-unlock next step', () => {
-      expect(true).toBe(true); // Verified through eligible_after_utc null check
+  describe('Group G: Sequential Step Invariant & Time-Aware Resume', () => {
+    test('overdue Step 1 is eligible immediately when scheduled_at_utc <= now', () => {
+      const pastTime = new Date(Date.now() - 60000); // 1 min ago (time is gone)
+      const now = new Date();
+      const res = isStepFullyEligible(
+        { status: 'PENDING', scheduled_at_utc: pastTime, step_number: 1, eligible_after_utc: pastTime },
+        { status: 'ACTIVE' },
+        { status: 'ACTIVE' },
+        now
+      );
+      expect(res.eligible).toBe(true);
+    });
+
+    test('future Step 1 is NOT eligible when scheduled_at_utc > now', () => {
+      const futureTime = new Date(Date.now() + 3600000); // 1 hour in future
+      const now = new Date();
+      const res = isStepFullyEligible(
+        { status: 'PENDING', scheduled_at_utc: futureTime, step_number: 1, eligible_after_utc: futureTime },
+        { status: 'ACTIVE' },
+        { status: 'ACTIVE' },
+        now
+      );
+      expect(res.eligible).toBe(false);
+      expect(res.reason).toContain('not yet due');
+    });
+
+    test('Step 2 with eligible_after_utc = null is locked and NOT eligible', () => {
+      const pastTime = new Date(Date.now() - 60000);
+      const now = new Date();
+      const res = isStepFullyEligible(
+        { status: 'PENDING', scheduled_at_utc: pastTime, step_number: 2, eligible_after_utc: null },
+        { status: 'ACTIVE' },
+        { status: 'ACTIVE' },
+        now
+      );
+      expect(res.eligible).toBe(false);
+      expect(res.reason).toContain('locked: previous step has not been sent yet');
+    });
+
+    test('Step 2 is eligible only when unlocked with eligible_after_utc <= now', () => {
+      const pastTime = new Date(Date.now() - 1000);
+      const now = new Date();
+      const res = isStepFullyEligible(
+        { status: 'PENDING', scheduled_at_utc: pastTime, step_number: 2, eligible_after_utc: pastTime },
+        { status: 'ACTIVE' },
+        { status: 'ACTIVE' },
+        now
+      );
+      expect(res.eligible).toBe(true);
     });
   });
 });
+

@@ -218,11 +218,17 @@ export async function runScheduler(
       if (claimedSteps >= maxClaims) break;
 
       const eligibility = isStepFullyEligible(
-        { status: step.status, scheduled_at_utc: step.scheduled_at_utc },
+        {
+          status: step.status,
+          scheduled_at_utc: step.scheduled_at_utc,
+          step_number: step.step_number,
+          eligible_after_utc: step.eligible_after_utc
+        },
         { status: step.sequence.status },
         { status: step.sequence.prospect.status },
         nowUtc
       );
+
 
       if (!eligibility.eligible) {
         log("step_not_eligible", { runId, stepId: step.id, stepNumber: step.step_number, sequenceId: step.sequence.id, prospectId: step.sequence.prospect.id, reason: eligibility.reason, status: step.status });

@@ -874,7 +874,46 @@ async function markStepSent(
         } catch {}
       }
 
+      // ── JIT Follow-Up Unlocking (Enterprise Invariant) ────────────────────────
+      // When Step N is sent, atomically calculate Step N+1's target delivery date
+      // based on configured delay and unlock Step N+1 for that future time.
+      try {
+        const nextStep = await prisma.sequenceStep.findFirst({
+          where: {
+            sequence_id: step.sequence.id,
+            step_number: step.step_number + 1,
+            status: "PENDING",
+            eligible_after_utc: null,
+          },
+          select: { id: true, scheduled_at_utc: true }
+        });
+
+        if (nextStep) {
+          const sentNow = new Date();
+          const stepScheduledTime = step.scheduled_at_utc ? new Date(step.scheduled_at_utc).getTime() : sentNow.getTime();
+          const scheduledDiffMs = nextStep.scheduled_at_utc.getTime() - stepScheduledTime;
+          const delayMs = scheduledDiffMs > 0 ? scheduledDiffMs : (3 * 24 * 60 * 60 * 1000);
+          const nextEligibleTime = new Date(sentNow.getTime() + delayMs);
+          const slaBufferMs = Math.min(Math.max(delayMs * 0.5, 12 * 3600 * 1000), 72 * 3600 * 1000);
+          const softSlaDead = new Date(nextEligibleTime.getTime() + slaBufferMs);
+
+
+          await prisma.sequenceStep.update({
+            where: { id: nextStep.id },
+            data: {
+              scheduled_at_utc: nextEligibleTime,
+              eligible_after_utc: nextEligibleTime,
+              soft_sla_deadline: softSlaDead,
+            }
+          });
+        }
+      } catch (jitErr) {
+        // Non-fatal: Self-healing sweeper in reconciler will catch and unlock on next cron tick
+        gmailLog("jit_followup_unlock_warning", { stepId, error: String(jitErr) });
+      }
+
       return true;
+
     } catch (err) {
       const msg = err instanceof Error ? err.message : "DB error";
       gmailLog("gmail_send_db_update_failed", {

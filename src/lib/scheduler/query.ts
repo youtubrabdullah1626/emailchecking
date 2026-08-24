@@ -34,8 +34,9 @@ export async function findCandidateSteps(
       status: "PENDING",
       OR: [
         { eligible_after_utc: { lte: nowUtc } },
-        { eligible_after_utc: null, scheduled_at_utc: { lte: nowUtc } }
+        { step_number: 1, eligible_after_utc: null, scheduled_at_utc: { lte: nowUtc } }
       ],
+
       sequence: {
         status: "ACTIVE",
         prospect: {

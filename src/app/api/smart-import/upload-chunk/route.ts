@@ -163,7 +163,21 @@ export async function POST(request: NextRequest) {
       for (const step of seq.steps) {
         const key = `${seq.recordId}_${step.stepNumber}`;
         const scheduleInfo = stepScheduleMap[key];
-        const dateStr = scheduleInfo?.date || new Date().toISOString().split("T")[0];
+        const isFirstStep = step.stepNumber === 1;
+        const now = new Date();
+
+        // Calculate fallback future date for follow-up steps if scheduleInfo date is missing
+        let dateStr = scheduleInfo?.date;
+        if (!dateStr) {
+          if (isFirstStep) {
+            dateStr = now.toISOString().split("T")[0];
+          } else {
+            const delayDays = (step.delayDays && step.delayDays > 0) ? step.delayDays : 3;
+            const targetDate = new Date(now.getTime() + delayDays * (step.stepNumber - 1) * 24 * 60 * 60 * 1000);
+            dateStr = targetDate.toISOString().split("T")[0];
+          }
+        }
+
         const timeStr = scheduleInfo?.time || "09:00";
         const tz = scheduleInfo?.timezone || "UTC";
 
@@ -178,8 +192,8 @@ export async function POST(request: NextRequest) {
           scheduledUtc = nextBusinessSlotUtc(scheduledUtc, tz);
         }
 
-        const isFirstStep = step.stepNumber === 1;
-        const now = new Date();
+        // STEP 1 gets eligible_after_utc = scheduledUtc (ready to dispatch when scheduled time arrives)
+        // FOLLOW-UPS (Step 2, 3) MUST have eligible_after_utc = null (strictly locked until preceding step is SENT)
         const eligibleAfter = isFirstStep ? (scheduledUtc.getTime() <= now.getTime() ? now : scheduledUtc) : null;
 
         stepInserts.push({
@@ -197,6 +211,7 @@ export async function POST(request: NextRequest) {
         } as any);
       }
     }
+
 
     // ── STEP 5: All DB writes in PARALLEL ─────────────────────────────────────
     // stop old sequences + create new sequences + create steps — all at once

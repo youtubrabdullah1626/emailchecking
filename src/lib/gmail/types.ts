@@ -78,6 +78,7 @@ export interface StepForSend {
       status: string;
     };
   };
+  scheduled_at_utc?: Date;
   /** The previous step in this sequence (if any) — used for thread continuation. */
   previousStep: {
     gmail_message_id: string | null;
@@ -110,7 +111,9 @@ export type GmailLogEvent =
   | "gmail_sticky_lock_failed"
   | "gmail_send_attempt_record_skipped"
   | "gmail_send_aborted_step_reset"
-  | "gmail_send_aborted_pre_send_gate";
+  | "gmail_send_aborted_pre_send_gate"
+  | "jit_followup_unlock_warning";
+
 
 
 

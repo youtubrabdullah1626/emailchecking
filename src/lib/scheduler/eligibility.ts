@@ -133,30 +133,41 @@ export function isStepDue(scheduledAtUtc: Date, nowUtc: Date): EligibilityResult
 }
 
 /**
- * Full eligibility check — all four layers combined.
- * Returns the first failing layer for clear error messages.
- *
- * This is the authoritative function used by the scheduler.
- * All four conditions must be true for a step to be claimed.
- */
-export function isStepFullyEligible(
-  step: { status: string; scheduled_at_utc: Date },
-  sequence: { status: string },
-  prospect: { status: string },
-  nowUtc: Date
-): EligibilityResult {
-  // Layer 1 — prospect (outermost guard: reply-safety invariant)
-  const prospectCheck = isProspectEligible(prospect.status);
-  if (!prospectCheck.eligible) return prospectCheck;
+  * Full eligibility check — all layers combined.
+  * Returns the first failing layer for clear error messages.
+  *
+  * This is the authoritative function used by the scheduler.
+  * All conditions must be true for a step to be claimed.
+  */
+ export function isStepFullyEligible(
+   step: { status: string; scheduled_at_utc: Date; step_number?: number; eligible_after_utc?: Date | null },
+   sequence: { status: string },
+   prospect: { status: string },
+   nowUtc: Date
+ ): EligibilityResult {
+   // Layer 1 — prospect (outermost guard: reply-safety invariant)
+   const prospectCheck = isProspectEligible(prospect.status);
+   if (!prospectCheck.eligible) return prospectCheck;
+ 
+   // Layer 2 — sequence
+   const sequenceCheck = isSequenceEligible(sequence.status);
+   if (!sequenceCheck.eligible) return sequenceCheck;
+ 
+   // Layer 3 — step status
+   const stepStatusCheck = isStepStatusEligible(step.status);
+   if (!stepStatusCheck.eligible) return stepStatusCheck;
 
-  // Layer 2 — sequence
-  const sequenceCheck = isSequenceEligible(sequence.status);
-  if (!sequenceCheck.eligible) return sequenceCheck;
+   // Layer 3.5 — sequential prerequisite check for follow-ups (Step > 1)
+   // If step_number > 1 and eligible_after_utc is null, the preceding step hasn't been sent yet.
+   if (step.step_number && step.step_number > 1 && step.eligible_after_utc === null) {
+     return {
+       eligible: false,
+       reason: `Follow-up Step ${step.step_number} is locked: previous step has not been sent yet.`,
+     };
+   }
+ 
+   // Layer 4 — time (innermost check — only reached if all statuses pass)
+   const checkTime = step.eligible_after_utc || step.scheduled_at_utc;
+   return isStepDue(checkTime, nowUtc);
+ }
 
-  // Layer 3 — step status
-  const stepStatusCheck = isStepStatusEligible(step.status);
-  if (!stepStatusCheck.eligible) return stepStatusCheck;
-
-  // Layer 4 — time (innermost check — only reached if all statuses pass)
-  return isStepDue(step.scheduled_at_utc, nowUtc);
-}

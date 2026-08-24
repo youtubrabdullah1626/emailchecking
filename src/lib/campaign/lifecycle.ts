@@ -73,19 +73,43 @@ export async function activateCampaign(campaignId: string, userId: string): Prom
       AND seq.status != 'COMPLETED'
   `.catch(() => {});
 
-  // 4. Set eligible_after_utc = now and scheduled_at_utc = now for pending steps so they dispatch immediately on resume
+  // 4. Time-Aware Activation (10x Smart SaaS Rule):
+  // ── Step 1s:
+  //    - If scheduled_at_utc <= NOW() (time has passed / overdue while paused): set eligible_after_utc = scheduled_at_utc (send immediately).
+  //    - If scheduled_at_utc > NOW() (future schedule): keep future timestamp without modification.
   await prisma.$executeRaw`
     UPDATE sequence_steps s
-    SET scheduled_at_utc = LEAST(s.scheduled_at_utc, NOW()),
-        eligible_after_utc = NOW()
+    SET eligible_after_utc = s.scheduled_at_utc
     FROM sequences seq
     JOIN prospects p ON seq.prospect_id = p.id
     WHERE s.sequence_id = seq.id
       AND p.campaign_id = ${campaignId}
       AND s.status = 'PENDING'
+      AND s.step_number = 1
+  `.catch(() => {});
+
+  // ── Follow-up steps (Step > 1):
+  //    - Only unlock if the predecessor step has ALREADY been SENT.
+  //    - If predecessor step is NOT sent yet, eligible_after_utc remains NULL (locked).
+  await prisma.$executeRaw`
+    UPDATE sequence_steps s
+    SET eligible_after_utc = s.scheduled_at_utc
+    FROM sequences seq
+    JOIN prospects p ON seq.prospect_id = p.id
+    WHERE s.sequence_id = seq.id
+      AND p.campaign_id = ${campaignId}
+      AND s.status = 'PENDING'
+      AND s.step_number > 1
+      AND EXISTS (
+        SELECT 1 FROM sequence_steps prev
+        WHERE prev.sequence_id = seq.id
+          AND prev.step_number = s.step_number - 1
+          AND prev.status = 'SENT'
+      )
   `.catch(() => {});
 
   return { success: true, activeCount: activeCount + 1, limit: maxAllowed };
+
 }
 
 export async function pauseCampaign(campaignId: string, userId: string): Promise<{ success: boolean; message?: string }> {
