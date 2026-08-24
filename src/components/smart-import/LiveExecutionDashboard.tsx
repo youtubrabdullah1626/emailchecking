@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -1311,7 +1312,7 @@ export function LiveExecutionDashboard() {
                           const showLeadNote = leadTz && leadTz !== userTimezone && leadLocal;
                           const userTzLabel = getTimezoneShortLabel(userTimezone);
                           return (
-                            <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1.5">
                               <div className="flex items-center gap-1.5 text-sm font-medium text-foreground whitespace-nowrap">
                                 {userLocal.date} <span className="text-muted-foreground/40 text-[10px]">•</span> {userLocal.time}
                                 <span className="text-[10px] font-medium text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded border border-border/40">
@@ -1319,10 +1320,21 @@ export function LiveExecutionDashboard() {
                                 </span>
                               </div>
                               {showLeadNote && (
-                                <div className="text-[11px] text-muted-foreground whitespace-nowrap flex items-center gap-1.5">
-                                  <Globe className="h-3 w-3 shrink-0 opacity-70" />
-                                  <span>{leadLocal!.time} <span className="opacity-70">{leadLocal!.tzAbbr}</span> (lead)</span>
-                                </div>
+                                <TooltipProvider delayDuration={100}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex items-center justify-center w-5 h-5 rounded hover:bg-muted/80 transition-colors cursor-help">
+                                        <Globe className="h-3.5 w-3.5 text-muted-foreground/80" />
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="flex flex-col gap-1 p-2 bg-slate-900 border-slate-800 text-slate-50 shadow-xl">
+                                      <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Lead&apos;s Timezone</div>
+                                      <div className="text-sm font-medium flex items-center gap-1.5">
+                                        {leadLocal!.time} <span className="text-slate-400 font-normal">{leadLocal!.tzAbbr}</span>
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               )}
                             </div>
                           );
