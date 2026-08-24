@@ -227,42 +227,38 @@ export function ImportHistoryWorkspace() {
     const { id, name } = sessionToDelete;
     setSessionToDelete(null);
 
-    // Optimistically hide from UI
+    // 1. INSTANT (0ms) SYNCHRONOUS DELETION:
+    // Purge from localStorage and React state immediately so it never reappears on tab switch
+    storage.deleteSessionSync(id);
+    setSessions(prev => prev.filter(s => s.sessionId !== id));
     setHiddenSessions(prev => new Set(prev).add(id));
+    toast.success(`Campaign "${name}" deleted.`);
 
+    // 2. Clean active session pointers immediately
+    if (typeof window !== "undefined") {
+      if (sessionStorage.getItem("smart_import_active_session_id") === id) {
+        sessionStorage.removeItem("smart_import_active_session_id");
+      }
+    }
+
+    // 3. Background DB & IndexedDB cleanup (non-blocking)
     try {
-      // 1. Get campaignId if stored in dataset
       const dataset = await storage.loadHeavyDataset(id).catch(() => null);
       const targetCampaignId = dataset?.campaignId || id;
 
-      // 2. Call instant DB delete
-      await fetch(`/api/campaigns/${targetCampaignId}`, {
-        method: "DELETE",
-      }).catch(() => {});
-
-      // 3. Delete session from local storage & IndexedDB
-      await storage.deleteSession(id);
-
-      // 4. Clean active session pointers if this campaign was active
-      if (typeof window !== "undefined") {
-        if (localStorage.getItem("silaer_active_campaign_id") === targetCampaignId) {
-          localStorage.removeItem("silaer_active_campaign_id");
-        }
-        if (sessionStorage.getItem("smart_import_active_session_id") === id) {
-          sessionStorage.removeItem("smart_import_active_session_id");
-        }
+      if (targetCampaignId) {
+        await fetch(`/api/campaigns/${targetCampaignId}`, {
+          method: "DELETE",
+        }).catch(() => {});
       }
 
-      // 5. Instantly refresh sessions and SWR cache across entire app
-      await loadSessions();
+      await storage.deleteSession(id).catch(() => {});
       await mutate(() => true, undefined, { revalidate: true });
-
-      toast.success(`Campaign "${name}" deleted successfully.`);
     } catch (err: any) {
-      toast.error(err.message || "Failed to delete campaign");
-      await loadSessions();
+      console.error("Background delete cleanup error:", err);
     }
   };
+
 
   const handleClearHistory = async (timeframe: "24h" | "7d" | "30d" | "all") => {
     setIsClearing(true);

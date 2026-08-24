@@ -196,15 +196,20 @@ export class StorageEngine {
     });
   }
 
-  public async deleteSession(sessionId: string): Promise<void> {
-    // 1. Remove from localStorage
+  public deleteSessionSync(sessionId: string): void {
     const sessions = this.getAllSessions().filter(s => s.sessionId !== sessionId);
     localStorage.setItem("smart_import_sessions", JSON.stringify(sessions));
     if (this.getActiveSessionId() === sessionId) {
       this.clearActiveSession();
     }
+  }
+
+  public async deleteSession(sessionId: string): Promise<void> {
+    // 1. Remove from localStorage
+    this.deleteSessionSync(sessionId);
 
     // 2. Remove from IndexedDB
+
     if (this.isFallbackMode) return;
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
