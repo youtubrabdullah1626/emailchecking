@@ -1311,17 +1311,17 @@ export function LiveExecutionDashboard() {
                           const showLeadNote = leadTz && leadTz !== userTimezone && leadLocal;
                           const userTzLabel = getTimezoneShortLabel(userTimezone);
                           return (
-                            <div>
-                              <div className="flex items-center gap-1.5 font-mono text-sm font-semibold text-foreground whitespace-nowrap">
-                                {userLocal.date} • {userLocal.time}
-                                <span className="text-[10px] font-medium text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border border-border/50 font-sans">
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground whitespace-nowrap">
+                                {userLocal.date} <span className="text-muted-foreground/40 text-[10px]">•</span> {userLocal.time}
+                                <span className="text-[10px] font-medium text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded border border-border/40">
                                   {userTzLabel}
                                 </span>
                               </div>
                               {showLeadNote && (
-                                <div className="text-[10px] text-muted-foreground whitespace-nowrap mt-0.5 flex items-center gap-1">
-                                  <Globe className="h-2.5 w-2.5 shrink-0" />
-                                  {leadLocal!.time} {leadLocal!.tzAbbr} (lead&apos;s time)
+                                <div className="text-[11px] text-muted-foreground whitespace-nowrap flex items-center gap-1.5">
+                                  <Globe className="h-3 w-3 shrink-0 opacity-70" />
+                                  <span>{leadLocal!.time} <span className="opacity-70">{leadLocal!.tzAbbr}</span> (lead)</span>
                                 </div>
                               )}
                             </div>
@@ -1329,16 +1329,16 @@ export function LiveExecutionDashboard() {
                         }
                         // Fallback: show raw date + time when no UTC available
                         return (
-                          <span className="text-muted-foreground text-sm font-mono whitespace-nowrap">
-                            {item.scheduledDate} <span className="mx-1.5 text-border">•</span> {item.scheduledTime}
-                          </span>
+                          <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground whitespace-nowrap">
+                            {item.scheduledDate} <span className="text-muted-foreground/40 text-[10px]">•</span> {item.scheduledTime}
+                          </div>
                         );
                       })()}
                     </TableCell>
                     <TableCell className="py-3">
                       {getStatusBadge(item.liveStatus, item)}
                     </TableCell>
-                    <TableCell className="text-right text-xs font-mono text-muted-foreground py-3 whitespace-nowrap">
+                    <TableCell className="text-right text-xs font-medium text-muted-foreground py-3 whitespace-nowrap">
                       {item.liveStatus === "SCHEDULED" ? "—" : formatEventTime(item.lastEventTime)}
                     </TableCell>
                     <TableCell className="text-center py-3">

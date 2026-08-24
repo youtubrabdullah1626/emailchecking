@@ -264,13 +264,13 @@ export function SchedulingPreviewWorkspace() {
                   const assignedSender = item.senderEmail || senderMap.get(item.recipientEmail.toLowerCase()) || connectedAccounts[0] || "Primary Inbox";
                   return (
                     <tr key={item.queueId + idx} className="hover:bg-muted/20 transition-colors">
-                      <td className="px-5 py-3 font-mono text-xs whitespace-nowrap">
+                      <td className="px-5 py-3 font-medium text-xs whitespace-nowrap">
                         {item.scheduledDate} <span className="text-muted-foreground ml-1.5">{item.scheduledTime}</span>
                       </td>
                       <td className="px-5 py-3 text-xs">
                         <div className="flex items-center gap-1.5 font-medium text-foreground">
                           <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="truncate max-w-[220px] font-mono text-[11px]">
+                          <span className="truncate max-w-[220px] text-[12px]">
                             {assignedSender}
                           </span>
                         </div>
