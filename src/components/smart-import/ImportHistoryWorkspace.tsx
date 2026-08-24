@@ -627,7 +627,7 @@ export function ImportHistoryWorkspace() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleOpenDetails(session)}
+                      onClick={() => handleOpenDashboard(session.sessionId)}
                       className="h-7 px-2.5 text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 rounded-lg gap-1.5"
                     >
                       <FileText className="h-3 w-3" />
@@ -675,7 +675,7 @@ export function ImportHistoryWorkspace() {
           {activeDetailsSession && (
             <div className="space-y-4">
               {/* Header */}
-              <div className="space-y-1">
+              <div className="space-y-1 pr-7">
                 <div className="flex items-center justify-between gap-2">
                   <DialogTitle className="text-base font-bold text-slate-900 dark:text-white truncate">
                     {activeDetailsSession.campaignName || "Untitled Campaign"}
