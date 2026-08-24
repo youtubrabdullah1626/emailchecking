@@ -8,7 +8,7 @@ export const ROUTE_API_PRELOAD_MAP: Record<string, string[]> = {
   "/dashboard": ["/api/dashboard/stats", "/api/dashboard/header-stats", "/api/notifications/important"],
   "/prospects": ["/api/prospects?limit=500"],
   "/sequences": ["/api/sequences"],
-  "/smart-import": ["/api/campaigns", "/api/dashboard/header-stats"],
+  "/smart-import": ["/api/campaigns", "/api/campaigns/latest/live-status", "/api/dashboard/header-stats", "/api/dashboard/stats"],
   "/timeline": ["/api/timeline?search=&status=ALL&timeRange=all&page=1&limit=50"],
   "/replies": ["/api/replies"],
   "/settings": ["/api/dashboard/header-stats"],

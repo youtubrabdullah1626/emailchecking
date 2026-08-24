@@ -138,9 +138,17 @@ export async function ensurePageLockFlags(): Promise<void> {
   }
 }
 
+// Fast in-memory server cache (TTL 30s) to eliminate DB roundtrips on layout render
+const accessCache = new Map<string, { value: any; expiresAt: number }>();
+
+export function invalidatePageAccessCache(): void {
+  accessCache.clear();
+}
+
 /**
  * Checks if a specific page/module is locked for the current request.
  * Admins and Supreme Owner always bypass locks.
+ * Caches results in server memory for 30s for 0ms layout rendering.
  */
 export async function evaluatePageAccess(flagKey: string): Promise<{
   isLocked: boolean;
@@ -158,6 +166,14 @@ export async function evaluatePageAccess(flagKey: string): Promise<{
   try {
     const session = await getSession();
     const user = session?.user;
+    const userKey = user?.email || user?.id || "anon";
+    const cacheKey = `${flagKey}::${userKey}`;
+    const now = Date.now();
+
+    const cached = accessCache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      return cached.value;
+    }
 
     const isAdmin =
       user?.email === SUPREME_OWNER_EMAIL ||
@@ -184,13 +200,18 @@ export async function evaluatePageAccess(flagKey: string): Promise<{
     const heading = (headingConfig?.value as string) || defaultHeading;
     const subtext = (subtextConfig?.value as string) || defaultSubtext;
 
-    return {
+    const result = {
       isLocked,
       isAdmin,
       moduleName,
       heading,
       subtext,
     };
+
+    // Cache for 30 seconds for instant page navigation
+    accessCache.set(cacheKey, { value: result, expiresAt: now + 30000 });
+
+    return result;
   } catch (err) {
     console.error(`[PageLock] Error checking access for '${flagKey}':`, err);
     return {

@@ -54,11 +54,11 @@ export function Sidebar({ isMobile, onNavigate }: SidebarProps) {
     if (typeof window === "undefined") return;
     const prewarmTimer = setTimeout(() => {
       import("@/lib/speed/preloader").then(({ prewarmRouteData }) => {
-        ["/dashboard", "/prospects", "/sequences", "/replies", "/admin/platform"].forEach((route) => {
+        ["/dashboard", "/smart-import", "/prospects", "/sequences", "/timeline", "/replies", "/admin/platform"].forEach((route) => {
           prewarmRouteData(route);
         });
       });
-    }, 1500);
+    }, 200);
 
     const handleGlobalSync = () => {
       mutate(() => true);
