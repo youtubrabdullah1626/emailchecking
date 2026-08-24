@@ -782,6 +782,9 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.setItem("smart_import_active_session_id", targetSessionId);
     }
+    // We no longer need to clear the LiveDashboard cache when switching dashboards!
+    // The LiveExecutionDashboard now dynamically scopes its own cache keys by Campaign ID.
+    // This makes the transition instant (0ms) while naturally avoiding any ghost data.
     try {
       const data = await recoveryEngine.restoreSession(targetSessionId).catch(() => null);
       if (data) {

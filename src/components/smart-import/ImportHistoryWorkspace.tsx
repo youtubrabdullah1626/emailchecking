@@ -227,37 +227,46 @@ export function ImportHistoryWorkspace() {
     const { id, name } = sessionToDelete;
     setSessionToDelete(null);
 
-    // 1. INSTANT (0ms) SYNCHRONOUS DELETION:
-    // Purge from localStorage and React state immediately so it never reappears on tab switch
-    storage.deleteSessionSync(id);
-    setSessions(prev => prev.filter(s => s.sessionId !== id));
-    setHiddenSessions(prev => new Set(prev).add(id));
-    toast.success(`Campaign "${name}" deleted.`);
+    const deletePromise = (async () => {
+      // 1. INSTANT SYNCHRONOUS UI CLEARING:
+      storage.deleteSessionSync(id);
+      setSessions(prev => prev.filter(s => s.sessionId !== id));
+      setHiddenSessions(prev => new Set(prev).add(id));
 
-    // 2. Clean active session pointers immediately
-    if (typeof window !== "undefined") {
-      if (sessionStorage.getItem("smart_import_active_session_id") === id) {
-        sessionStorage.removeItem("smart_import_active_session_id");
-      }
-    }
-
-    // 3. Background DB & IndexedDB cleanup (non-blocking)
-    try {
+      // 2. AWAIT DB DELETION:
+      // We must wait for this to finish before resolving the promise.
+      // If we don't, the user can re-import immediately and the Duplicate Detection 
+      // will see the ghost DB rows before they are deleted.
       const dataset = await storage.loadHeavyDataset(id).catch(() => null);
       const targetCampaignId = dataset?.campaignId || id;
 
+      if (typeof window !== "undefined") {
+        if (sessionStorage.getItem("smart_import_active_session_id") === id) {
+          sessionStorage.removeItem("smart_import_active_session_id");
+        }
+        // Cleanup the dynamically scoped caches so localStorage doesn't bloat forever
+        localStorage.removeItem(`silaer_cache_items_${targetCampaignId}`);
+        localStorage.removeItem(`silaer_cache_status_${targetCampaignId}`);
+        localStorage.removeItem(`silaer_cache_stats_${targetCampaignId}`);
+        localStorage.removeItem("silaer_active_campaign_id");
+      }
+
       if (targetCampaignId) {
-        await fetch(`/api/campaigns/${targetCampaignId}`, {
-          method: "DELETE",
-        }).catch(() => {});
+        await fetch(`/api/campaigns/${targetCampaignId}`, { method: "DELETE" }).catch(() => {});
       }
 
       await storage.deleteSession(id).catch(() => {});
       await mutate(() => true, undefined, { revalidate: true });
-    } catch (err: any) {
-      console.error("Background delete cleanup error:", err);
-    }
+    })();
+
+    toast.promise(deletePromise, {
+      loading: 'Deleting campaign and clearing data...',
+      success: `Campaign "${name}" deleted.`,
+      error: 'Failed to fully delete campaign'
+    });
+
   };
+
 
 
   const handleClearHistory = async (timeframe: "24h" | "7d" | "30d" | "all") => {

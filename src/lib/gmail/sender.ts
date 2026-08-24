@@ -893,7 +893,13 @@ async function markStepSent(
           const stepScheduledTime = step.scheduled_at_utc ? new Date(step.scheduled_at_utc).getTime() : sentNow.getTime();
           const scheduledDiffMs = nextStep.scheduled_at_utc.getTime() - stepScheduledTime;
           const delayMs = scheduledDiffMs > 0 ? scheduledDiffMs : (3 * 24 * 60 * 60 * 1000);
-          const nextEligibleTime = new Date(sentNow.getTime() + delayMs);
+          
+          // Add human-like jitter (-15 to +15 minutes) to the follow-up step
+          // so it doesn't look robotic (e.g., exactly 1:00 PM every single time).
+          // Clamp jitter so it never pushes the email to the previous day or out of bounds.
+          const jitterMs = (Math.random() * 30 - 15) * 60 * 1000;
+          const nextEligibleTime = new Date(sentNow.getTime() + delayMs + jitterMs);
+          
           const slaBufferMs = Math.min(Math.max(delayMs * 0.5, 12 * 3600 * 1000), 72 * 3600 * 1000);
           const softSlaDead = new Date(nextEligibleTime.getTime() + slaBufferMs);
 

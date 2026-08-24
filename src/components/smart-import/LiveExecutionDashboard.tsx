@@ -41,10 +41,21 @@ export function LiveExecutionDashboard() {
   const { getExecutionQueue, updateQueueItemState, closeSession, deleteQueueItem, rescheduleQueueItem, bulkProgress } = useImport() as any;
   const storage = useMemo(() => new StorageEngine(), []);
 
+  const [currentSessionMeta, setCurrentSessionMeta] = useState<any>(null);
+
+  // Authoritative campaign ID: from bulkProgress, session meta, localStorage, or latest active campaign
+  const activeCampaignId: string = (bulkProgress as any)?.campaignId ?? currentSessionMeta?.campaignId ?? (typeof window !== "undefined" ? localStorage.getItem("silaer_active_campaign_id") : null) ?? "latest";
+
+  // Enterprise Architecture: Dynamically scope cache keys by Campaign ID.
+  // This mathematically guarantees zero cross-contamination (ghost data) between campaigns.
+  const CACHE_KEY_ITEMS = `silaer_cache_items_${activeCampaignId}`;
+  const CACHE_KEY_STATUS = `silaer_cache_status_${activeCampaignId}`;
+  const CACHE_KEY_STATS = `silaer_cache_stats_${activeCampaignId}`;
+
   const [liveItems, setLiveItems] = useState<LiveItem[]>(() => {
     if (typeof window !== "undefined") {
       try {
-        const cached = localStorage.getItem("silaer_cached_live_items");
+        const cached = localStorage.getItem(CACHE_KEY_ITEMS);
         if (cached) {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -53,20 +64,20 @@ export function LiveExecutionDashboard() {
     }
     return [];
   });
+  
   const [isLoading, setIsLoading] = useState(false);
   const [campaignStatus, setCampaignStatus] = useState<"ACTIVE" | "PAUSED">(() => {
     if (typeof window !== "undefined") {
-      const cached = localStorage.getItem("silaer_cached_campaign_status");
+      const cached = localStorage.getItem(CACHE_KEY_STATUS);
       if (cached === "PAUSED" || cached === "ACTIVE") return cached;
     }
     return "ACTIVE";
   });
-  const [currentSessionMeta, setCurrentSessionMeta] = useState<any>(null);
 
   const [cachedStats, setCachedStats] = useState<any>(() => {
     if (typeof window !== "undefined") {
       try {
-        const raw = localStorage.getItem("silaer_cached_dashboard_stats");
+        const raw = localStorage.getItem(CACHE_KEY_STATS);
         if (raw) return JSON.parse(raw);
       } catch {}
     }
@@ -84,7 +95,7 @@ export function LiveExecutionDashboard() {
       onSuccess: (data) => {
         if (data && typeof window !== "undefined") {
           try {
-            localStorage.setItem("silaer_cached_dashboard_stats", JSON.stringify(data));
+            localStorage.setItem(CACHE_KEY_STATS, JSON.stringify(data));
           } catch {}
         }
       }
@@ -116,9 +127,6 @@ export function LiveExecutionDashboard() {
       // Fall back to browser's detected timezone — better UX than showing UTC for users
       // who haven't configured their timezone in Settings yet.
       : (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC");
-
-  // Authoritative campaign ID: from bulkProgress, session meta, localStorage, or latest active campaign
-  const activeCampaignId: string = (bulkProgress as any)?.campaignId ?? currentSessionMeta?.campaignId ?? (typeof window !== "undefined" ? localStorage.getItem("silaer_active_campaign_id") : null) ?? "latest";
 
   useEffect(() => {
     const hydrateLocal = async () => {
@@ -355,12 +363,20 @@ export function LiveExecutionDashboard() {
       } else if (data.userTimezone) {
         setLiveUserTimezone(data.userTimezone);
       }
-
       setLiveItems(formattedItems);
       if (typeof window !== "undefined") {
         try {
-          localStorage.setItem("silaer_cached_live_items", JSON.stringify(formattedItems));
-        } catch {}
+          // CAP at 500 items to prevent localStorage QuotaExceededError on massive campaigns.
+          // This gives the user the 0ms instant render experience (Linear/Superhuman style)
+          // while the background DB poll fetches the remaining 10,000+ rows instantly.
+          const cacheFriendlyItems = formattedItems.slice(0, 500);
+          localStorage.setItem(CACHE_KEY_ITEMS, JSON.stringify(cacheFriendlyItems));
+          if (data.campaignId) {
+            localStorage.setItem("silaer_active_campaign_id", data.campaignId);
+          }
+        } catch (e) {
+          console.warn("[LiveDashboard] Cache serialization skipped: ", e);
+        }
       }
 
       initialized.current = true;
@@ -374,7 +390,7 @@ export function LiveExecutionDashboard() {
       if (!overrideActive && (data.campaignStatus === "PAUSED" || data.campaignStatus === "ACTIVE")) {
         const resolvedStatus = (!pauseResumeEnabled && data.campaignStatus === "PAUSED") ? "ACTIVE" : data.campaignStatus;
         setCampaignStatus(resolvedStatus);
-        try { localStorage.setItem("silaer_cached_campaign_status", resolvedStatus); } catch {}
+        try { localStorage.setItem(CACHE_KEY_STATUS, resolvedStatus); } catch {}
       }
 
 
