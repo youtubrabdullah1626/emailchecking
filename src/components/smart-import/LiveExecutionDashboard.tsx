@@ -827,10 +827,11 @@ export function LiveExecutionDashboard() {
       return item;
     }));
 
+    const rescheduleToastId = `reschedule-${targetItem.queueId}`;
     if (isDueNow) {
-      toast.loading("Sending email via Gmail...", { id: `reschedule-${targetItem.queueId}` });
+      toast.loading("Dispatching email...", { id: rescheduleToastId });
     } else {
-      toast.loading("Rescheduling in database...", { id: `reschedule-${targetItem.queueId}` });
+      toast.loading("Updating schedule...", { id: rescheduleToastId });
     }
 
     try {
@@ -851,7 +852,7 @@ export function LiveExecutionDashboard() {
 
       if (res.ok && data.ok) {
         if (data.sentImmediately) {
-          toast.success("Email Delivered!", { id: `reschedule-${targetItem.queueId}`, description: `Dispatched to ${targetItem.recipientEmail}` });
+          toast.success("Email Delivered", { id: rescheduleToastId, description: `Dispatched to ${targetItem.recipientEmail}` });
           setLiveItems(prev => prev.map(item => {
             const isMatch =
               item.queueId === targetItem.queueId ||
@@ -865,7 +866,7 @@ export function LiveExecutionDashboard() {
           }));
           fetchLiveStatusFromDb();
         } else {
-          toast.success("Email Rescheduled", { id: `reschedule-${targetItem.queueId}`, description: `Rescheduled to ${chosenDate} at ${chosenTime}` });
+          toast.success("Schedule Updated", { id: rescheduleToastId, description: `Scheduled for ${chosenDate} at ${chosenTime}` });
           setLiveItems(prev => prev.map(item => {
             const isMatch =
               item.queueId === targetItem.queueId ||
