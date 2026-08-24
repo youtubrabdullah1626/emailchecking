@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import useSWR from "swr";
 import { apiClient } from "@/lib/api-client";
+import { useRouter } from "next/navigation";
 import { useImport } from "@/components/providers/ImportProvider";
 import { ExecutionQueueItem } from "@/lib/scheduler/SchedulingTypes";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -10,14 +11,15 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { CalendarDays, Clock, Check, AlertTriangle, Layers, Calendar, ShieldCheck, Mail, Play } from "lucide-react";
+import { CalendarDays, Clock, Check, AlertTriangle, Layers, Calendar, ShieldCheck, Mail, Play, Home } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 import { SystemCertification } from "./SystemCertification";
 import { DuplicateWarningModal } from "./DuplicateWarningModal";
 
 export function SchedulingPreviewWorkspace() {
-  const { queueSummary, getExecutionQueue, approveImport, appendTargetSessionId, startScheduling, setStatus, status, getSequences, removeSequencesByEmail } = useImport() as any;
+  const router = useRouter();
+  const { queueSummary, getExecutionQueue, approveImport, appendTargetSessionId, startScheduling, setStatus, status, getSequences, removeSequencesByEmail, resetImport } = useImport() as any;
   const { data: warmupStatus } = useSWR("/api/warmup/status", url => apiClient<any>(url));
   const { data: warmupSettings } = useSWR("/api/warmup/settings", url => apiClient<any>(url));
   const { data: accountStats } = useSWR("/api/dashboard/header-stats", url => apiClient<any>(url));
@@ -165,34 +167,50 @@ export function SchedulingPreviewWorkspace() {
 
   if (allItems.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-center bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/50 rounded-2xl space-y-4 max-w-2xl mx-auto shadow-sm my-6 animate-in fade-in zoom-in-95 duration-300">
-        <div className="h-12 w-12 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-xs">
-          <AlertTriangle className="h-6 w-6" />
+      <div className="flex flex-col items-center justify-center py-16 px-6 text-center max-w-lg mx-auto animate-in fade-in zoom-in-95 duration-300">
+        <div className="h-14 w-14 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-5 ring-1 ring-emerald-500/20 shadow-xs">
+          <ShieldCheck className="h-7 w-7" />
         </div>
-        <div className="space-y-1.5">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-            Campaign Already Active & Running
-          </h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-            All leads in this file are already actively scheduled in your live campaign. The system prevents duplicate runs of the same active campaign.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+        
+        <h3 className="text-xl font-bold text-foreground tracking-tight mb-2">
+          Campaign Already Active &amp; Running
+        </h3>
+        
+        <p className="text-sm text-muted-foreground leading-relaxed mb-8 max-w-sm">
+          All leads in this file are already actively running in your campaign. Duplicate sends have been automatically prevented.
+        </p>
+
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full justify-center">
           <Button
             onClick={() => setStatus("EXECUTING")}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 font-semibold shadow-sm px-6"
+            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm px-6 h-10 gap-2 transition-all active:scale-[0.98]"
           >
-            <Play className="h-4 w-4" />
-            Open Live Dashboard
+            <Play className="h-4 w-4 fill-white" />
+            View Live Campaign
           </Button>
+
           <Button
             variant="outline"
-            onClick={() => startScheduling(warmupStatus, warmupSettings, undefined, true)}
-            className="border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold"
+            onClick={() => {
+              if (resetImport) resetImport();
+              router.push("/dashboard");
+            }}
+            className="w-full sm:w-auto border-border text-foreground hover:bg-muted font-medium h-10 gap-2 transition-all"
           >
-            Force Re-Schedule Anyway
+            <Home className="h-4 w-4 text-muted-foreground" />
+            Go to Dashboard
           </Button>
         </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (resetImport) resetImport();
+          }}
+          className="mt-6 text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline cursor-pointer"
+        >
+          Import a different file
+        </button>
       </div>
     );
   }
