@@ -181,12 +181,7 @@ export async function POST(request: NextRequest) {
         const timeStr = scheduleInfo?.time || "09:00";
         const tz = scheduleInfo?.timezone || "UTC";
 
-        let scheduledUtc: Date;
-        if (scheduleInfo?.timestamp && !isNaN(scheduleInfo.timestamp)) {
-          scheduledUtc = new Date(scheduleInfo.timestamp);
-        } else {
-          scheduledUtc = localDateTimeToUtc(dateStr, timeStr, tz);
-        }
+        let scheduledUtc = localDateTimeToUtc(dateStr, timeStr, tz);
 
         if (!isInLeadBusinessHours(scheduledUtc, tz)) {
           scheduledUtc = nextBusinessSlotUtc(scheduledUtc, tz);
