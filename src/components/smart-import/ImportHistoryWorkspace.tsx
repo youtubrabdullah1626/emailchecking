@@ -120,9 +120,16 @@ export function ImportHistoryWorkspace() {
 
   const loadSessions = useCallback(async () => {
     let all = storage.getAllSessions();
+    const validSessions: ImportSessionMetadata[] = [];
     
-    // Auto-update COMPLETED status for LIVE CAMPAIGNS that have no pending items
     for (const session of all) {
+      // Purge any unlaunched drafts/abandoned sessions so history only contains real launched/completed campaigns
+      if (session.lastCheckpoint !== "EXECUTION_STARTED" && session.lastCheckpoint !== "COMPLETED" && session.status !== "COMPLETED") {
+        storage.deleteSession(session.sessionId).catch(() => {});
+        continue;
+      }
+
+      // Auto-update COMPLETED status for LIVE CAMPAIGNS that have no pending items
       if (session.lastCheckpoint === "EXECUTION_STARTED") {
          try {
             const dataset = await storage.loadHeavyDataset(session.sessionId);
@@ -139,11 +146,12 @@ export function ImportHistoryWorkspace() {
            console.error("Failed to load queue for completion check", e);
          }
       }
+      validSessions.push(session);
     }
     
     // Sort newest first
-    all.sort((a, b) => new Date(b.importDate).getTime() - new Date(a.importDate).getTime());
-    setSessions([...all]);
+    validSessions.sort((a, b) => new Date(b.importDate).getTime() - new Date(a.importDate).getTime());
+    setSessions([...validSessions]);
   }, [storage]);
 
   useEffect(() => {

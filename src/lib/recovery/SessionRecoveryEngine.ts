@@ -153,11 +153,12 @@ export class SessionRecoveryEngine {
     const id = this.storage.getActiveSessionId();
     if (id) {
       const meta = this.getActiveSessionMetadata();
-      if (meta && meta.status !== "COMPLETED") {
-        meta.status = "ARCHIVED";
-        this.storage.saveSessionMetadata(meta);
+      // If the session was never launched into live execution, completely purge it so it doesn't pollute history or create ghost drafts
+      if (meta && meta.lastCheckpoint !== "EXECUTION_STARTED" && meta.status !== "COMPLETED") {
+        await this.storage.deleteSession(id).catch(() => {});
+      } else {
+        this.storage.clearActiveSession();
       }
-      this.storage.clearActiveSession();
       this.currentSessionId = null;
     }
   }
