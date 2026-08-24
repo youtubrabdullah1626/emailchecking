@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { ClientReportData } from "./types";
 import { SILAER_LOGO_BASE64 } from "./logoBase64";
 
@@ -22,7 +23,7 @@ function formatTitleCase(str?: string): string {
 
 /**
  * Generates and downloads a clean, proportionally balanced vector executive PDF report.
- * Fills the A4 document sheet with official Silaer logo, watermark, and luxury typography.
+ * Uses autoTable to guarantee ZERO text collisions and perfect column wrapping.
  */
 export function generateDirectClientReportPdf(report: ClientReportData) {
   const doc = new jsPDF({
@@ -43,7 +44,7 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   // Subtle Diagonal Watermark in Center of Page
   try {
     doc.saveGraphicsState();
-    doc.setTextColor(245, 247, 250); // very faint slate
+    doc.setTextColor(245, 247, 250);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(64);
     doc.text("SILAER", pageWidth / 2, pageHeight / 2 + 10, {
@@ -52,10 +53,10 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
     });
     doc.restoreGraphicsState();
   } catch {
-    // Fallback if graphics state is not supported
+    // Ignore if graphics state is not supported
   }
 
-  // Official Silaer Brand Logo Image
+  // Official Silaer Brand Logo
   try {
     if (SILAER_LOGO_BASE64) {
       doc.addImage(SILAER_LOGO_BASE64, "PNG", margin, 18, 8, 8);
@@ -169,7 +170,7 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   });
 
   // Outbound Activity & Lead Journey Audit Table Header
-  y += cardHeight + 12;
+  y += cardHeight + 11;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(15, 23, 42);
@@ -181,108 +182,74 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   doc.setTextColor(100, 116, 139);
   doc.text("Real-time telemetry recorded across all connected inboxes", margin, y);
 
-  // Table Columns Setup
-  y += 4;
-  const colX = {
-    recipient: margin + 4,
-    sender: margin + 46,
-    tz: margin + 84,
-    dispatched: margin + 116,
-    opened: margin + 142,
-    status: pageWidth - margin - 4,
-  };
+  y += 3;
 
-  // Table Header Box
-  const tableHeaderHeight = 8;
-  doc.setFillColor(241, 245, 249);
-  doc.rect(margin, y, contentWidth, tableHeaderHeight, "F");
-  doc.setDrawColor(226, 232, 240);
-  doc.rect(margin, y, contentWidth, tableHeaderHeight, "S");
+  // AutoTable: Guaranteed ZERO Overlap with exact column widths and word wrapping
+  const tableData = (report.leadActivities || []).map((act) => [
+    act.recipientEmail,
+    act.senderInbox,
+    act.leadTimezone,
+    act.dispatchedAt || "—",
+    act.openedAt ? (act.openCount > 1 ? `${act.openedAt} (${act.openCount}x)` : act.openedAt) : "—",
+    act.status === "REPLIED" ? "Replied" : act.status === "OPENED" ? "Opened" : act.status === "SENT" ? "Delivered" : "Scheduled",
+  ]);
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.setTextColor(71, 85, 105);
-  doc.text("RECIPIENT", colX.recipient, y + 5.5);
-  doc.text("SENDING INBOX", colX.sender, y + 5.5);
-  doc.text("TIMEZONE", colX.tz, y + 5.5);
-  doc.text("DISPATCHED", colX.dispatched, y + 5.5);
-  doc.text("OPENED", colX.opened, y + 5.5);
-  doc.text("STATUS", colX.status, y + 5.5, { align: "right" });
-
-  y += tableHeaderHeight;
-
-  // Table Rows
-  const activities = report.leadActivities || [];
-  const rowHeight = 9.5;
-
-  activities.forEach((act, idx) => {
-    if (idx % 2 === 1) {
-      doc.setFillColor(248, 250, 252);
-      doc.rect(margin, y, contentWidth, rowHeight, "F");
-    }
-    doc.setDrawColor(226, 232, 240);
-    doc.line(margin, y + rowHeight, pageWidth - margin, y + rowHeight);
-
-    // Recipient
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(15, 23, 42);
-    doc.text(act.recipientEmail, colX.recipient, y + 6);
-
-    // Sender
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text(act.senderInbox, colX.sender, y + 6);
-
-    // Timezone
-    doc.text(act.leadTimezone, colX.tz, y + 6);
-
-    // Dispatched
-    doc.setTextColor(51, 65, 85);
-    doc.text(act.dispatchedAt || "—", colX.dispatched, y + 6);
-
-    // Opened
-    doc.text(act.openedAt ? (act.openCount > 1 ? `${act.openedAt} (${act.openCount}x)` : act.openedAt) : "—", colX.opened, y + 6);
-
-    // Status
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(51, 65, 85);
-    if (act.status === "REPLIED") {
-      doc.text("Replied", colX.status, y + 6, { align: "right" });
-    } else if (act.status === "OPENED") {
-      doc.text("Opened", colX.status, y + 6, { align: "right" });
-    } else if (act.status === "SENT") {
-      doc.text("Delivered", colX.status, y + 6, { align: "right" });
-    } else {
-      doc.text("Scheduled", colX.status, y + 6, { align: "right" });
-    }
-
-    y += rowHeight;
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin, right: margin },
+    tableWidth: contentWidth,
+    head: [["RECIPIENT", "SENDING INBOX", "TIMEZONE", "DISPATCHED", "OPENED", "STATUS"]],
+    body: tableData,
+    theme: "grid",
+    headStyles: {
+      fillColor: [241, 245, 249],
+      textColor: [71, 85, 105],
+      fontStyle: "bold",
+      fontSize: 7,
+      cellPadding: 3,
+      lineColor: [226, 232, 240],
+      lineWidth: 0.25,
+    },
+    bodyStyles: {
+      textColor: [51, 65, 85],
+      fontSize: 7.5,
+      cellPadding: 3,
+      lineColor: [226, 232, 240],
+      lineWidth: 0.2,
+    },
+    alternateRowStyles: {
+      fillColor: [248, 250, 252],
+    },
+    columnStyles: {
+      0: { cellWidth: 42, fontStyle: "bold", textColor: [15, 23, 42] }, // Recipient
+      1: { cellWidth: 40, textColor: [100, 116, 139] },                 // Sender
+      2: { cellWidth: 26 },                                              // Timezone
+      3: { cellWidth: 26 },                                              // Dispatched
+      4: { cellWidth: 24 },                                              // Opened
+      5: { cellWidth: 16, halign: "right", fontStyle: "bold", textColor: [16, 185, 129] }, // Status
+    },
   });
 
-  // Outer border around table
-  doc.setDrawColor(226, 232, 240);
-  doc.rect(margin, y - activities.length * rowHeight - tableHeaderHeight, contentWidth, activities.length * rowHeight + tableHeaderHeight, "S");
+  const finalY = (doc as any).lastAutoTable?.finalY || (y + 40);
 
   // Strategic Performance Highlights Section
-  y += 12;
+  let summaryY = finalY + 10;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(15, 23, 42);
-  doc.text("Campaign Performance & Strategic Takeaways", margin, y);
+  doc.text("Campaign Performance & Strategic Takeaways", margin, summaryY);
 
-  y += 5.5;
+  summaryY += 5.5;
   report.summaryPoints.forEach((point) => {
     doc.setFillColor(16, 185, 129);
-    doc.circle(margin + 1.8, y - 1, 1, "F");
+    doc.circle(margin + 1.8, summaryY - 1, 1, "F");
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(51, 65, 85);
     const splitText = doc.splitTextToSize(point, contentWidth - 8);
-    doc.text(splitText, margin + 6, y);
-    y += splitText.length * 4.8 + 3;
+    doc.text(splitText, margin + 6, summaryY);
+    summaryY += splitText.length * 4.8 + 3;
   });
 
   // Footer Section placed cleanly at bottom
