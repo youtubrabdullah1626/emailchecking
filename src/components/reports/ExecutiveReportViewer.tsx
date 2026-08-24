@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ClientReportData } from "@/lib/reports/types";
 import { ClientReportCards } from "./ClientReportCard";
+import { LeadActivityTable } from "./LeadActivityTable";
 import { CampaignRecapSection } from "./CampaignRecapSection";
 import { toast } from "sonner";
 import { generateDirectClientReportPdf } from "@/lib/reports/pdfGenerator";
@@ -61,7 +62,7 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
   return (
     <div className="space-y-6">
       {/* 1. Floating Top Minimal Toolbar (Hidden in PDF) */}
-      <div className="no-print bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-xs flex items-center justify-between gap-4 max-w-4xl mx-auto">
+      <div className="no-print bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-xs flex items-center justify-between gap-4 max-w-5xl mx-auto">
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
           <span className="w-2 h-2 rounded-full bg-emerald-500" />
           <span>Silaer Client Campaign Report</span>
@@ -111,7 +112,7 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
       {/* 2. The PDF Document Sheet (Clean, Simple, Minimal A4) */}
       <div
         id="report-pdf-document"
-        className="report-document-sheet bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg p-8 md:p-10 max-w-4xl mx-auto space-y-6 print-page-container print-avoid-break text-slate-900 dark:text-white"
+        className="report-document-sheet bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg p-8 md:p-10 max-w-5xl mx-auto space-y-6 print-page-container print-avoid-break text-slate-900 dark:text-white"
       >
         {/* Simple Brand Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
@@ -152,6 +153,9 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
 
         {/* 4 Hero KPI Cards */}
         <ClientReportCards metrics={report.metrics} />
+
+        {/* Outbound Activity & Lead Journey Audit Table */}
+        <LeadActivityTable activities={report.leadActivities} />
 
         {/* Campaign Performance Summary */}
         <CampaignRecapSection summaryPoints={report.summaryPoints} />

@@ -1,176 +1,100 @@
-# 🏛️ SILAER 10X AGENCY CLIENT REPORTING & VIRAL GROWTH ENGINE
-## Master 8-Phase Enterprise Implementation Plan (`implementation_plan.md`)
+# 🏛️ SILAER 10X: EXECUTIVE LEAD TELEMETRY & ACTIVITY AUDIT REPORT (6 PHASES)
+
+## 🎯 Master Objective
+Upgrade the Silaer Agency & Client Reporting System from abstract totals into an **executive-grade Lead Telemetry & Activity Audit Log**. Every report provides unquestionable proof of outreach activity (recipient, sending inbox, lead timezone, dispatched time, opened time, replied time, and live status) both on the web and via 1-click direct vector PDF download (`www.silaer.com`).
 
 ---
 
-### 📋 Executive Summary
-This document establishes the strict, phase-by-phase architectural blueprint for the **Silaer Agency Client Reporting & B2B Viral Growth Loop System**. 
-
-The feature generates high-trust, executive campaign reports for marketing agencies to share with their clients via a secure public link and a 1-page vector PDF, while embedding an organic **"Powered by Silaer Enterprise Engine"** growth flywheel that converts agency clients into new paying B2B customers.
-
----
-
-### 🛡️ Core System Invariants & Non-Negotiable Rules
-1. **Zero Auth Wall for Clients**: Public reports must load for agency clients in incognito mode without login or account creation.
-2. **Strict Read-Only Isolation**: The public reporting API has zero mutation capabilities and cannot update, pause, delete, or modify any database record.
-3. **Zero PII Exposure**: Personal phone numbers, private notes, email account passwords, OAuth tokens, and raw lead email lists are **never** exposed in the public payload.
-4. **100% Brand Color Alignment**: All badges, headers, progress indicators, and PDF styles strictly use Silaer's signature design system (Emerald `#10b981`, clean dark/light card borders, sleek typography).
-5. **Factual Integrity (No AI Hallucinations)**: The campaign recap must display strictly real, database-verified numbers (*Leads processed $\to$ Open rate $\to$ Real replies $\to$ Zero bounces*).
-6. **Single-Page PDF Invariant**: The exported PDF must fit onto **exactly 1 page** (A4/Letter) with zero awkward page breaks or cut-off cards.
-7. **Strict Phase Gating**: Work on Phase $N+1$ cannot begin until Phase $N$ passes all automated and manual verification exit gates.
-
----
-
-## 🏛️ The 8 Master Phases
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│ Phase 1: Cryptographic Read-Only Token & Database Layer                │
-├────────────────────────────────────────────────────────────────────────┤
-│ Phase 2: High-Performance Aggregation API (/api/reports/[token])       │
-├────────────────────────────────────────────────────────────────────────┤
-│ Phase 3: Public Executive Client Report Web Interface (/report/[token])│
-├────────────────────────────────────────────────────────────────────────┤
-│ Phase 4: Dynamic Co-Branding & Campaign Performance Recap Engine       │
-├────────────────────────────────────────────────────────────────────────┤
-│ Phase 5: 1-Click Single-Page Vector PDF Export Engine                  │
-├────────────────────────────────────────────────────────────────────────┤
-│ Phase 6: Dashboard & History Workspace Integration (Share Modal)       │
-├────────────────────────────────────────────────────────────────────────┤
-│ Phase 7: B2B Viral Growth Flywheel & Referral Tracking Integration     │
-├────────────────────────────────────────────────────────────────────────┤
-│ Phase 8: End-to-End Adversarial Audit, Benchmarking & Deployment       │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-### 🔹 PHASE 1: Cryptographic Read-Only Token & Database Layer
+### 🔹 PHASE 1: Lead Telemetry Data Aggregation Schema & Engine
 * **Status**: `[ ] Pending`
-* **Purpose**: Establish tamper-proof, non-guessable, URL-safe cryptographic share tokens for campaigns.
+* **Purpose**: Query and aggregate fine-grained prospect journey telemetry (recipient, sender inbox, recipient timezone, step timestamps, open timestamps, reply timestamps) from Prisma models (`Prospect`, `Sequence`, `SequenceStep`, `TrackedEmail`).
 * **Files Affected**:
-  * `[NEW]` `src/lib/reports/token.ts` (Cryptographic HMAC/CUID token generator & validator)
-  * `[NEW]` `src/lib/reports/types.ts` (Core TypeScript definitions for Client Reports)
+  * `[MODIFY]` `src/lib/reports/types.ts` (Add `ReportLeadActivity` and update `ClientReportData`)
+  * `[MODIFY]` `src/lib/reports/aggregator.ts` (Build lead telemetry query engine)
 * **Strict Invariant Rules**:
-  * Tokens must be generated using high-entropy crypto routines (`crypto.randomBytes` / SHA-256).
-  * Sequential campaign IDs must never be exposed directly in public URLs.
+  * Passwords, OAuth tokens, and internal database IDs are strictly excluded from output.
+  * Correctly maps `first_opened_at`, `open_count`, and `replied_at` from `TrackedEmail` records.
+  * Fallbacks gracefully if tracking pixels or sequence steps are pending.
 * **Verification & Exit Gate 1**:
-  * Unit test confirming token generation produces a secure, URL-safe string.
-  * Resolving a valid token retrieves the exact campaign ID without exposing internal database keys.
+  * Unit tests pass in `src/lib/reports/__tests__/aggregator.test.ts` verifying all fields (`recipientEmail`, `senderInbox`, `leadTimezone`, `dispatchedAt`, `openedAt`, `repliedAt`, `status`).
 
 ---
 
-### 🔹 PHASE 2: High-Performance Aggregation API (`/api/reports/[token]`)
+### 🔹 PHASE 2: At-a-Glance Executive Hero Metric Ribbon
 * **Status**: `[ ] Pending`
-* **Purpose**: Deliver an ultra-fast (< 50ms), edge-ready public API that aggregates campaign metrics.
+* **Purpose**: Provide a clean, minimal 3-card hero summary (Contacted Leads, Open Rate %, Confirmed Response Rate %) at the top of the report.
 * **Files Affected**:
-  * `[NEW]` `src/app/api/reports/[token]/route.ts` (Public sanitized reporting endpoint)
-  * `[NEW]` `src/lib/reports/aggregator.ts` (Mathematical metric aggregation engine)
+  * `[MODIFY]` `src/components/reports/ClientReportCard.tsx`
 * **Strict Invariant Rules**:
-  * Response time must be under **50ms**.
-  * Handled edge cases: 0 leads must cleanly output `0%` (never `NaN%` or `null`).
-  * Response MUST only include: `agencyName`, `clientName`, `campaignName`, `dateRange`, `totalContacted`, `totalOpened`, `openRate`, `realReplies`, `replyRate`, `bounceRate`, `domainHealth`, `summaryPoints`.
+  * Minimalist, monochrome/slate executive styling (no loud rainbow badges).
+  * High-contrast typography with clear metric labels.
 * **Verification & Exit Gate 2**:
-  * Calling `/api/reports/[test_token]` returns `200 OK` with 100% accurate mathematical calculations.
+  * Component renders clean hero metrics with zero layout shift or visual clutter.
 
 ---
 
-### 🔹 PHASE 3: Public Executive Client Report Web UI (`/report/[token]`)
+### 🔹 PHASE 3: Interactive Web Lead Telemetry & Activity Audit Table
 * **Status**: `[ ] Pending`
-* **Purpose**: Build the dedicated, responsive public report webpage matching Silaer's signature design.
+* **Purpose**: Render a high-trust, responsive activity audit table showing every lead's real-time journey.
 * **Files Affected**:
-  * `[NEW]` `src/app/report/[token]/page.tsx` (Public Client Report Server/Client component)
-  * `[NEW]` `src/app/report/[token]/layout.tsx` (Clean standalone layout without sidebar)
-  * `[NEW]` `src/components/reports/ClientReportCard.tsx` (Hero KPI cards)
+  * `[NEW]` `src/components/reports/LeadActivityTable.tsx`
 * **Strict Invariant Rules**:
-  * Must open in an incognito browser without login or session cookies.
-  * Renders the **4 Hero KPI Cards**:
-    1. **Contacted**: `[Count]` • *100% Delivered*
-    2. **Opened**: `[Count]` • *[X]% Open Rate*
-    3. **Real Replies**: `[Count]` • *Confirmed Responses*
-    4. **Domain Health**: `100%` • *0 Bounces*
+  * Table columns:
+    1. **Recipient**: Prospect email
+    2. **Sending Inbox**: Inbox that dispatched the email
+    3. **Lead Timezone**: Timezone (e.g. `America/New_York`)
+    4. **Dispatched At**: Exact date & local timestamp
+    5. **Opened At**: Exact open time + open count badge
+    6. **Replied At**: Exact reply timestamp + response badge
+    7. **Status**: `🟢 Replied` / `🟣 Opened` / `🔵 Delivered` / `⏱️ Scheduled`
+  * Clean pagination or scroll for campaigns with many prospects.
 * **Verification & Exit Gate 3**:
-  * Page renders in Chrome Incognito with 0 console errors and responsive layout across mobile and desktop.
+  * Verified table renders accurately in desktop, tablet, and mobile views.
 
 ---
 
-### 🔹 PHASE 4: Dynamic Co-Branding & Campaign Performance Recap Engine
+### 🔹 PHASE 4: Direct Vector PDF Generator with Complete Audit Table
 * **Status**: `[ ] Pending`
-* **Purpose**: Render the dynamic co-branding header (`[Agency] ✖ [Client]`) and the factual narrative recap.
+* **Purpose**: Generate crisp vector single-page / multi-page PDF documents with the complete telemetry table, clean Silaer branding, and `www.silaer.com` footer.
 * **Files Affected**:
-  * `[NEW]` `src/components/reports/ReportHeader.tsx` (Co-branding header & date badge)
-  * `[NEW]` `src/components/reports/CampaignRecapSection.tsx` (Bulleted campaign summary)
+  * `[MODIFY]` `src/lib/reports/pdfGenerator.ts`
 * **Strict Invariant Rules**:
-  * Zero AI hallucinations: Only factual, database-verified numbers are synthesized.
-  * Bulleted summary clearly states:
-    - Total leads dispatched across rotating inboxes.
-    - Total unique opens and percentage.
-    - Confirmed real prospect replies.
-    - Zero bounces and clean inbox reputation status.
+  * Native `jsPDF` vector rendering (0 DOM dependencies, 0 CSS color bugs, 0 font corruption).
+  * Instant execution (< 0.05s) with direct browser download on click.
+  * Clean typography with no corrupted characters (`%ï` removed).
 * **Verification & Exit Gate 4**:
-  * Verifying changing campaign stats dynamically alters the recap text with 100% precision.
+  * Clicking "Download PDF" saves a clean, professionally formatted `.pdf` directly to Downloads folder.
 
 ---
 
-### 🔹 PHASE 5: 1-Click Single-Page Vector PDF Export Engine
+### 🔹 PHASE 5: Web Executive Viewer Integration & Polish
 * **Status**: `[ ] Pending`
-* **Purpose**: Generate a pixel-perfect, Apple/Stripe-grade single-page PDF document via browser-native vector print styles.
+* **Purpose**: Seamlessly integrate the audit table, hero ribbon, summary notes, and toolbar into `ExecutiveReportViewer.tsx`.
 * **Files Affected**:
-  * `[NEW]` `src/components/reports/ReportPrintStyles.css` (Strict A4/Letter print rules)
-  * `[MODIFY]` `src/app/report/[token]/page.tsx` (Add `[ Download Executive PDF ]` trigger)
+  * `[MODIFY]` `src/components/reports/ExecutiveReportViewer.tsx`
+  * `[MODIFY]` `src/app/report/[token]/page.tsx`
 * **Strict Invariant Rules**:
-  * The PDF must strictly fit onto **exactly 1 page** (A4 and US Letter).
-  * Preserves vector text crispness, exact Emerald `#10b981` brand colors, and removes web navigation buttons when printing.
+  * Floating top toolbar: `Copy Link` + `Download PDF`.
+  * Document sheet: Silaer logo, clean title, hero ribbon, telemetry table, summary bullets, footer link `www.silaer.com`.
+  * Public access: 0 auth redirects, 0 layout sidebars.
 * **Verification & Exit Gate 5**:
-  * Print preview (`Ctrl + P` / Download PDF button) renders a flawless single-page document.
+  * Page loads instantly in incognito / external Chrome profiles with zero redirects.
 
 ---
 
-### 🔹 PHASE 6: Dashboard & History Workspace Integration (Share Modal)
+### 🔹 PHASE 6: End-to-End Testing, TypeScript Compilation & Railway Push
 * **Status**: `[ ] Pending`
-* **Purpose**: Provide agency owners with an instant **`[ Share Client Report 🔗 ]`** button and modal.
+* **Purpose**: Validate all automated test suites, verify TypeScript compiler, commit to git, and deploy to Railway production.
 * **Files Affected**:
-  * `[NEW]` `src/components/reports/ShareReportModal.tsx` (Interactive sharing modal)
-  * `[MODIFY]` `src/components/smart-import/LiveExecutionDashboard.tsx` (Add Share button in header)
-  * `[MODIFY]` `src/components/smart-import/ImportHistoryWorkspace.tsx` (Add Share action in row menu)
+  * All affected files across Phases 1–5.
 * **Strict Invariant Rules**:
-  * 1-Click Copy action copies link to clipboard and fires a success toast.
-  * Modal provides: `[ Copy Public Link ]`, `[ Open in New Tab ]`, and `[ Download PDF ]`.
+  * `npx jest src/lib/reports/__tests__` $\to$ 100% green pass.
+  * `npx tsc --noEmit` $\to$ Exit code 0 (zero errors).
+  * Git commit and push to `main` with automatic Railway deployment.
 * **Verification & Exit Gate 6**:
-  * Clicking "Share Client Report" on any live or completed campaign opens modal, generates token, and copies valid link.
+  * Verified live in production on `https://reachiq.up.railway.app/report/[token]`.
 
 ---
 
-### 🔹 PHASE 7: B2B Viral Growth Flywheel & Referral Tracking Integration
-* **Status**: `[ ] Pending`
-* **Purpose**: Turn every client report into an organic, high-trust B2B customer acquisition channel.
-* **Files Affected**:
-  * `[NEW]` `src/components/reports/ReportFooterBadge.tsx` (Viral growth footer badge)
-  * `[MODIFY]` `src/lib/reports/aggregator.ts` (Append dynamic agency referral tags)
-* **Strict Invariant Rules**:
-  * Footer badge:
-    > **⚡ Powered by Silaer Enterprise Engine**  
-    > *Autonomous multi-inbox rotation and 100% inbox deliverability.*  
-    > **[ Explore Silaer for Your Sales Team → ]**
-  * Target link contains tracking parameter (`?utm_source=client_report&utm_medium=viral_loop&ref=[agencyId]`).
-* **Verification & Exit Gate 7**:
-  * Clicking footer badge navigates to Silaer signup page with correct referral and UTM attributes.
-
----
-
-### 🔹 PHASE 8: End-to-End Adversarial Audit, Benchmarking & Deployment
-* **Status**: `[ ] Pending`
-* **Purpose**: Full security audit, rate limiting verification, TypeScript compilation, and Railway production push.
-* **Files Affected**:
-  * All created and modified files across Phases 1–7.
-* **Strict Invariant Rules**:
-  * `npx tsc --noEmit` must exit with code 0 (zero errors).
-  * Rate limiter must prevent brute-force token enumeration (> 60 req/min per IP returns 429).
-  * Git commit and push to `main` with clean Railway deployment confirmation.
-* **Verification & Exit Gate 8**:
-  * Production app builds cleanly on Railway and functions seamlessly end-to-end.
-
----
-
-### 📌 Execution Commitment
-Every phase will be completed and verified strictly against its **Exit Gate** before moving forward.
+### 📌 Strict Execution Commitment
+We will execute all 6 phases strictly in sequence, verifying each exit gate before moving to the next.

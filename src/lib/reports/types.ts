@@ -10,6 +10,19 @@ export interface ClientReportMetrics {
   domainHealth: number;
 }
 
+export interface ReportLeadActivity {
+  id: string;
+  recipientEmail: string;
+  senderInbox: string;
+  leadTimezone: string;
+  stepNumber: number;
+  dispatchedAt: string | null;
+  openedAt: string | null;
+  openCount: number;
+  repliedAt: string | null;
+  status: "REPLIED" | "OPENED" | "SENT" | "SCHEDULED" | "BOUNCED";
+}
+
 export interface ClientReportData {
   shareToken: string;
   campaignId: string;
@@ -20,6 +33,7 @@ export interface ClientReportData {
   dateRange: string;
   status: "ACTIVE" | "COMPLETED" | "PAUSED";
   metrics: ClientReportMetrics;
+  leadActivities: ReportLeadActivity[];
   summaryPoints: string[];
   referralUrl: string;
   generatedAt: string;
