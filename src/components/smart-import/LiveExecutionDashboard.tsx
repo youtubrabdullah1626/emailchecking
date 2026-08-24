@@ -25,8 +25,16 @@ import { DailyResetCountdown } from "./DailyResetCountdown";
 import { WhyNotSentModal } from "./WhyNotSentModal";
 import { resolveStepDiagnostic, StepDiagnosticContext } from "@/lib/capacity/state";
 import useSWR from "swr";
-import { apiClient } from "@/lib/api-client";
 import { formatInTimezone, getTimezoneShortLabel } from "@/lib/date-utils";
+
+function formatCityFromTimezone(tz?: string | null): string {
+  if (!tz) return "Lead";
+  if (tz.includes("/")) {
+    const parts = tz.split("/");
+    return parts[parts.length - 1].replace(/_/g, " ");
+  }
+  return tz;
+}
 
 
 type LiveItem = ExecutionQueueItem & {
@@ -163,6 +171,7 @@ export function LiveExecutionDashboard() {
   const [selectedLead, setSelectedLead] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [clockView, setClockView] = useState<"user" | "lead">("user");
 
   // ── Feature Flag: Campaign Pause/Resume ──────────────────────────────────
   // Reads the live value from DB every 5s.
@@ -1227,10 +1236,44 @@ export function LiveExecutionDashboard() {
             <TableHeader className="bg-muted/20 sticky top-0 z-10 shadow-sm backdrop-blur-md">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-[30%] py-4 font-semibold">Recipient</TableHead>
-                <TableHead className="w-[15%] py-4 font-semibold">Email Step</TableHead>
-                <TableHead className="w-[20%] py-4 font-semibold">Scheduled (Your Clock)</TableHead>
-                <TableHead className="w-[15%] py-4 font-semibold">Live Status</TableHead>
-                <TableHead className="w-[15%] py-4 font-semibold text-right">Event Time</TableHead>
+                <TableHead className="w-[12%] py-4 font-semibold">Email Step</TableHead>
+                <TableHead className="w-[28%] py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-foreground text-sm">Scheduled:</span>
+                    <div className="inline-flex items-center p-0.5 rounded-lg bg-muted/60 border border-border/50 text-[11px] font-medium text-muted-foreground shadow-sm">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setClockView("user");
+                        }}
+                        className={`px-2.5 py-0.5 rounded-md transition-all duration-150 ${
+                          clockView === "user"
+                            ? "bg-background text-foreground shadow-sm font-semibold"
+                            : "hover:text-foreground text-muted-foreground"
+                        }`}
+                      >
+                        Your Time
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setClockView("lead");
+                        }}
+                        className={`px-2.5 py-0.5 rounded-md transition-all duration-150 ${
+                          clockView === "lead"
+                            ? "bg-background text-foreground shadow-sm font-semibold"
+                            : "hover:text-foreground text-muted-foreground"
+                        }`}
+                      >
+                        Lead&apos;s Time
+                      </button>
+                    </div>
+                  </div>
+                </TableHead>
+                <TableHead className="w-[12%] py-4 font-semibold">Live Status</TableHead>
+                <TableHead className="w-[13%] py-4 font-semibold text-right">Event Time</TableHead>
                 <TableHead className="w-[5%] py-4 text-center"></TableHead>
               </TableRow>
             </TableHeader>
@@ -1306,36 +1349,29 @@ export function LiveExecutionDashboard() {
                         const utcIso = (item as any).scheduledAtUtc;
                         const leadTz = (item as any).timezone;
                         if (utcIso && userTimezone) {
-                          // Primary: user's local clock (what they see on their device)
                           const userLocal = formatInTimezone(utcIso, userTimezone);
                           const leadLocal = leadTz ? formatInTimezone(utcIso, leadTz) : null;
-                          const showLeadNote = leadTz && leadTz !== userTimezone && leadLocal;
                           const userTzLabel = getTimezoneShortLabel(userTimezone);
-                          return (
-                            <div className="flex items-center gap-1.5">
-                              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground whitespace-nowrap">
-                                {userLocal.date} <span className="text-muted-foreground/40 text-[10px]">•</span> {userLocal.time}
-                                <span className="text-[10px] font-medium text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded border border-border/40">
-                                  {userTzLabel}
+
+                          if (clockView === "lead" && leadLocal && leadTz) {
+                            const cityName = formatCityFromTimezone(leadTz);
+                            return (
+                              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground whitespace-nowrap animate-in fade-in-50 duration-150">
+                                {leadLocal.date} <span className="text-muted-foreground/40 text-[10px]">•</span> {leadLocal.time}
+                                <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800/40">
+                                  {cityName} ({leadLocal.tzAbbr})
                                 </span>
                               </div>
-                              {showLeadNote && (
-                                <TooltipProvider delayDuration={100}>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div className="flex items-center justify-center w-5 h-5 rounded hover:bg-muted/80 transition-colors cursor-help">
-                                        <Globe className="h-3.5 w-3.5 text-muted-foreground/80" />
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="flex flex-col gap-1 p-2 bg-slate-900 border-slate-800 text-slate-50 shadow-xl">
-                                      <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Lead&apos;s Timezone</div>
-                                      <div className="text-sm font-medium flex items-center gap-1.5">
-                                        {leadLocal!.time} <span className="text-slate-400 font-normal">{leadLocal!.tzAbbr}</span>
-                                      </div>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
+                            );
+                          }
+
+                          // Default: "Your Time"
+                          return (
+                            <div className="flex items-center gap-1.5 text-sm font-medium text-foreground whitespace-nowrap animate-in fade-in-50 duration-150">
+                              {userLocal.date} <span className="text-muted-foreground/40 text-[10px]">•</span> {userLocal.time}
+                              <span className="text-[10px] font-medium text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded border border-border/40">
+                                {userTzLabel}
+                              </span>
                             </div>
                           );
                         }
