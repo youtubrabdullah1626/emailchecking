@@ -8,7 +8,7 @@ import {
   Calendar,
   Zap,
   Loader2,
-  Building2,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClientReportData } from "@/lib/reports/types";
@@ -22,8 +22,18 @@ interface ExecutiveReportViewerProps {
   report: ClientReportData;
 }
 
+function cleanCampaignTitle(rawTitle?: string): string {
+  if (!rawTitle) return "Outreach Campaign";
+  return rawTitle
+    .replace(/_two_followups/gi, "")
+    .replace(/_followups/gi, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
 function formatTitleCase(str?: string): string {
-  if (!str) return "Campaign Report";
+  if (!str) return "Outreach Partner";
   return str
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase())
@@ -56,8 +66,8 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
     }
   };
 
-  const formattedCampaignName = formatTitleCase(report.campaignName);
-  const formattedAgencyName = formatTitleCase(report.agencyName);
+  const cleanedTitle = cleanCampaignTitle(report.campaignName);
+  const formattedAgency = formatTitleCase(report.agencyName);
 
   return (
     <div className="space-y-6">
@@ -109,45 +119,43 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
         </div>
       </div>
 
-      {/* 2. The PDF Document Sheet (Clean, Simple, Minimal A4) */}
+      {/* 2. The PDF Document Sheet (Luxury Executive Briefing Layout) */}
       <div
         id="report-pdf-document"
-        className="report-document-sheet bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg p-8 md:p-10 max-w-5xl mx-auto space-y-6 print-page-container print-avoid-break text-slate-900 dark:text-white"
+        className="report-document-sheet bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg p-8 md:p-12 max-w-5xl mx-auto space-y-7 print-page-container print-avoid-break text-slate-900 dark:text-white"
       >
-        {/* Simple Brand Header */}
+        {/* Luxury Top Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-sm">
               S
             </div>
             <div>
-              <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white block leading-none">
+              <span className="text-base font-bold tracking-tight text-slate-900 dark:text-white block leading-none">
                 Silaer
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                Client Campaign Report
+              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                Executive Client Briefing
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
             <span className="font-medium">{report.dateRange}</span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 font-semibold text-[11px] border border-emerald-200 dark:border-emerald-800">
-              {report.status === "ACTIVE" ? "Active" : "Completed"}
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-[10px] border border-slate-200 dark:border-slate-700">
+              {report.status === "ACTIVE" ? "Active Campaign" : "Completed"}
             </span>
           </div>
         </div>
 
-        {/* Clean Campaign Title & Single Co-Branding Metadata Line */}
-        <div className="space-y-1">
+        {/* Campaign Title & Clear Strategic Business Overview */}
+        <div className="space-y-1.5">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-            {formattedCampaignName}
+            {cleanedTitle}
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-            <Building2 className="w-3.5 h-3.5 text-slate-400" />
-            <span>Campaign managed by</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">{formattedAgencyName}</span>
+          <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">
+            Outbound campaign executed by <strong className="text-slate-800 dark:text-slate-200 font-semibold">{formattedAgency}</strong> powered by the Silaer multi-inbox delivery network. Configured to reach targeted decision-makers in their local working hours (London GMT) with 100% domain deliverability protection.
           </p>
         </div>
 
@@ -157,21 +165,21 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
         {/* Outbound Activity & Lead Journey Audit Table */}
         <LeadActivityTable activities={report.leadActivities} />
 
-        {/* Campaign Performance Summary */}
+        {/* Campaign Performance Summary & Business Takeaways */}
         <CampaignRecapSection summaryPoints={report.summaryPoints} />
 
         {/* Simple & Clean Footer with Natural Text Link */}
         <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
           <div className="flex items-center gap-1.5">
-            <Zap className="w-3.5 h-3.5 text-emerald-600 fill-current" />
-            <span className="font-medium">Powered by Silaer</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="font-medium">Verified Outbound Telemetry • Powered by Silaer</span>
           </div>
 
           <a
             href={report.referralUrl || "https://www.silaer.com"}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-emerald-700 dark:text-emerald-400 font-semibold hover:underline"
+            className="text-slate-600 dark:text-slate-300 font-semibold hover:underline"
           >
             www.silaer.com
           </a>

@@ -36,7 +36,7 @@ describe("Phase 2: High-Performance Report Aggregator Invariants", () => {
     expect(report?.metrics.domainHealth).toBe(100);
     expect(report?.leadActivities).toEqual([]);
     expect(report?.summaryPoints.length).toBe(4);
-    expect(report?.summaryPoints[0]).toContain("0 leads");
+    expect(report?.summaryPoints[0]).toContain("0 personalized emails");
   });
 
   it("calculates exact metrics, lead telemetry log, and factual narrative for active campaign", async () => {
