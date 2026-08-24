@@ -272,15 +272,6 @@ export async function DELETE(
         });
       }
 
-      if (prospectIds.length > 0) {
-        await tx.replyClassification.deleteMany({
-          where: { prospect_id: { in: prospectIds } }
-        });
-        await tx.adhocEmail.deleteMany({
-          where: { prospect_id: { in: prospectIds } }
-        });
-      }
-
       if (sequenceIds.length > 0) {
         // Release reserved capacity if any steps were in PROCESSING
         await tx.$executeRaw`
@@ -305,13 +296,6 @@ export async function DELETE(
         });
         await tx.sequence.deleteMany({
           where: { id: { in: sequenceIds } }
-        });
-      }
-
-
-      if (prospectIds.length > 0) {
-        await tx.prospect.deleteMany({
-          where: { id: { in: prospectIds } }
         });
       }
 
