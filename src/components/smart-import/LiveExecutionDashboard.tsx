@@ -25,6 +25,7 @@ import { DailyResetCountdown } from "./DailyResetCountdown";
 import { WhyNotSentModal } from "./WhyNotSentModal";
 import { resolveStepDiagnostic, StepDiagnosticContext } from "@/lib/capacity/state";
 import useSWR from "swr";
+import { apiClient } from "@/lib/api-client";
 import { formatInTimezone, getTimezoneShortLabel } from "@/lib/date-utils";
 
 function formatCityFromTimezone(tz?: string | null): string {
