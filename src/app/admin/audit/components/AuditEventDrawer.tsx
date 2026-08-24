@@ -84,7 +84,7 @@ export function AuditEventDrawer({ event, isOpen, onClose }: AuditEventDrawerPro
               Event Overview
             </h3>
             <MetadataGrid>
-              <InfoCard label="Performed By" value={`${event.actorName} (${event.actorEmail})`} />
+              <InfoCard label="Performed By" value={event.actorEmail && event.actorEmail !== 'system@internal' ? `${event.actorName} (${event.actorEmail})` : event.actorName} />
               <InfoCard label="Category" value={<ActionBadge action={event.action} category={event.category} />} />
               <InfoCard label="Resource Type" value={event.resourceType} />
               <InfoCard label="Resource Name" value={event.resourceName} />

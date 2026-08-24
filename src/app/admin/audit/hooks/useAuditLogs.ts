@@ -43,28 +43,40 @@ export function useAuditLogs(filters: AuditLogFilters, limit = 50, isLiveMode = 
     refreshInterval: isLiveMode ? 3000 : 0 // Poll every 3 seconds if live mode is on
   });
 
-  const logs = data ? data.flatMap(page => (page.data || []).map((raw: any) => ({
-    id: raw.id,
-    time: raw.created_at,
-    actorName: raw.actor_id === 'system' ? 'System' : (raw.actor_email?.split('@')[0] || 'Unknown'),
-    actorEmail: raw.actor_email || '',
-    action: raw.action,
-    category: raw.category,
-    resourceName: raw.metadata?.resourceName || (raw.resource_id ? `${raw.target_resource || 'Resource'} (${raw.resource_id})` : 'System'),
-    resourceType: raw.target_resource || 'System',
-    resourceId: raw.resource_id || '',
-    status: raw.status === 'SUCCESS' ? 'Success' : raw.status === 'FAILURE' ? 'Failed' : 'Warning',
-    ipAddress: raw.ip_address || '',
-    device: raw.user_agent || 'Unknown Device',
-    country: raw.metadata?.country || '',
-    browser: raw.metadata?.browser || '',
-    os: raw.metadata?.os || '',
-    severity: raw.severity || raw.metadata?.riskLevel || 'INFO',
-    oldValues: raw.old_values || null,
-    newValues: raw.new_values || null,
-    // the rest are passed directly for the drawer details if needed
-    ...raw
-  }))) : [];
+  const logs = data ? data.flatMap(page => (page.data || []).map((raw: any) => {
+    const isSystem = raw.actor_type === 'SYSTEM' || raw.actor_id === 'system' || !raw.actor_email;
+    const isScheduler = raw.category === 'SCHEDULER' || (raw.action && raw.action.toLowerCase().includes('scheduler'));
+    const resolvedActorName = isSystem 
+      ? (isScheduler ? 'System Scheduler' : 'System Engine')
+      : (raw.actor_name || raw.actor_email?.split('@')[0] || raw.actor_email || 'System');
+
+    const resolvedResource = raw.metadata?.resourceName 
+      || raw.target_resource 
+      || (isScheduler ? 'Dispatch Scheduler' : (raw.category ? `${raw.category} Service` : 'System Service'));
+
+    return {
+      id: raw.id,
+      time: raw.created_at,
+      actorName: resolvedActorName,
+      actorEmail: raw.actor_email || (isSystem ? 'system@internal' : ''),
+      action: raw.action || 'System Event',
+      category: raw.category || 'System',
+      resourceName: resolvedResource,
+      resourceType: raw.target_resource || (isScheduler ? 'Scheduler Engine' : 'System'),
+      resourceId: raw.resource_id || '',
+      status: raw.status === 'SUCCESS' ? 'Success' : raw.status === 'FAILURE' ? 'Failed' : 'Warning',
+      ipAddress: raw.ip_address || '',
+      device: raw.user_agent || 'Internal System Event',
+      country: raw.metadata?.country || '',
+      browser: raw.metadata?.browser || '',
+      os: raw.metadata?.os || '',
+      severity: raw.severity || raw.metadata?.riskLevel || 'INFO',
+      oldValues: raw.old_values || null,
+      newValues: raw.new_values || null,
+      // the rest are passed directly for the drawer details if needed
+      ...raw
+    };
+  })) : [];
   const isLoadingInitialData = !data && !error;
   const isLoadingMore =
     isLoadingInitialData ||
