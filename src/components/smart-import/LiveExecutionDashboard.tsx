@@ -1360,7 +1360,7 @@ export function LiveExecutionDashboard() {
                               <div className="flex items-center gap-1.5 text-sm font-medium text-foreground whitespace-nowrap animate-in fade-in-50 duration-150">
                                 {leadLocal.date} <span className="text-muted-foreground/40 text-[10px]">•</span> {leadLocal.time}
                                 <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800/40">
-                                  {cityName} ({leadLocal.tzAbbr})
+                                  {cityName}
                                 </span>
                               </div>
                             );
