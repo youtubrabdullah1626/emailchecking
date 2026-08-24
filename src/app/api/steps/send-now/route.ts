@@ -80,6 +80,23 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Sequential Prerequisite Guard: Step N (>1) cannot be sent if Step N-1 is not SENT
+    if (targetStep.step_number > 1) {
+      const prevStep = await prisma.sequenceStep.findFirst({
+        where: {
+          sequence_id: targetStep.sequence_id,
+          step_number: targetStep.step_number - 1,
+        },
+        select: { status: true }
+      });
+      if (!prevStep || prevStep.status !== "SENT") {
+        return NextResponse.json({
+          error: `Cannot send Step ${targetStep.step_number} before Step ${targetStep.step_number - 1} is delivered.`,
+        }, { status: 400 });
+      }
+    }
+
+
     // Set step to PROCESSING and update scheduled/eligible timestamps to NOW
     await prisma.sequenceStep.update({
       where: { id: targetStep.id },

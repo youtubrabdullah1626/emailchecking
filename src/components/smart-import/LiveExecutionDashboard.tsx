@@ -666,7 +666,22 @@ export function LiveExecutionDashboard() {
     const targetEmail = (targetItem.recipientEmail || "").toLowerCase().trim();
     const targetStepNumber = targetItem.sequenceStep?.stepNumber || 1;
 
+    // Sequential Step Guard: Cannot manually send Step N before Step N-1 is delivered
+    if (targetStepNumber > 1) {
+      const prevStepItem = liveItems.find(i =>
+        (i.recipientEmail || "").toLowerCase().trim() === targetEmail &&
+        (i.sequenceStep?.stepNumber || 1) === targetStepNumber - 1
+      );
+      if (prevStepItem && !["SENT", "OPENED", "REPLIED"].includes(prevStepItem.liveStatus)) {
+        toast.error("Sequence Guard", {
+          description: `Cannot send Email ${targetStepNumber} before Email ${targetStepNumber - 1} is delivered.`
+        });
+        return;
+      }
+    }
+
     // 1. Instant (0ms) Optimistic UI Update: Show Processing + Spinner Immediately!
+
     setLiveItems(prev => prev.map(item => {
       const isMatch =
         item.queueId === targetItem.queueId ||

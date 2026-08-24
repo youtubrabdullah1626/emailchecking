@@ -85,11 +85,26 @@ export async function POST(req: NextRequest) {
     // Compute UTC datetime from local date + time in target timezone
     const scheduledUtc = toUtcFromZonedTime(newDate, timeStr, timezone);
     const now = new Date();
-    const isPastOrDue = scheduledUtc.getTime() <= (now.getTime() + 60000); // within 1 minute is considered due NOW
+    let isPastOrDue = scheduledUtc.getTime() <= (now.getTime() + 60000); // within 1 minute is considered due NOW
     const isFirstStep = targetStep.step_number === 1;
+
+    // Sequential Guard: If follow-up step is rescheduled to past/now, verify previous step is SENT first
+    if (!isFirstStep) {
+      const prevStep = await prisma.sequenceStep.findFirst({
+        where: {
+          sequence_id: targetStep.sequence_id,
+          step_number: targetStep.step_number - 1,
+        },
+        select: { status: true }
+      });
+      if (!prevStep || prevStep.status !== "SENT") {
+        isPastOrDue = false; // Cannot dispatch immediately if previous step not sent
+      }
+    }
 
     // For first steps or steps rescheduled to the past/now: set eligible_after_utc = scheduledUtc
     const eligibleAfter = (isFirstStep || isPastOrDue) ? scheduledUtc : targetStep.eligible_after_utc;
+
 
     const updatedStep = await prisma.sequenceStep.update({
       where: { id: targetStep.id },
