@@ -36,7 +36,12 @@ export async function GET(req: NextRequest) {
     }
 
     const token = generateReportToken(campaign.id);
-    const origin = req.nextUrl.origin || "https://reachiq.up.railway.app";
+    const forwardedHost = req.headers.get("x-forwarded-host") || req.headers.get("host") || "reachiq.up.railway.app";
+    const forwardedProto = req.headers.get("x-forwarded-proto") || "https";
+    const cleanHost = forwardedHost.startsWith("localhost") || forwardedHost.startsWith("127.0.0.1")
+      ? forwardedHost
+      : forwardedHost.split(":")[0];
+    const origin = `${forwardedProto}://${cleanHost}`;
     const reportUrl = `${origin}/report/${token}`;
 
     return NextResponse.json({

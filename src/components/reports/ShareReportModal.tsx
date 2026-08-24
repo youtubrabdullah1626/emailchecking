@@ -47,7 +47,11 @@ export function ShareReportModal({
       setIsLoading(true);
       apiClient<any>(`/api/reports/token?campaignId=${campaignId}`)
         .then((res) => {
-          if (res?.reportUrl) {
+          if (res?.token && typeof window !== "undefined") {
+            const fullUrl = `${window.location.origin}/report/${res.token}`;
+            setReportUrl(fullUrl);
+            if (res.campaignName) setResolvedName(res.campaignName);
+          } else if (res?.reportUrl) {
             setReportUrl(res.reportUrl);
             if (res.campaignName) setResolvedName(res.campaignName);
           }
