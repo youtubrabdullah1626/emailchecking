@@ -112,6 +112,6 @@ describe("Phase 2: High-Performance Report Aggregator Invariants", () => {
     expect(report?.leadActivities.length).toBe(2);
     expect(report?.leadActivities[0].recipientEmail).toBe("lead1@target.com");
     expect(report?.leadActivities[0].status).toBe("REPLIED");
-    expect(report?.leadActivities[0].leadTimezone).toBe("America/New_York");
+    expect(report?.leadActivities[0].leadTimezone).toBe("New York (EST)");
   });
 });

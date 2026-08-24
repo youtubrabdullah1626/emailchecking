@@ -2,18 +2,60 @@ import prisma from "@/lib/prisma";
 import { ClientReportData, ClientReportMetrics, ReportLeadActivity } from "./types";
 import { generateReportToken } from "./token";
 
-function formatDateTimeLabel(date: Date | string | null | undefined): string | null {
+function normalizeTimezoneName(tz?: string | null): string {
+  if (!tz || tz === "UTC" || tz === "GMT" || tz.toLowerCase().includes("london") || tz.toLowerCase().includes("europe/london")) {
+    return "London (GMT)";
+  }
+  if (tz.includes("New_York") || tz.includes("EST") || tz.includes("EDT")) {
+    return "New York (EST)";
+  }
+  if (tz.includes("Los_Angeles") || tz.includes("PST") || tz.includes("PDT")) {
+    return "San Francisco (PST)";
+  }
+  if (tz.includes("Chicago") || tz.includes("CST") || tz.includes("CDT")) {
+    return "Chicago (CST)";
+  }
+  return tz.replace(/_/g, " ");
+}
+
+function resolveIanaTimezone(tz?: string | null): string {
+  if (!tz || tz === "UTC" || tz === "GMT" || tz.toLowerCase().includes("london")) {
+    return "Europe/London";
+  }
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return tz;
+  } catch {
+    return "Europe/London";
+  }
+}
+
+function formatDateTimeInTz(date: Date | string | null | undefined, tz?: string | null): string | null {
   if (!date) return null;
   const d = new Date(date);
   if (isNaN(d.getTime())) return null;
-  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const m = monthNames[d.getMonth()];
-  const day = d.getDate();
-  let hours = d.getHours();
-  const minutes = d.getMinutes().toString().padStart(2, "0");
-  const ampm = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12 || 12;
-  return `${m} ${day}, ${hours}:${minutes} ${ampm}`;
+  const iana = resolveIanaTimezone(tz);
+
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: iana,
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    return formatter.format(d);
+  } catch {
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const m = monthNames[d.getMonth()];
+    const day = d.getDate();
+    let hours = d.getHours();
+    const minutes = d.getMinutes().toString().padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+    return `${m} ${day}, ${hours}:${minutes} ${ampm}`;
+  }
 }
 
 /**
@@ -124,6 +166,7 @@ export async function getCampaignReportData(
       const steps = seq?.steps || [];
       const primaryStep = steps.find((s) => s.status === "SENT" || s.sent_at) || steps[0];
       const assignedSender = seq?.assigned_sender_email || campaign.users?.email || "outreach@silaer.com";
+      const leadTz = prospect.timezone || "Europe/London";
 
       let isDelivered = false;
       for (const step of steps) {
@@ -159,12 +202,12 @@ export async function getCampaignReportData(
         id: prospect.id,
         recipientEmail: prospect.email,
         senderInbox: assignedSender,
-        leadTimezone: prospect.timezone || "America/New_York",
+        leadTimezone: normalizeTimezoneName(leadTz),
         stepNumber: primaryStep?.step_number || 1,
-        dispatchedAt: formatDateTimeLabel(primaryStep?.sent_at || (leadStatus !== "SCHEDULED" ? primaryStep?.scheduled_at_utc : null)),
-        openedAt: formatDateTimeLabel(firstOpened),
+        dispatchedAt: formatDateTimeInTz(primaryStep?.sent_at || (leadStatus !== "SCHEDULED" ? primaryStep?.scheduled_at_utc : null), leadTz),
+        openedAt: formatDateTimeInTz(firstOpened, leadTz),
         openCount,
-        repliedAt: formatDateTimeLabel(repliedAtDate),
+        repliedAt: formatDateTimeInTz(repliedAtDate, leadTz),
         status: leadStatus,
       });
     }
@@ -190,13 +233,19 @@ export async function getCampaignReportData(
       domainHealth,
     };
 
-    // Format Date Range
+    // Format Date Range cleanly (Avoids "Aug 24 - 24, 2026")
     const startDate = new Date(campaign.created_at);
     const endDate = new Date(campaign.updated_at);
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const dateRange = startDate.getMonth() === endDate.getMonth() && startDate.getFullYear() === endDate.getFullYear()
-      ? `${monthNames[startDate.getMonth()]} ${startDate.getDate()} - ${endDate.getDate()}, ${startDate.getFullYear()}`
-      : `${monthNames[startDate.getMonth()]} ${startDate.getFullYear()} - ${monthNames[endDate.getMonth()]} ${endDate.getFullYear()}`;
+
+    let dateRange = "";
+    if (startDate.toDateString() === endDate.toDateString()) {
+      dateRange = `${monthNames[startDate.getMonth()]} ${startDate.getDate()}, ${startDate.getFullYear()}`;
+    } else if (startDate.getMonth() === endDate.getMonth() && startDate.getFullYear() === endDate.getFullYear()) {
+      dateRange = `${monthNames[startDate.getMonth()]} ${startDate.getDate()} – ${endDate.getDate()}, ${startDate.getFullYear()}`;
+    } else {
+      dateRange = `${monthNames[startDate.getMonth()]} ${startDate.getDate()}, ${startDate.getFullYear()} – ${monthNames[endDate.getMonth()]} ${endDate.getDate()}, ${endDate.getFullYear()}`;
+    }
 
     // Agency / Client Names
     const agencyName = campaign.users?.name || (campaign.users?.email ? campaign.users.email.split("@")[0] : "Outreach Partner");
