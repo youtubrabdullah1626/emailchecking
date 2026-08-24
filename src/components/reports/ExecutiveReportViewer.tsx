@@ -15,8 +15,7 @@ import { ClientReportData } from "@/lib/reports/types";
 import { ClientReportCards } from "./ClientReportCard";
 import { CampaignRecapSection } from "./CampaignRecapSection";
 import { toast } from "sonner";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import { generateDirectClientReportPdf } from "@/lib/reports/pdfGenerator";
 
 interface ExecutiveReportViewerProps {
   report: ClientReportData;
@@ -43,48 +42,16 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
     }
   };
 
-  const handleDirectPdfDownload = async () => {
-    const reportElement = document.getElementById("report-pdf-document");
-    if (!reportElement) {
-      toast.error("Could not find report document for export.");
-      return;
-    }
-
+  const handleDirectPdfDownload = () => {
     try {
       setIsGeneratingPdf(true);
-      toast.info("Generating PDF document...", { duration: 1500 });
-
-      const canvas = await html2canvas(reportElement, {
-        scale: 2.5,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        backgroundColor: "#ffffff",
-      });
-
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, Math.min(imgHeight, pdfHeight));
-
-      const safeName = report.campaignName.replace(/[^a-zA-Z0-9]/g, "_") || "Campaign";
-      const fileName = `Silaer_Report_${safeName}.pdf`;
-
-      pdf.save(fileName);
-      toast.success("PDF downloaded successfully!");
+      generateDirectClientReportPdf(report);
+      toast.success("Executive PDF downloaded directly!");
     } catch (err) {
       console.error("PDF generation error:", err);
       window.print();
     } finally {
-      setIsGeneratingPdf(false);
+      setTimeout(() => setIsGeneratingPdf(false), 300);
     }
   };
 
