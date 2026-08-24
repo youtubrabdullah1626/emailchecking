@@ -256,7 +256,8 @@ export function ImportHistoryWorkspace() {
       }
 
       await storage.deleteSession(id).catch(() => {});
-      await mutate(() => true, undefined, { revalidate: true });
+      await mutate("/api/campaigns", undefined, { revalidate: true });
+      await mutate("/api/dashboard/stats", undefined, { revalidate: true });
     })();
 
     toast.promise(deletePromise, {
@@ -299,7 +300,8 @@ export function ImportHistoryWorkspace() {
 
       await storage.clearAllSessions(cutoffDate);
       await loadSessions();
-      await mutate(() => true, undefined, { revalidate: true });
+      await mutate("/api/campaigns", undefined, { revalidate: true });
+      await mutate("/api/dashboard/stats", undefined, { revalidate: true });
 
       toast.success(`Cleared ${labelMap[timeframe]} campaign data`, {
         description: "Database records and local session caches have been wiped."

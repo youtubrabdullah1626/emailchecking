@@ -40,19 +40,19 @@ export function SchedulingPreviewWorkspace() {
     if (accountStats?.connectedGmail && !accountStats.connectedGmail.includes("Rotating")) {
       return [accountStats.connectedGmail];
     }
-    return ["Primary Inbox"];
+    return [];
   }, [accountStats]);
 
   const senderMap = useMemo(() => {
     const map = new Map<string, string>();
     if (connectedAccounts.length === 0) return map;
-
-    const distinctRecipients = Array.from(new Set(queueSlice.map(q => q.recipientEmail.toLowerCase()))).sort();
-    distinctRecipients.forEach((email, idx) => {
-      map.set(email, connectedAccounts[idx % connectedAccounts.length]);
+    queueRef.current.forEach((item, idx) => {
+      if (!map.has(item.recipientEmail.toLowerCase())) {
+        map.set(item.recipientEmail.toLowerCase(), connectedAccounts[idx % connectedAccounts.length]);
+      }
     });
     return map;
-  }, [connectedAccounts, queueSlice]);
+  }, [connectedAccounts, queueRef.current]);
 
   // Pre-check duplicates in the background as soon as preview loads
   useEffect(() => {
