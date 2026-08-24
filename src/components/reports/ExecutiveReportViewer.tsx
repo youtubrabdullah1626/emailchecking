@@ -8,7 +8,6 @@ import {
   Calendar,
   Zap,
   Loader2,
-  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClientReportData } from "@/lib/reports/types";
@@ -57,7 +56,7 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
     try {
       setIsGeneratingPdf(true);
       generateDirectClientReportPdf(report);
-      toast.success("Executive PDF downloaded directly!");
+      toast.success("PDF downloaded directly!");
     } catch (err) {
       console.error("PDF generation error:", err);
       window.print();
@@ -73,9 +72,13 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
     <div className="space-y-6">
       {/* 1. Floating Top Minimal Toolbar (Hidden in PDF) */}
       <div className="no-print bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-xs flex items-center justify-between gap-4 max-w-5xl mx-auto">
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
-          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          <span>Silaer Client Campaign Report</span>
+        <div className="flex items-center gap-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+          <img
+            src="/silaer-logo.png"
+            alt="Silaer"
+            className="w-5 h-5 object-contain rounded"
+          />
+          <span>Silaer Campaign Report</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -122,35 +125,39 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
       {/* 2. The PDF Document Sheet (Luxury Executive Briefing Layout) */}
       <div
         id="report-pdf-document"
-        className="report-document-sheet bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg p-8 md:p-12 max-w-5xl mx-auto space-y-7 print-page-container print-avoid-break text-slate-900 dark:text-white"
+        className="relative report-document-sheet bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg p-8 md:p-12 max-w-5xl mx-auto space-y-7 print-page-container print-avoid-break text-slate-900 dark:text-white overflow-hidden"
       >
-        {/* Luxury Top Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-sm">
-              S
-            </div>
-            <div>
-              <span className="text-base font-bold tracking-tight text-slate-900 dark:text-white block leading-none">
-                Silaer
-              </span>
-              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                Executive Client Briefing
-              </span>
-            </div>
+        {/* Subtle Watermark in background */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden opacity-[0.03] dark:opacity-[0.04]">
+          <span className="text-9xl font-black tracking-widest text-slate-900 dark:text-white -rotate-12">
+            SILAER
+          </span>
+        </div>
+
+        {/* Clean Top Header with Official Logo */}
+        <div className="relative z-10 flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <img
+              src="/silaer-logo.png"
+              alt="Silaer"
+              className="w-8 h-8 object-contain rounded-lg"
+            />
+            <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Silaer
+            </span>
           </div>
 
           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
             <span className="font-medium">{report.dateRange}</span>
             <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-[10px] border border-slate-200 dark:border-slate-700">
-              {report.status === "ACTIVE" ? "Active Campaign" : "Completed"}
+              {report.status === "ACTIVE" ? "Active" : "Completed"}
             </span>
           </div>
         </div>
 
-        {/* Campaign Title & Clear Strategic Business Overview */}
-        <div className="space-y-1.5">
+        {/* Campaign Title & Strategy Narrative */}
+        <div className="relative z-10 space-y-1.5">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
             {cleanedTitle}
           </h1>
@@ -160,19 +167,25 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
         </div>
 
         {/* 4 Hero KPI Cards */}
-        <ClientReportCards metrics={report.metrics} />
+        <div className="relative z-10">
+          <ClientReportCards metrics={report.metrics} />
+        </div>
 
         {/* Outbound Activity & Lead Journey Audit Table */}
-        <LeadActivityTable activities={report.leadActivities} />
+        <div className="relative z-10">
+          <LeadActivityTable activities={report.leadActivities} />
+        </div>
 
         {/* Campaign Performance Summary & Business Takeaways */}
-        <CampaignRecapSection summaryPoints={report.summaryPoints} />
+        <div className="relative z-10">
+          <CampaignRecapSection summaryPoints={report.summaryPoints} />
+        </div>
 
-        {/* Simple & Clean Footer with Natural Text Link */}
-        <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+        {/* Simple & Clean Footer */}
+        <div className="relative z-10 pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
           <div className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="font-medium">Verified Outbound Telemetry • Powered by Silaer</span>
+            <Zap className="w-3.5 h-3.5 text-emerald-600 fill-current" />
+            <span className="font-medium">Powered by Silaer</span>
           </div>
 
           <a

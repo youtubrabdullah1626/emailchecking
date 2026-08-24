@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import { ClientReportData } from "./types";
+import { SILAER_LOGO_BASE64 } from "./logoBase64";
 
 function cleanCampaignTitle(rawTitle?: string): string {
   if (!rawTitle) return "Outreach Campaign";
@@ -21,7 +22,7 @@ function formatTitleCase(str?: string): string {
 
 /**
  * Generates and downloads a clean, proportionally balanced vector executive PDF report.
- * Fills the A4 document sheet with luxury typography and balanced margins.
+ * Fills the A4 document sheet with official Silaer logo, watermark, and luxury typography.
  */
 export function generateDirectClientReportPdf(report: ClientReportData) {
   const doc = new jsPDF({
@@ -39,30 +40,44 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, pageWidth, pageHeight, "F");
 
-  // Top Silaer Brand Mark
-  doc.setFillColor(16, 185, 129); // #10b981
-  doc.roundedRect(margin, 18, 8, 8, 1.5, 1.5, "F");
+  // Subtle Diagonal Watermark in Center of Page
+  try {
+    doc.saveGraphicsState();
+    doc.setTextColor(245, 247, 250); // very faint slate
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(64);
+    doc.text("SILAER", pageWidth / 2, pageHeight / 2 + 10, {
+      align: "center",
+      angle: 35,
+    });
+    doc.restoreGraphicsState();
+  } catch {
+    // Fallback if graphics state is not supported
+  }
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("S", margin + 2.5, 23.5);
+  // Official Silaer Brand Logo Image
+  try {
+    if (SILAER_LOGO_BASE64) {
+      doc.addImage(SILAER_LOGO_BASE64, "PNG", margin, 18, 8, 8);
+    } else {
+      doc.setFillColor(16, 185, 129);
+      doc.roundedRect(margin, 18, 8, 8, 1.5, 1.5, "F");
+    }
+  } catch {
+    doc.setFillColor(16, 185, 129);
+    doc.roundedRect(margin, 18, 8, 8, 1.5, 1.5, "F");
+  }
 
   doc.setTextColor(15, 23, 42);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(15);
-  doc.text("Silaer", margin + 11, 23);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.setTextColor(148, 163, 184); // #94a3b8
-  doc.text("EXECUTIVE CLIENT BRIEFING", margin + 11, 27);
+  doc.setFontSize(16);
+  doc.text("Silaer", margin + 11, 24);
 
   // Top Right: Date Range & Status
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(100, 116, 139);
-  doc.text(report.dateRange, pageWidth - margin, 22, { align: "right" });
+  doc.text(report.dateRange, pageWidth - margin, 21, { align: "right" });
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
@@ -70,17 +85,17 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   doc.text(
     report.status === "ACTIVE" ? "Active Campaign" : "Completed",
     pageWidth - margin,
-    27,
+    26,
     { align: "right" }
   );
 
   // Divider
   doc.setDrawColor(226, 232, 240);
   doc.setLineWidth(0.3);
-  doc.line(margin, 31, pageWidth - margin, 31);
+  doc.line(margin, 30, pageWidth - margin, 30);
 
   // Campaign Title
-  let y = 41;
+  let y = 40;
   const formattedTitle = cleanCampaignTitle(report.campaignName);
   const formattedAgency = formatTitleCase(report.agencyName);
 
@@ -93,7 +108,7 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   y += 6;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
-  doc.setTextColor(71, 85, 105); // #475569
+  doc.setTextColor(71, 85, 105);
   const overviewText = `Outbound campaign executed by ${formattedAgency} powered by the Silaer multi-inbox delivery network. Configured to reach targeted decision-makers in their local working hours (London GMT) with 100% domain deliverability protection.`;
   const splitOverview = doc.splitTextToSize(overviewText, contentWidth);
   doc.text(splitOverview, margin, y);
@@ -279,7 +294,7 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
-  doc.text("Verified Outbound Telemetry • Powered by Silaer", margin, footerY);
+  doc.text("Powered by Silaer", margin, footerY);
 
   doc.setFont("helvetica", "bold");
   doc.setTextColor(15, 23, 42);
