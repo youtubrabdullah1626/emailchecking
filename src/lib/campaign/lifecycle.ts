@@ -41,74 +41,78 @@ export async function activateCampaign(campaignId: string, userId: string): Prom
   const plan: PlanType = isOwnerOrAdmin ? 'ENTERPRISE' : 'FREE';
   const maxAllowed = PLAN_LIMITS[plan].MAX_ACTIVE_CAMPAIGNS;
   
-  const activeCount = await prisma.campaign.count({ where: { user_id: userId, status: 'ACTIVE' } });
-  if (activeCount >= maxAllowed && !isOwnerOrAdmin) {
-    return {
-      success: false,
-      error: 'PLAN_LIMIT_REACHED',
-      message: `Your account allows a maximum of ${maxAllowed} active campaigns. Pause or complete an active campaign before starting another campaign.`,
-      activeCount,
-      limit: maxAllowed,
-    };
-  }
-  
-  // 1. Activate Campaign
-  await prisma.campaign.update({ where: { id: campaignId }, data: { status: 'ACTIVE' } });
+  return await prisma.$transaction(async (tx) => {
+    // 1. Acquire advisory lock on userId to serialize concurrent activations (prevent TOCTOU limit bypass)
+    let lockKey = 0;
+    const lockStr = `activate_${userId}`;
+    for (let i = 0; i < lockStr.length; i++) {
+      lockKey = Math.imul(31, lockKey) + lockStr.charCodeAt(i) | 0;
+    }
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockKey})`;
 
-  // 2. Activate Prospects
-  await prisma.$executeRaw`
-    UPDATE prospects
-    SET status = 'ACTIVE'
-    WHERE campaign_id = ${campaignId}
-      AND status NOT IN ('REPLIED', 'STOPPED', 'COMPLETED')
-  `.catch(() => {});
+    const activeCount = await tx.campaign.count({ where: { user_id: userId, status: 'ACTIVE' } });
+    if (activeCount >= maxAllowed && !isOwnerOrAdmin) {
+      return {
+        success: false,
+        error: 'PLAN_LIMIT_REACHED',
+        message: `Your account allows a maximum of ${maxAllowed} active campaigns. Pause or complete an active campaign before starting another campaign.`,
+        activeCount,
+        limit: maxAllowed,
+      };
+    }
+    
+    // 2. Activate Campaign
+    await tx.campaign.update({ where: { id: campaignId }, data: { status: 'ACTIVE' } });
 
-  // 3. Activate Sequences
-  await prisma.$executeRaw`
-    UPDATE sequences seq
-    SET status = 'ACTIVE', stopped_at = NULL
-    FROM prospects p
-    WHERE seq.prospect_id = p.id
-      AND p.campaign_id = ${campaignId}
-      AND seq.status != 'COMPLETED'
-  `.catch(() => {});
+    // 3. Activate Prospects
+    await tx.$executeRaw`
+      UPDATE prospects
+      SET status = 'ACTIVE'
+      WHERE campaign_id = ${campaignId}
+        AND status NOT IN ('REPLIED', 'STOPPED', 'COMPLETED')
+    `.catch(() => {});
 
-  // 4. Time-Aware Activation (10x Smart SaaS Rule):
-  // ── Step 1s:
-  //    - If scheduled_at_utc <= NOW() (time has passed / overdue while paused): set eligible_after_utc = scheduled_at_utc (send immediately).
-  //    - If scheduled_at_utc > NOW() (future schedule): keep future timestamp without modification.
-  await prisma.$executeRaw`
-    UPDATE sequence_steps s
-    SET eligible_after_utc = s.scheduled_at_utc
-    FROM sequences seq
-    JOIN prospects p ON seq.prospect_id = p.id
-    WHERE s.sequence_id = seq.id
-      AND p.campaign_id = ${campaignId}
-      AND s.status = 'PENDING'
-      AND s.step_number = 1
-  `.catch(() => {});
+    // 4. Activate Sequences
+    await tx.$executeRaw`
+      UPDATE sequences seq
+      SET status = 'ACTIVE', stopped_at = NULL
+      FROM prospects p
+      WHERE seq.prospect_id = p.id
+        AND p.campaign_id = ${campaignId}
+        AND seq.status != 'COMPLETED'
+    `.catch(() => {});
 
-  // ── Follow-up steps (Step > 1):
-  //    - Only unlock if the predecessor step has ALREADY been SENT.
-  //    - If predecessor step is NOT sent yet, eligible_after_utc remains NULL (locked).
-  await prisma.$executeRaw`
-    UPDATE sequence_steps s
-    SET eligible_after_utc = s.scheduled_at_utc
-    FROM sequences seq
-    JOIN prospects p ON seq.prospect_id = p.id
-    WHERE s.sequence_id = seq.id
-      AND p.campaign_id = ${campaignId}
-      AND s.status = 'PENDING'
-      AND s.step_number > 1
-      AND EXISTS (
-        SELECT 1 FROM sequence_steps prev
-        WHERE prev.sequence_id = seq.id
-          AND prev.step_number = s.step_number - 1
-          AND prev.status = 'SENT'
-      )
-  `.catch(() => {});
+    // 5. Time-Aware Activation (10x Smart SaaS Rule):
+    await tx.$executeRaw`
+      UPDATE sequence_steps s
+      SET eligible_after_utc = s.scheduled_at_utc
+      FROM sequences seq
+      JOIN prospects p ON seq.prospect_id = p.id
+      WHERE s.sequence_id = seq.id
+        AND p.campaign_id = ${campaignId}
+        AND s.status = 'PENDING'
+        AND s.step_number = 1
+    `.catch(() => {});
 
-  return { success: true, activeCount: activeCount + 1, limit: maxAllowed };
+    await tx.$executeRaw`
+      UPDATE sequence_steps s
+      SET eligible_after_utc = s.scheduled_at_utc
+      FROM sequences seq
+      JOIN prospects p ON seq.prospect_id = p.id
+      WHERE s.sequence_id = seq.id
+        AND p.campaign_id = ${campaignId}
+        AND s.status = 'PENDING'
+        AND s.step_number > 1
+        AND EXISTS (
+          SELECT 1 FROM sequence_steps prev
+          WHERE prev.sequence_id = seq.id
+            AND prev.step_number = s.step_number - 1
+            AND prev.status = 'SENT'
+        )
+    `.catch(() => {});
+
+    return { success: true, activeCount: activeCount + 1, limit: maxAllowed };
+  });
 
 }
 
