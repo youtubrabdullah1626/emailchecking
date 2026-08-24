@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Send, MailOpen, Reply, AlertCircle, Clock, Activity, Calendar as CalendarIcon, User, MoreHorizontal, Play, Pause, PauseCircle, Loader2, ArrowLeft, Trash2, RefreshCw, Ban, Globe, Mail } from "lucide-react";
+import { Send, MailOpen, Reply, AlertCircle, Clock, Activity, Calendar as CalendarIcon, User, MoreHorizontal, Play, Pause, PauseCircle, Loader2, ArrowLeft, Trash2, RefreshCw, Ban, Globe, Mail, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { StorageEngine } from "@/lib/storage/StorageEngine";
@@ -23,6 +23,7 @@ import { ResumeConfirmationModal, OverdueEmailItem } from "./ResumeConfirmationM
 import { CapacitySentinelBadge } from "./CapacitySentinelBadge";
 import { DailyResetCountdown } from "./DailyResetCountdown";
 import { WhyNotSentModal } from "./WhyNotSentModal";
+import { ShareReportModal } from "@/components/reports/ShareReportModal";
 import { resolveStepDiagnostic, StepDiagnosticContext } from "@/lib/capacity/state";
 import useSWR from "swr";
 import { apiClient } from "@/lib/api-client";
@@ -240,6 +241,9 @@ export function LiveExecutionDashboard() {
 
 
 
+
+  // Share Report Dialog State
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Reschedule Dialog State
   const [rescheduleItem, setRescheduleItem] = useState<LiveItem | null>(null);
@@ -1096,6 +1100,17 @@ export function LiveExecutionDashboard() {
             {isSyncing ? "Checking..." : "Sync Replies"}
           </Button>
 
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setIsShareModalOpen(true)}
+            className="gap-1.5 border-border/70 hover:bg-primary/10 hover:border-primary/40 text-foreground font-medium text-xs rounded-xl shadow-2xs transition-colors"
+            title="Share executive client report & PDF"
+          >
+            <Share2 className="h-3.5 w-3.5 text-primary" />
+            <span>Share Report</span>
+          </Button>
+
           <DailyResetCountdown
             sentToday={sentToday}
             dailyLimit={dailyLimit}
@@ -1595,6 +1610,14 @@ export function LiveExecutionDashboard() {
           setIsDiagnosticOpen(false);
           setDiagnosticStep(null);
         }}
+      />
+
+      {/* 1-Click Executive Client Report & PDF Modal (SILAER 10X) */}
+      <ShareReportModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        campaignId={activeCampaignId}
+        campaignName={currentSessionMeta?.campaignName || "Campaign Report"}
       />
     </div>
   );

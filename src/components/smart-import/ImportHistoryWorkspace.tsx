@@ -27,8 +27,10 @@ import {
   ChevronRight,
   Sparkles,
   ArrowRight,
-  FolderOpen
+  FolderOpen,
+  Share2
 } from "lucide-react";
+import { ShareReportModal } from "@/components/reports/ShareReportModal";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow, format } from "date-fns";
 import { Input } from "@/components/ui/input";
@@ -117,6 +119,8 @@ export function ImportHistoryWorkspace() {
 
 
 
+
+  const [shareModalSession, setShareModalSession] = useState<{ id: string; name: string } | null>(null);
 
   const loadSessions = useCallback(async () => {
     let all = storage.getAllSessions();
@@ -673,6 +677,17 @@ export function ImportHistoryWorkspace() {
                           Rename
                         </DropdownMenuItem>
 
+                        <DropdownMenuItem 
+                          onClick={() => setShareModalSession({
+                            id: (session as any).campaignId || session.sessionId,
+                            name: session.campaignName || "Campaign Report"
+                          })}
+                          className="cursor-pointer"
+                        >
+                          <Share2 className="h-3.5 w-3.5 mr-2 text-primary" />
+                          Share Client Report
+                        </DropdownMenuItem>
+
                         <DropdownMenuItem
                           onClick={() => setSessionToDelete({ id: session.sessionId, name: session.campaignName || "Campaign" })}
                           className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/50 cursor-pointer"
@@ -836,6 +851,14 @@ export function ImportHistoryWorkspace() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 1-Click Executive Client Report & PDF Modal (SILAER 10X) */}
+      <ShareReportModal
+        isOpen={!!shareModalSession}
+        onClose={() => setShareModalSession(null)}
+        campaignId={shareModalSession?.id || ""}
+        campaignName={shareModalSession?.name || "Campaign Report"}
+      />
     </div>
   );
 }
