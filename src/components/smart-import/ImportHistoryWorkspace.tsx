@@ -65,7 +65,8 @@ import { toast } from "sonner";
 export function ImportHistoryWorkspace() {
   const [sessions, setSessions] = useState<ImportSessionMetadata[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const { sessionId, handleFileUpload, setAppendTargetSessionId } = useImport() as any;
+  const { sessionId, handleFileUpload, setAppendTargetSessionId, openCampaignDashboard } = useImport() as any;
+
   const storage = useMemo(() => new StorageEngine(), []);
 
   // Details Modal State
@@ -174,13 +175,18 @@ export function ImportHistoryWorkspace() {
   const [sessionToDelete, setSessionToDelete] = useState<{ id: string; name: string } | null>(null);
   const deleteTimers = React.useRef<Record<string, NodeJS.Timeout>>({});
 
-  // Opens the Live Execution Dashboard for this campaign (reloads with session pointer set)
-  const handleOpenDashboard = (id: string) => {
-    if (typeof sessionStorage !== "undefined") {
-      sessionStorage.setItem("smart_import_active_session_id", id);
+  // Opens the Live Execution Dashboard for this campaign instantly (0ms in-memory switch)
+  const handleOpenDashboard = async (id: string) => {
+    if (openCampaignDashboard) {
+      await openCampaignDashboard(id);
+    } else {
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem("smart_import_active_session_id", id);
+      }
+      window.location.reload();
     }
-    window.location.reload();
   };
+
 
   // Auto-resumes a PAUSED campaign silently (used when pause/resume feature is disabled)
   const handleAutoResume = async (session: ImportSessionMetadata) => {
@@ -675,8 +681,8 @@ export function ImportHistoryWorkspace() {
           {activeDetailsSession && (
             <div className="space-y-4">
               {/* Header */}
-              <div className="space-y-1 pr-7">
-                <div className="flex items-center justify-between gap-2">
+              <div className="space-y-1.5 pr-8">
+                <div className="flex items-center gap-2 flex-wrap">
                   <DialogTitle className="text-base font-bold text-slate-900 dark:text-white truncate">
                     {activeDetailsSession.campaignName || "Untitled Campaign"}
                   </DialogTitle>
@@ -695,6 +701,7 @@ export function ImportHistoryWorkspace() {
                   <span>{format(new Date(activeDetailsSession.importDate), "MMM d, h:mm a")}</span>
                 </div>
               </div>
+
 
               {/* Clean Prospects List */}
               <div className="space-y-2">

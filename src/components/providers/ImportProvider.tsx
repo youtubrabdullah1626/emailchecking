@@ -68,7 +68,9 @@ interface ImportContextType {
   setAppendTargetSessionId: (id: string | null) => void;
   undo: () => void;
   canUndo: boolean;
+  openCampaignDashboard: (id: string) => Promise<void>;
 }
+
 
 const recoveryEngine = new SessionRecoveryEngine();
 const perfMonitor = new PerformanceMonitor();
@@ -776,7 +778,30 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const openCampaignDashboard = async (targetSessionId: string) => {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem("smart_import_active_session_id", targetSessionId);
+    }
+    try {
+      const data = await recoveryEngine.restoreSession(targetSessionId).catch(() => null);
+      if (data) {
+        setSessionId(targetSessionId);
+        if (data.parsedHeaders) setParsedHeaders(data.parsedHeaders);
+        if (data.mappingConfig) setMappingConfig(data.mappingConfig);
+        if (data.campaignConfig) setCampaignConfig(data.campaignConfig);
+        if (data.heavyData?.validatedRecords) recordsRef.current = data.heavyData.validatedRecords;
+        if (data.heavyData?.sequences) sequencesRef.current = data.heavyData.sequences;
+        if (data.heavyData?.executionQueue) queueRef.current = data.heavyData.executionQueue;
+        if (data.heavyData?.queueSummary) setQueueSummary(data.heavyData.queueSummary);
+      }
+      setStatus("EXECUTING");
+    } catch {
+      setStatus("EXECUTING");
+    }
+  };
+
   return (
+
     <ImportContext.Provider
       value={{
         status,
@@ -815,7 +840,8 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         appendTargetSessionId,
         setAppendTargetSessionId,
         undo,
-        canUndo
+        canUndo,
+        openCampaignDashboard
       }}
     >
       {children}
