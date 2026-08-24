@@ -669,116 +669,84 @@ export function ImportHistoryWorkspace() {
         </AnimatePresence>
       </div>
 
-      {/* Rich Interactive Details Modal */}
+            {/* Clean & Simple Campaign Info Modal */}
       <Dialog open={!!activeDetailsSession} onOpenChange={(open) => !open && setActiveDetailsSession(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] p-6 rounded-2xl">
+        <DialogContent className="sm:max-w-md rounded-2xl p-5 gap-4">
           {activeDetailsSession && (
-            <div className="space-y-5">
-              <DialogHeader>
-                <div className="flex items-center gap-2 mb-1">
+            <div className="space-y-4">
+              {/* Header */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <DialogTitle className="text-base font-bold text-slate-900 dark:text-white truncate">
+                    {activeDetailsSession.campaignName || "Untitled Campaign"}
+                  </DialogTitle>
                   <Badge
                     variant="outline"
-                    className={`text-[10px] font-bold ${
-                      activeDetailsSession.status === "COMPLETED"
-                        ? "bg-blue-50 text-blue-700 border-blue-200"
-                        : activeDetailsSession.lastCheckpoint === "EXECUTION_STARTED"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-amber-50 text-amber-700 border-amber-200"
-                    }`}
+                    className="text-[10px] font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-700 border-emerald-200 shrink-0"
                   >
-                    {activeDetailsSession.status}
+                    {activeDetailsSession.status === "COMPLETED" ? "Completed" : "Live"}
                   </Badge>
-                  <span className="text-xs text-slate-400">
-                    Imported {format(new Date(activeDetailsSession.importDate), "MMM d, yyyy, h:mm a")}
-                  </span>
                 </div>
-                <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white">
-                  {activeDetailsSession.campaignName || "Untitled Campaign"}
-                </DialogTitle>
-                <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
-                  File: <span className="font-medium text-slate-700 dark:text-slate-300">{activeDetailsSession.fileName}</span>
-                </DialogDescription>
-              </DialogHeader>
-
-              {/* KPI Summary Cards */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-center">
-                  <div className="text-xs text-slate-500 font-medium">Total Leads</div>
-                  <div className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
-                    {activeDetailsSession.totalRecords.toLocaleString()}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-center">
-                  <div className="text-xs text-slate-500 font-medium">Valid Records</div>
-                  <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                    {activeDataset?.validatedRecords?.length || activeDetailsSession.totalRecords}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-center">
-                  <div className="text-xs text-slate-500 font-medium">Status</div>
-                  <div className="text-xs font-bold text-primary mt-1.5 uppercase">
-                    {activeDetailsSession.lastCheckpoint || activeDetailsSession.status}
-                  </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                  <span className="font-medium text-slate-600 dark:text-slate-300">{activeDetailsSession.totalRecords} Leads</span>
+                  <span>•</span>
+                  <span className="truncate max-w-[180px]">{activeDetailsSession.fileName}</span>
+                  <span>•</span>
+                  <span>{format(new Date(activeDetailsSession.importDate), "MMM d, h:mm a")}</span>
                 </div>
               </div>
 
-              {/* Prospects Preview in this Campaign */}
+              {/* Clean Prospects List */}
               <div className="space-y-2">
-                <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                  <span>Prospects in Campaign</span>
-                  <span className="text-[11px] text-slate-400">
-                    {activeDataset?.validatedRecords?.length || activeDetailsSession.totalRecords} contacts
-                  </span>
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                  Leads in this campaign
                 </div>
 
                 {isLoadingDataset ? (
-                  <div className="h-32 flex items-center justify-center text-xs text-slate-400 animate-pulse bg-slate-50 dark:bg-slate-900 rounded-xl border">
-                    Loading campaign details...
+                  <div className="h-24 flex items-center justify-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-900 rounded-xl">
+                    Loading leads...
                   </div>
                 ) : activeDataset?.validatedRecords && activeDataset.validatedRecords.length > 0 ? (
-                  <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                  <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 text-xs">
                     {activeDataset.validatedRecords.slice(0, 10).map((record: any, idx: number) => (
-                      <div key={idx} className="p-2.5 flex items-center justify-between gap-2 hover:bg-slate-50/50">
+                      <div key={idx} className="px-3 py-2 flex items-center justify-between gap-2">
                         <div className="min-w-0">
-                          <div className="font-semibold text-slate-900 dark:text-white truncate">
-                            {record.firstName || record.lastName ? `${record.firstName || ""} ${record.lastName || ""}`.trim() : record.name || "Lead"}
+                          <div className="font-medium text-slate-900 dark:text-white truncate">
+                            {record.firstName || record.lastName ? `${record.firstName || ""} ${record.lastName || ""}`.trim() : record.email.split("@")[0]}
                           </div>
-                          <div className="text-[11px] text-slate-500 truncate">{record.email}</div>
+                          <div className="text-[11px] text-slate-400 truncate">{record.email}</div>
                         </div>
                         {record.company && (
-                          <span className="text-[11px] text-slate-500 shrink-0 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                          <span className="text-[10px] text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded shrink-0">
                             {record.company}
                           </span>
                         )}
                       </div>
                     ))}
                     {activeDataset.validatedRecords.length > 10 && (
-                      <div className="p-2 text-center text-[11px] text-slate-400 font-medium bg-slate-50 dark:bg-slate-900">
-                        + {activeDataset.validatedRecords.length - 10} more prospects
+                      <div className="p-2 text-center text-[11px] text-slate-400 bg-slate-50 dark:bg-slate-900">
+                        + {activeDataset.validatedRecords.length - 10} more leads
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="p-4 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-900 rounded-xl border">
-                    Detailed records stored in Prospects CRM.
+                  <div className="p-3 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-900 rounded-xl border">
+                    {activeDetailsSession.totalRecords} leads scheduled in campaign.
                   </div>
                 )}
               </div>
 
-              {/* Action Buttons in Modal */}
-              <DialogFooter className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              {/* Close Button */}
+              <DialogFooter className="pt-1">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => setActiveDetailsSession(null)}
-                  className="rounded-xl text-xs font-semibold"
+                  className="w-full sm:w-auto rounded-xl text-xs"
                 >
                   Close
                 </Button>
               </DialogFooter>
-
             </div>
           )}
         </DialogContent>
