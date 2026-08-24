@@ -5,10 +5,10 @@ import {
   Download,
   Share2,
   Check,
-  Building2,
   Calendar,
   Zap,
   Loader2,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClientReportData } from "@/lib/reports/types";
@@ -57,7 +57,6 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
 
   const formattedCampaignName = formatTitleCase(report.campaignName);
   const formattedAgencyName = formatTitleCase(report.agencyName);
-  const formattedClientName = formatTitleCase(report.clientName);
 
   return (
     <div className="space-y-6">
@@ -109,19 +108,19 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
         </div>
       </div>
 
-      {/* 2. The PDF Document Sheet (Clean, Simple, Professional A4) */}
+      {/* 2. The PDF Document Sheet (Clean, Simple, Minimal A4) */}
       <div
         id="report-pdf-document"
         className="report-document-sheet bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg p-8 md:p-10 max-w-4xl mx-auto space-y-6 print-page-container print-avoid-break text-slate-900 dark:text-white"
       >
-        {/* Simple Top Brand Header */}
+        {/* Simple Brand Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-sm">
               S
             </div>
             <div>
-              <span className="text-lg font-black tracking-tight text-slate-900 dark:text-white block leading-none">
+              <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white block leading-none">
                 Silaer
               </span>
               <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
@@ -139,17 +138,16 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
           </div>
         </div>
 
-        {/* Campaign Title & Co-Branding */}
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-            <Building2 className="w-3.5 h-3.5 text-emerald-600" />
-            <span>{formattedAgencyName}</span>
-            <span>✖</span>
-            <span className="text-slate-800 dark:text-slate-200">{formattedClientName}</span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+        {/* Clean Campaign Title & Single Co-Branding Metadata Line */}
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
             {formattedCampaignName}
           </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+            <Building2 className="w-3.5 h-3.5 text-slate-400" />
+            <span>Campaign managed by</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">{formattedAgencyName}</span>
+          </p>
         </div>
 
         {/* 4 Hero KPI Cards */}
@@ -162,16 +160,16 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
         <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
           <div className="flex items-center gap-1.5">
             <Zap className="w-3.5 h-3.5 text-emerald-600 fill-current" />
-            <span className="font-medium">Powered by Silaer Enterprise Engine</span>
+            <span className="font-medium">Powered by Silaer</span>
           </div>
 
           <a
-            href={report.referralUrl}
+            href={report.referralUrl || "https://www.silaer.com"}
             target="_blank"
             rel="noopener noreferrer"
             className="text-emerald-700 dark:text-emerald-400 font-semibold hover:underline"
           >
-            reachiq.up.railway.app
+            www.silaer.com
           </a>
         </div>
       </div>

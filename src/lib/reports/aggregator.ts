@@ -148,16 +148,16 @@ export async function getCampaignReportData(
 
     // Factual Campaign Narrative Summary Points
     const summaryPoints: string[] = [
-      `In this campaign, the Silaer engine processed and dispatched ${totalContacted.toLocaleString()} leads across connected rotating inboxes.`,
+      `The system processed and dispatched ${totalContacted.toLocaleString()} leads across connected inboxes.`,
       `A total of ${totalOpened.toLocaleString()} unique leads opened the email (${openRate}% open rate).`,
       `${realReplies.toLocaleString()} prospects sent confirmed real replies back to your team.`,
       bounces === 0
-        ? "0 bounces occurred, maintaining 100% clean Gmail deliverability health."
-        : `${bounces} bounces recorded with ${domainHealth}% deliverability score.`,
+        ? "0 bounces occurred, maintaining 100% clean email deliverability."
+        : `${bounces} bounces recorded with ${domainHealth}% deliverability health.`,
     ];
 
     const shareToken = providedToken || generateReportToken(campaign.id);
-    const referralUrl = `https://reachiq.up.railway.app/signup?ref=${campaign.user_id || "silaer"}&utm_source=client_report&utm_medium=viral_flywheel`;
+    const referralUrl = `https://www.silaer.com/signup?ref=${campaign.user_id || "silaer"}&utm_source=client_report&utm_medium=viral_flywheel`;
 
     return {
       shareToken,

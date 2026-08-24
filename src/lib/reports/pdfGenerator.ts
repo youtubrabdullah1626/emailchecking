@@ -56,7 +56,7 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   doc.setFont("helvetica", "bold");
   doc.setTextColor(16, 185, 129);
   doc.text(
-    report.status === "ACTIVE" ? "● Active Campaign" : "● Campaign Finalized",
+    report.status === "ACTIVE" ? "● Active" : "● Completed",
     pageWidth - margin,
     25,
     { align: "right" }
@@ -67,50 +67,41 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   doc.setLineWidth(0.3);
   doc.line(margin, 29, pageWidth - margin, 29);
 
-  // Co-Branding Badge
-  let y = 37;
-  const formattedAgency = formatTitleCase(report.agencyName);
-  const formattedClient = formatTitleCase(report.clientName);
+  // Campaign Title
+  let y = 38;
   const formattedTitle = formatTitleCase(report.campaignName);
+  const formattedAgency = formatTitleCase(report.agencyName);
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(16, 185, 129);
-  doc.text(formattedAgency, margin, y);
-
-  const agencyWidth = doc.getTextWidth(formattedAgency);
-  doc.setTextColor(148, 163, 184);
-  doc.text("  ✖  ", margin + agencyWidth, y);
-
-  const crossWidth = doc.getTextWidth("  ✖  ");
-  doc.setTextColor(51, 65, 85);
-  doc.text(formattedClient, margin + agencyWidth + crossWidth, y);
-
-  // Main Campaign Title
-  y += 7.5;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(17);
+  doc.setFontSize(16);
   doc.setTextColor(15, 23, 42);
   doc.text(formattedTitle, margin, y);
 
+  // Subtitle
+  y += 5.5;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Campaign managed by ${formattedAgency}`, margin, y);
+
   // 4 Hero KPI Cards
-  y += 9;
+  y += 8;
   const cardWidth = (contentWidth - 9) / 4;
-  const cardHeight = 25;
+  const cardHeight = 24;
 
   const kpis = [
     {
-      title: "CONTACTED",
+      title: "CONTACTED LEADS",
       value: `${report.metrics.totalContacted}`,
       sub: `${report.metrics.deliveryRate}% Delivered`,
     },
     {
-      title: "OPENED",
+      title: "OPENED EMAILS",
       value: `${report.metrics.totalOpened}`,
       sub: `${report.metrics.openRate}% Open Rate`,
     },
     {
-      title: "REAL REPLIES",
+      title: "CONFIRMED REPLIES",
       value: `${report.metrics.realReplies}`,
       sub: `${report.metrics.replyRate}% Response Rate`,
     },
@@ -124,14 +115,14 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   kpis.forEach((kpi, i) => {
     const x = margin + i * (cardWidth + 3);
     doc.setFillColor(248, 250, 252);
-    doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, "F");
+    doc.roundedRect(x, y, cardWidth, cardHeight, 1.5, 1.5, "F");
     doc.setDrawColor(226, 232, 240);
     doc.setLineWidth(0.2);
-    doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, "S");
+    doc.roundedRect(x, y, cardWidth, cardHeight, 1.5, 1.5, "S");
 
     // Title
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(100, 116, 139);
     doc.text(kpi.title, x + 3.5, y + 5.5);
 
@@ -139,13 +130,13 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.setTextColor(15, 23, 42);
-    doc.text(kpi.value, x + 3.5, y + 14);
+    doc.text(kpi.value, x + 3.5, y + 13.5);
 
-    // Sub badge
+    // Sub text
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
     doc.setTextColor(16, 185, 129);
-    doc.text(kpi.sub, x + 3.5, y + 20.5);
+    doc.text(kpi.sub, x + 3.5, y + 19.5);
   });
 
   // Campaign Performance Summary
@@ -170,7 +161,7 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   y += 6;
   report.summaryPoints.forEach((point) => {
     doc.setFillColor(16, 185, 129);
-    doc.circle(margin + 1.5, y - 1, 1, "F");
+    doc.circle(margin + 1.5, y - 1, 0.9, "F");
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
@@ -189,17 +180,12 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(16, 185, 129);
-  doc.text("⚡ Powered by Silaer Enterprise Engine", margin, footerY);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text("Autonomous multi-inbox rotation & 100% deliverability health", margin, footerY + 3.5);
+  doc.text("Powered by Silaer", margin, footerY);
 
   doc.setFont("helvetica", "bold");
   doc.setTextColor(16, 185, 129);
-  doc.textWithLink("reachiq.up.railway.app", pageWidth - margin, footerY + 1.5, {
-    url: report.referralUrl,
+  doc.textWithLink("www.silaer.com", pageWidth - margin, footerY, {
+    url: "https://www.silaer.com",
     align: "right",
   });
 
