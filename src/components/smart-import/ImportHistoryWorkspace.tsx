@@ -663,15 +663,11 @@ export function ImportHistoryWorkspace() {
                             {isPaused ? "Resume Sending" : "Pause Sending"}
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onClick={() => handleOpenDashboard(session.sessionId)}>
-                          <Play className="h-3.5 w-3.5 mr-2" />
-                          Open Dashboard
-                        </DropdownMenuItem>
-
                         <DropdownMenuItem onClick={() => handleRename(session.sessionId, session.campaignName || "Draft Campaign")}>
                           <Edit2 className="h-3.5 w-3.5 mr-2" />
                           Rename
                         </DropdownMenuItem>
+
                         <DropdownMenuItem
                           onClick={() => setSessionToDelete({ id: session.sessionId, name: session.campaignName || "Campaign" })}
                           className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/50 cursor-pointer"
@@ -791,13 +787,14 @@ export function ImportHistoryWorkspace() {
               <DialogFooter className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <Button
                   size="sm"
-                  onClick={() => handleOpenDashboard(activeDetailsSession.sessionId)}
-                  className="rounded-xl text-xs bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                  variant="outline"
+                  onClick={() => setActiveDetailsSession(null)}
+                  className="rounded-xl text-xs font-semibold"
                 >
-                  <Play className="h-3.5 w-3.5 mr-1.5" />
-                  Open Live Dashboard
+                  Close
                 </Button>
               </DialogFooter>
+
             </div>
           )}
         </DialogContent>
