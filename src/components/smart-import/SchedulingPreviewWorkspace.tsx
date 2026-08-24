@@ -43,16 +43,18 @@ export function SchedulingPreviewWorkspace() {
     return [];
   }, [accountStats]);
 
+  const internalQueue = useMemo(() => getExecutionQueue() || [], [getExecutionQueue]);
+
   const senderMap = useMemo(() => {
     const map = new Map<string, string>();
     if (connectedAccounts.length === 0) return map;
-    queueRef.current.forEach((item, idx) => {
+    internalQueue.forEach((item: any, idx: number) => {
       if (!map.has(item.recipientEmail.toLowerCase())) {
         map.set(item.recipientEmail.toLowerCase(), connectedAccounts[idx % connectedAccounts.length]);
       }
     });
     return map;
-  }, [connectedAccounts, queueRef.current]);
+  }, [connectedAccounts, internalQueue]);
 
   // Pre-check duplicates in the background as soon as preview loads
   useEffect(() => {
