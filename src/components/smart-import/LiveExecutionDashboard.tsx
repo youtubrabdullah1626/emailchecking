@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Send, MailOpen, Reply, AlertCircle, Clock, Activity, Calendar as CalendarIcon, User, MoreHorizontal, Play, Pause, PauseCircle, Loader2, ArrowLeft, Trash2, RefreshCw, Ban, Globe } from "lucide-react";
+import { Send, MailOpen, Reply, AlertCircle, Clock, Activity, Calendar as CalendarIcon, User, MoreHorizontal, Play, Pause, PauseCircle, Loader2, ArrowLeft, Trash2, RefreshCw, Ban, Globe, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { StorageEngine } from "@/lib/storage/StorageEngine";
@@ -361,6 +361,7 @@ export function LiveExecutionDashboard() {
           scheduledTime: dbItem.scheduledTimeLocal || "09:00",
           scheduledAtUtc: dbItem.scheduledAt ?? null,
           timezone: dbItem.timezone ?? null,
+          senderEmail: dbItem.senderEmail ?? null,
           liveStatus: effectiveLiveStatus,
           lastEventTime: resolvedEventTime,
           retryCount: dbItem.retryCount ?? 0,
@@ -1237,9 +1238,10 @@ export function LiveExecutionDashboard() {
           <Table>
             <TableHeader className="bg-muted/20 sticky top-0 z-10 shadow-sm backdrop-blur-md">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[30%] py-4 font-semibold">Recipient</TableHead>
-                <TableHead className="w-[12%] py-4 font-semibold">Email Step</TableHead>
-                <TableHead className="w-[28%] py-3">
+                <TableHead className="w-[23%] py-4 font-semibold">Recipient</TableHead>
+                <TableHead className="w-[18%] py-4 font-semibold">Sending From</TableHead>
+                <TableHead className="w-[10%] py-4 font-semibold">Email Step</TableHead>
+                <TableHead className="w-[24%] py-3">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-foreground text-sm">Scheduled:</span>
                     <div className="inline-flex items-center p-0.5 rounded-lg bg-muted/60 border border-border/50 text-[11px] font-medium text-muted-foreground shadow-sm">
@@ -1275,8 +1277,8 @@ export function LiveExecutionDashboard() {
                   </div>
                 </TableHead>
                 <TableHead className="w-[12%] py-4 font-semibold">Live Status</TableHead>
-                <TableHead className="w-[13%] py-4 font-semibold text-right">Event Time</TableHead>
-                <TableHead className="w-[5%] py-4 text-center"></TableHead>
+                <TableHead className="w-[9%] py-4 font-semibold text-right">Event Time</TableHead>
+                <TableHead className="w-[4%] py-4 text-center"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-border/50">
@@ -1288,6 +1290,9 @@ export function LiveExecutionDashboard() {
                         <div className="h-8 w-8 rounded-full bg-muted/60 animate-pulse" />
                         <div className="h-4 w-48 bg-muted/60 rounded animate-pulse" />
                       </div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="h-4 w-36 bg-muted/60 rounded animate-pulse" />
                     </TableCell>
                     <TableCell className="py-4">
                       <div className="h-5 w-16 bg-muted/60 rounded animate-pulse" />
@@ -1306,7 +1311,7 @@ export function LiveExecutionDashboard() {
                 ))
               ) : liveItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center h-40 text-muted-foreground flex flex-col items-center justify-center space-y-3">
+                  <TableCell colSpan={7} className="text-center h-40 text-muted-foreground flex flex-col items-center justify-center space-y-3">
                     <Activity className="h-10 w-10 text-muted-foreground/30" />
                     <span className="font-medium">No valid emails scheduled in this campaign.</span>
                   </TableCell>
@@ -1339,6 +1344,14 @@ export function LiveExecutionDashboard() {
                             Just Added
                           </Badge>
                         )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <div className="flex items-center gap-1.5 font-medium text-foreground">
+                        <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="truncate max-w-[190px] text-xs text-muted-foreground" title={item.senderEmail || "Primary Inbox"}>
+                          {item.senderEmail || "Primary Inbox"}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell className="py-3">

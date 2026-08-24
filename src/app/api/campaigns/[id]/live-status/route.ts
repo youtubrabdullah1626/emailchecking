@@ -48,6 +48,7 @@ export async function GET(
               select: {
                 id: true,
                 status: true,
+                assigned_sender_email: true,
                 steps: {
                   select: {
                     id: true,
@@ -88,6 +89,7 @@ export async function GET(
             sequence: {
               id: latestSeq.id,
               status: latestSeq.status,
+              assigned_sender_email: latestSeq.assigned_sender_email,
               prospect: {
                 id: prospect.id,
                 email: prospect.email,
@@ -185,6 +187,7 @@ export async function GET(
         recipientName: step.sequence.prospect.name,
         sequenceId: step.sequence.id,
         prospectId: step.sequence.prospect.id,
+        senderEmail: step.sequence.assigned_sender_email ?? null,
         scheduledAt: step.scheduled_at_utc?.toISOString() ?? null,
         scheduledTimeLocal: step.scheduled_time_local,
         timezone: step.timezone,
