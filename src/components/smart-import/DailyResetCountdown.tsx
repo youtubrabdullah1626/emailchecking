@@ -68,24 +68,22 @@ export function DailyResetCountdown({
           <TooltipTrigger asChild>
             <div
               onClick={onOpenScaleModal}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-semibold shadow-2xs cursor-pointer hover:bg-emerald-500/15 transition-all"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-semibold shadow-2xs cursor-pointer hover:bg-emerald-500/15 transition-all"
             >
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
               </span>
-              <span className="flex items-center gap-1.5">
-                <Zap className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 fill-emerald-500/20" />
-                <span>⚡ Ready to Dispatch: <strong>{headroom} Available</strong> ({sentToday} / {dailyLimit} Sent Today)</span>
-              </span>
+              <span><strong>{headroom} Slots Ready</strong> • {sentToday} / {dailyLimit} Sent Today</span>
             </div>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-xs text-xs space-y-1 p-3">
-            <p className="font-bold text-emerald-600 dark:text-emerald-400">⚡ Dispatch Pipeline Active</p>
+            <p className="font-bold text-emerald-600 dark:text-emerald-400">⚡ Dispatch Capacity Active</p>
             <p className="text-muted-foreground leading-relaxed">
-              <strong>{sentToday}</strong> of <strong>{dailyLimit}</strong> daily emails sent today. <strong>{headroom}</strong> dispatch slots are ready for immediate sending. Click to inspect dispatch forensics.
+              <strong>{sentToday}</strong> of <strong>{dailyLimit}</strong> emails sent today. <strong>{headroom}</strong> slots ready for automated dispatch.
             </p>
           </TooltipContent>
+
         </Tooltip>
       </TooltipProvider>
     );

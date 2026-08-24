@@ -1008,27 +1008,27 @@ export function LiveExecutionDashboard() {
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3.5">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => closeSession && closeSession()}
-            className="h-9 w-9 rounded-full bg-muted/30 hover:bg-muted shrink-0 text-muted-foreground hover:text-foreground transition-colors shadow-sm border border-transparent hover:border-border"
-            title="Back to Import History"
+            className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-800 shrink-0 text-muted-foreground hover:text-foreground transition-colors shadow-2xs border border-border/40"
+            title="Back to Campaigns"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Activity className="h-6 w-6 text-primary" />
-              Live Campaign Execution
+            <h2 className="text-xl font-bold flex items-center gap-2 text-foreground tracking-tight">
+              <Activity className="h-5 w-5 text-primary" />
+              Live Campaign Monitor
             </h2>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Monitoring true campaign status and delivery metrics.
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              Automated multi-step outreach, inbox deliverability & real-time reply tracking.
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
           {/* Pause/Resume — only shown when platform flag is ON */}
           {pauseResumeEnabled && (
             <Button
@@ -1060,10 +1060,11 @@ export function LiveExecutionDashboard() {
             size="sm" 
             onClick={handleManualSyncReplies}
             disabled={isSyncing}
-            className="gap-2 border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium"
+            className="gap-1.5 border-border/70 hover:bg-muted/50 text-foreground font-medium text-xs rounded-xl shadow-2xs"
+            title="Scan connected inboxes for prospect replies"
           >
-            <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-            {isSyncing ? "Scanning..." : "Sync & Check Replies"}
+            <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin text-primary' : 'text-muted-foreground'}`} />
+            {isSyncing ? "Checking..." : "Sync Replies"}
           </Button>
 
           <DailyResetCountdown
@@ -1103,17 +1104,18 @@ export function LiveExecutionDashboard() {
           />
 
           <Badge 
-            variant="default" 
-            className={`shadow-sm font-bold ${
+            variant="outline" 
+            className={`font-semibold px-2.5 py-1 text-xs rounded-xl shadow-2xs ${
               campaignStatus === "PAUSED" 
-                ? "bg-amber-500 hover:bg-amber-600 text-white" 
-                : "bg-emerald-500 hover:bg-emerald-600 text-white"
+                ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800" 
+                : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
             }`}
           >
-            {campaignStatus === "PAUSED" ? "⏸️ PAUSED" : "🟢 ACTIVE"}
+            {campaignStatus === "PAUSED" ? "⏸️ Paused" : "🟢 Active"}
           </Badge>
         </div>
       </div>
+
 
       {/* Progress & Stats Cards (Sleek SaaS Cockpit) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
