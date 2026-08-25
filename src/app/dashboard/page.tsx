@@ -932,7 +932,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Priority Inbox Feed */}
-        <Card className="shadow-xs border border-border bg-card overflow-hidden flex flex-col justify-between">
+        <Card className="shadow-xs border border-border bg-card overflow-hidden flex flex-col">
           <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border">
             <div>
               <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
@@ -953,7 +953,7 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
 
-          <CardContent className="p-0 flex-1 flex flex-col justify-center">
+          <CardContent className="p-0 flex-1">
             {isRepliesLoading ? (
               <div className="space-y-2 p-4">
                 {[1, 2, 3].map(i => <div key={i} className="h-14 bg-secondary/60 rounded-lg animate-pulse" />)}
