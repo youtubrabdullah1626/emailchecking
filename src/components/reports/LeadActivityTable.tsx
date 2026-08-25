@@ -17,10 +17,10 @@ export function LeadActivityTable({ activities }: LeadActivityTableProps) {
       <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h2 className="text-sm md:text-base font-bold text-slate-900 dark:text-white tracking-tight">
-            Outbound Activity & Lead Journey Audit
+            Lead Activity & Delivery History
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Real-time telemetry recorded across all connected inboxes
+            Verified delivery tracking across all connected inboxes
           </p>
         </div>
         <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-md">
@@ -99,7 +99,7 @@ export function LeadActivityTable({ activities }: LeadActivityTableProps) {
                   {act.repliedAt || "—"}
                 </TableCell>
 
-                {/* Status Badge (Clean, subtle, non-colorful) */}
+                {/* Status Badge */}
                 <TableCell className="py-2.5 text-right">
                   {act.status === "REPLIED" && (
                     <Badge variant="outline" className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 text-[10px] font-semibold">

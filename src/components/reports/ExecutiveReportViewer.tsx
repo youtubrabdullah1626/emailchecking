@@ -151,18 +151,18 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
             <span className="font-medium">{report.dateRange}</span>
             <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-[10px] border border-slate-200 dark:border-slate-700">
-              {report.status === "ACTIVE" ? "Active" : "Completed"}
+              {report.status === "ACTIVE" ? "Active Campaign" : "Completed"}
             </span>
           </div>
         </div>
 
-        {/* Campaign Title & Strategy Narrative */}
+        {/* Campaign Title & Inspiring Overview Narrative */}
         <div className="relative z-10 space-y-1.5">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
             {cleanedTitle}
           </h1>
           <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">
-            Outbound campaign executed by <strong className="text-slate-800 dark:text-slate-200 font-semibold">{formattedAgency}</strong> powered by the Silaer multi-inbox delivery network. Configured to reach targeted decision-makers in their local working hours (London GMT) with 100% domain deliverability protection.
+            Targeted outreach managed by <strong className="text-slate-800 dark:text-slate-200 font-semibold">{formattedAgency}</strong> on Silaer. Scheduled directly in local London business hours to capture high-intent responses while keeping your domain reputation 100% protected.
           </p>
         </div>
 
@@ -171,12 +171,12 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
           <ClientReportCards metrics={report.metrics} />
         </div>
 
-        {/* Outbound Activity & Lead Journey Audit Table */}
+        {/* Lead Activity & Delivery History Table */}
         <div className="relative z-10">
           <LeadActivityTable activities={report.leadActivities} />
         </div>
 
-        {/* Campaign Performance Summary & Business Takeaways */}
+        {/* Campaign Highlights & Key Takeaways */}
         <div className="relative z-10">
           <CampaignRecapSection summaryPoints={report.summaryPoints} />
         </div>

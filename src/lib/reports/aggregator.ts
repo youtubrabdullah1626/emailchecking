@@ -251,12 +251,12 @@ export async function getCampaignReportData(
     const agencyName = campaign.users?.name || (campaign.users?.email ? campaign.users.email.split("@")[0] : "Outreach Partner");
     const clientName = campaign.name || "Enterprise Client";
 
-    // Strategic High-Impact Narrative Points
+    // Clear, motivating, professional narrative highlights
     const summaryPoints: string[] = [
-      `Targeted Outreach: Dispatched ${totalContacted.toLocaleString()} personalized emails across rotating inboxes.`,
-      `High Engagement: Achieved a ${openRate}% open rate with immediate recipient interest.`,
-      `Sales Pipeline: Generated ${realReplies.toLocaleString()} verified responses ready for team follow-up.`,
-      `Domain Protection: Maintained 100% deliverability health with 0 bounces and 0 spam flags.`,
+      `🎯 Targeted Outreach: ${totalContacted.toLocaleString()} personalized emails successfully delivered to decision-makers.`,
+      `⚡ High Engagement: ${openRate}% open rate — prospects showed immediate interest upon arrival.`,
+      `🚀 Hot Responses: ${realReplies.toLocaleString()} direct replies received, opening active sales conversations for your team.`,
+      `🛡️ Spotless Reputation: 100% domain health maintained with 0 bounces and 0 spam flags.`,
     ];
 
     const shareToken = providedToken || generateReportToken(campaign.id);

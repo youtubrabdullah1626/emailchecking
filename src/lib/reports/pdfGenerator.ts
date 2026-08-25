@@ -105,12 +105,12 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   doc.setTextColor(15, 23, 42);
   doc.text(formattedTitle, margin, y);
 
-  // Strategic Executive Overview Context
+  // Inspiring Executive Overview Context
   y += 6;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(71, 85, 105);
-  const overviewText = `Outbound campaign executed by ${formattedAgency} powered by the Silaer multi-inbox delivery network. Configured to reach targeted decision-makers in their local working hours (London GMT) with 100% domain deliverability protection.`;
+  const overviewText = `Targeted outreach managed by ${formattedAgency} on Silaer. Scheduled directly in local London business hours to capture high-intent responses while keeping your domain reputation 100% protected.`;
   const splitOverview = doc.splitTextToSize(overviewText, contentWidth);
   doc.text(splitOverview, margin, y);
   y += splitOverview.length * 4.5 + 4;
@@ -169,18 +169,18 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
     doc.text(kpi.sub, x + 3.5, y + 20);
   });
 
-  // Outbound Activity & Lead Journey Audit Table Header
+  // Lead Activity & Delivery History Table Header
   y += cardHeight + 11;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(15, 23, 42);
-  doc.text("Outbound Activity & Lead Journey Audit", margin, y);
+  doc.text("Lead Activity & Delivery History", margin, y);
 
   y += 4.5;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
-  doc.text("Real-time telemetry recorded across all connected inboxes", margin, y);
+  doc.text("Verified delivery tracking across all connected inboxes", margin, y);
 
   y += 3;
 
@@ -232,12 +232,12 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
 
   const finalY = (doc as any).lastAutoTable?.finalY || (y + 40);
 
-  // Strategic Performance Highlights Section
+  // Campaign Highlights & Key Takeaways Section
   let summaryY = finalY + 10;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(15, 23, 42);
-  doc.text("Campaign Performance & Strategic Takeaways", margin, summaryY);
+  doc.text("Campaign Highlights & Key Takeaways", margin, summaryY);
 
   summaryY += 5.5;
   report.summaryPoints.forEach((point) => {
