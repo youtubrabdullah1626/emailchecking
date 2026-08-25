@@ -22,8 +22,28 @@ function formatTitleCase(str?: string): string {
 }
 
 /**
+ * Strips UTF-8 multibyte emojis and normalizes punctuation for standard PDF Helvetica font.
+ * Prevents character corruption (e.g. Ø<ß, & j, Ø=Þ€) and guarantees crystal-clear typography.
+ */
+function cleanPdfText(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{200D}]|[\u{FE0F}]/gu, "")
+    .replace(/[\u0080-\uFFFF]/g, (ch) => {
+      if (ch === "—" || ch === "–") return " - ";
+      if (ch === "•") return " ";
+      if (ch === "“" || ch === "”") return '"';
+      if (ch === "‘" || ch === "’") return "'";
+      if (ch.charCodeAt(0) > 127) return "";
+      return ch;
+    })
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
  * Generates and downloads a clean, proportionally balanced vector executive PDF report.
- * Uses autoTable to guarantee ZERO text collisions and perfect column wrapping.
+ * Uses autoTable with proportional column widths and anti-collision wrapping.
  */
 export function generateDirectClientReportPdf(report: ClientReportData) {
   const doc = new jsPDF({
@@ -35,7 +55,7 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   const pageWidth = 210;
   const pageHeight = 297;
   const margin = 18;
-  const contentWidth = pageWidth - margin * 2;
+  const contentWidth = pageWidth - margin * 2; // 174mm
 
   // Background
   doc.setFillColor(255, 255, 255);
@@ -56,7 +76,7 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
     // Ignore if graphics state is not supported
   }
 
-  // Official Silaer Brand Logo
+  // Official Silaer Brand Logo (Inlined Base64)
   try {
     if (SILAER_LOGO_BASE64) {
       doc.addImage(SILAER_LOGO_BASE64, "PNG", margin, 18, 8, 8);
@@ -78,7 +98,7 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(100, 116, 139);
-  doc.text(report.dateRange, pageWidth - margin, 21, { align: "right" });
+  doc.text(cleanPdfText(report.dateRange), pageWidth - margin, 21, { align: "right" });
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
@@ -111,7 +131,7 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   doc.setFontSize(8.5);
   doc.setTextColor(71, 85, 105);
   const overviewText = `Targeted outreach managed by ${formattedAgency} on Silaer. Scheduled directly in local London business hours to capture high-intent responses while keeping your domain reputation 100% protected.`;
-  const splitOverview = doc.splitTextToSize(overviewText, contentWidth);
+  const splitOverview = doc.splitTextToSize(cleanPdfText(overviewText), contentWidth);
   doc.text(splitOverview, margin, y);
   y += splitOverview.length * 4.5 + 4;
 
@@ -138,7 +158,7 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
     {
       title: "DOMAIN HEALTH",
       value: `${report.metrics.domainHealth}%`,
-      sub: "0 Bounces • Clean",
+      sub: "0 Bounces - Clean",
     },
   ];
 
@@ -188,9 +208,9 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
   const tableData = (report.leadActivities || []).map((act) => [
     act.recipientEmail,
     act.senderInbox,
-    act.leadTimezone,
-    act.dispatchedAt || "—",
-    act.openedAt ? (act.openCount > 1 ? `${act.openedAt} (${act.openCount}x)` : act.openedAt) : "—",
+    cleanPdfText(act.leadTimezone),
+    cleanPdfText(act.dispatchedAt || "-"),
+    cleanPdfText(act.openedAt ? (act.openCount > 1 ? `${act.openedAt} (${act.openCount}x)` : act.openedAt) : "-"),
     act.status === "REPLIED" ? "Replied" : act.status === "OPENED" ? "Opened" : act.status === "SENT" ? "Delivered" : "Scheduled",
   ]);
 
@@ -206,27 +226,28 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
       textColor: [71, 85, 105],
       fontStyle: "bold",
       fontSize: 7,
-      cellPadding: 3,
+      cellPadding: { top: 2.5, right: 2, bottom: 2.5, left: 2 },
       lineColor: [226, 232, 240],
       lineWidth: 0.25,
     },
     bodyStyles: {
       textColor: [51, 65, 85],
-      fontSize: 7.5,
-      cellPadding: 3,
+      fontSize: 6.8,
+      cellPadding: { top: 2.8, right: 2, bottom: 2.8, left: 2 },
       lineColor: [226, 232, 240],
       lineWidth: 0.2,
+      overflow: "linebreak",
     },
     alternateRowStyles: {
       fillColor: [248, 250, 252],
     },
     columnStyles: {
-      0: { cellWidth: 42, fontStyle: "bold", textColor: [15, 23, 42] }, // Recipient
-      1: { cellWidth: 40, textColor: [100, 116, 139] },                 // Sender
-      2: { cellWidth: 26 },                                              // Timezone
-      3: { cellWidth: 26 },                                              // Dispatched
-      4: { cellWidth: 24 },                                              // Opened
-      5: { cellWidth: 16, halign: "right", fontStyle: "bold", textColor: [16, 185, 129] }, // Status
+      0: { cellWidth: 48, fontStyle: "bold", textColor: [15, 23, 42] }, // Recipient (spacious)
+      1: { cellWidth: 44, textColor: [100, 116, 139] },                 // Sending Inbox
+      2: { cellWidth: 22 },                                              // Timezone
+      3: { cellWidth: 23 },                                              // Dispatched
+      4: { cellWidth: 22 },                                              // Opened
+      5: { cellWidth: 15, halign: "right", fontStyle: "bold", textColor: [16, 185, 129] }, // Status
     },
   });
 
@@ -241,15 +262,16 @@ export function generateDirectClientReportPdf(report: ClientReportData) {
 
   summaryY += 5.5;
   report.summaryPoints.forEach((point) => {
+    const cleanPoint = cleanPdfText(point);
     doc.setFillColor(16, 185, 129);
     doc.circle(margin + 1.8, summaryY - 1, 1, "F");
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(51, 65, 85);
-    const splitText = doc.splitTextToSize(point, contentWidth - 8);
+    const splitText = doc.splitTextToSize(cleanPoint, contentWidth - 8);
     doc.text(splitText, margin + 6, summaryY);
-    summaryY += splitText.length * 4.8 + 3;
+    summaryY += splitText.length * 4.8 + 2.8;
   });
 
   // Footer Section placed cleanly at bottom
