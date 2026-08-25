@@ -16,6 +16,7 @@ import { LeadActivityTable } from "./LeadActivityTable";
 import { CampaignRecapSection } from "./CampaignRecapSection";
 import { toast } from "sonner";
 import { generateDirectClientReportPdf } from "@/lib/reports/pdfGenerator";
+import { SILAER_LOGO_BASE64 } from "@/lib/reports/logoBase64";
 
 interface ExecutiveReportViewerProps {
   report: ClientReportData;
@@ -74,7 +75,7 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
       <div className="no-print bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-xs flex items-center justify-between gap-4 max-w-5xl mx-auto">
         <div className="flex items-center gap-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
           <img
-            src="/silaer-logo.png"
+            src={SILAER_LOGO_BASE64}
             alt="Silaer"
             className="w-5 h-5 object-contain rounded"
           />
@@ -138,7 +139,7 @@ export function ExecutiveReportViewer({ report }: ExecutiveReportViewerProps) {
         <div className="relative z-10 flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
             <img
-              src="/silaer-logo.png"
+              src={SILAER_LOGO_BASE64}
               alt="Silaer"
               className="w-8 h-8 object-contain rounded-lg"
             />
