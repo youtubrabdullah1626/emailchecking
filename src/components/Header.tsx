@@ -44,7 +44,14 @@ export function Header({ onMenuClick }: HeaderProps) {
       const raw = localStorage.getItem("silaer_cached_header_stats");
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed && (parsed.inboxCount > 0 || parsed.connectedGmail)) setCachedHeader(parsed);
+        const todayStr = new Date().toISOString().slice(0, 10);
+        if (parsed && (parsed.inboxCount > 0 || parsed.connectedGmail)) {
+          if (parsed.cachedDate !== todayStr) {
+            parsed.emailsSentToday = 0;
+            parsed.repliesToday = 0;
+          }
+          setCachedHeader(parsed);
+        }
       }
     } catch {}
 
@@ -69,7 +76,8 @@ export function Header({ onMenuClick }: HeaderProps) {
       onSuccess: (data) => {
         if (data && (data.inboxCount > 0 || data.connectedGmail) && typeof window !== "undefined") {
           try {
-            localStorage.setItem("silaer_cached_header_stats", JSON.stringify(data));
+            const todayStr = new Date().toISOString().slice(0, 10);
+            localStorage.setItem("silaer_cached_header_stats", JSON.stringify({ ...data, cachedDate: todayStr }));
           } catch {}
         }
       }
@@ -178,7 +186,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               <span className="text-muted-foreground">•</span>
               <span className="text-muted-foreground font-medium font-mono text-[11px]">
                 {mounted
-                  ? `${Math.max(rawAccountStats?.emailsSentToday ?? 0, globalStats?.emailsSentToday ?? 0, cachedHeader?.emailsSentToday ?? 0)} Sent • ${Math.max(rawAccountStats?.repliesToday ?? 0, globalStats?.repliesToday ?? 0, cachedHeader?.repliesToday ?? 0)} Replies Today`
+                  ? `${rawAccountStats?.emailsSentToday ?? globalStats?.emailsSentToday ?? cachedHeader?.emailsSentToday ?? 0} Sent • ${rawAccountStats?.repliesToday ?? globalStats?.repliesToday ?? cachedHeader?.repliesToday ?? 0} Replies Today`
                   : 'Syncing state...'}
               </span>
             </div>
