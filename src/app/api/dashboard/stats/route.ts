@@ -35,6 +35,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const clientTimezone = req.headers.get("x-timezone") || req.nextUrl.searchParams.get("tz");
+
     // Fast-path in-memory cache hit (0.1ms)
     const cachedData = telemetryCache.getDashboardStats(userId);
     if (cachedData) {
@@ -48,7 +50,7 @@ export async function GET(req: NextRequest) {
       where: { id: userId },
       select: { timezone: true, email: true },
     });
-    const userTimezone = userRecord?.timezone || "UTC";
+    const userTimezone = clientTimezone || userRecord?.timezone || "UTC";
 
     // 1. Daily Midnight: Computed in user's profile timezone
     const startOfDay = getStartOfDayInTimezone(userTimezone);

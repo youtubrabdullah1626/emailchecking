@@ -40,13 +40,15 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [cachedHeader, setCachedHeader] = useState<any>(null);
 
   useEffect(() => {
+    const todayStr = () => new Date().toISOString().slice(0, 10);
+    let lastDate = todayStr();
+
     try {
       const raw = localStorage.getItem("silaer_cached_header_stats");
       if (raw) {
         const parsed = JSON.parse(raw);
-        const todayStr = new Date().toISOString().slice(0, 10);
         if (parsed && (parsed.inboxCount > 0 || parsed.connectedGmail)) {
-          if (parsed.cachedDate !== todayStr) {
+          if (parsed.cachedDate !== lastDate) {
             parsed.emailsSentToday = 0;
             parsed.repliesToday = 0;
           }
@@ -58,11 +60,43 @@ export function Header({ onMenuClick }: HeaderProps) {
     const handleGlobalSync = () => {
       mutate(() => true);
     };
+
+    // Instant check when tab becomes active / laptop wakes up
+    const handleVisibilityOrFocus = () => {
+      const currentDate = todayStr();
+      if (currentDate !== lastDate) {
+        lastDate = currentDate;
+        setCachedHeader((prev: any) =>
+          prev ? { ...prev, emailsSentToday: 0, repliesToday: 0, cachedDate: currentDate } : null
+        );
+      }
+      mutate(() => true);
+    };
+
+    // Proactive Midnight Rollover Timer (ticks precisely at 00:00:00.050)
+    const now = new Date();
+    const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 50);
+    const msUntilMidnight = Math.max(1000, nextMidnight.getTime() - now.getTime());
+
+    const midnightTimer = setTimeout(() => {
+      lastDate = todayStr();
+      setCachedHeader((prev: any) =>
+        prev ? { ...prev, emailsSentToday: 0, repliesToday: 0, cachedDate: lastDate } : null
+      );
+      mutate(() => true);
+    }, msUntilMidnight);
+
     window.addEventListener("storage", handleGlobalSync);
     window.addEventListener("silaer:global_sync", handleGlobalSync);
+    window.addEventListener("focus", handleVisibilityOrFocus);
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+
     return () => {
+      clearTimeout(midnightTimer);
       window.removeEventListener("storage", handleGlobalSync);
       window.removeEventListener("silaer:global_sync", handleGlobalSync);
+      window.removeEventListener("focus", handleVisibilityOrFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
     };
   }, [mutate]);
 
