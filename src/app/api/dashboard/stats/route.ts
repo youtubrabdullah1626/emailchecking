@@ -216,9 +216,9 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
-    // ── Enriched Operational & Historical Analytics ──
-    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-    fourteenDaysAgo.setHours(0, 0, 0, 0);
+    // ── Enriched Operational & Historical Analytics (30-Day Window) ──
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
 
     const [
       historicalSentEvents, 
@@ -232,7 +232,7 @@ export async function GET(req: NextRequest) {
       prisma.emailEvent.findMany({
         where: {
           event_type: "SENT",
-          occurred_at: { gte: fourteenDaysAgo },
+          occurred_at: { gte: thirtyDaysAgo },
           step: { sequence: { user_id: userId } }
         },
         select: { occurred_at: true }
@@ -240,7 +240,7 @@ export async function GET(req: NextRequest) {
       prisma.replyClassification.findMany({
         where: {
           reply_type: "REAL_REPLY",
-          classified_at: { gte: fourteenDaysAgo },
+          classified_at: { gte: thirtyDaysAgo },
           prospect: { user_id: userId }
         },
         select: { classified_at: true }
@@ -257,7 +257,7 @@ export async function GET(req: NextRequest) {
               ]
             },
             {
-              created_at: { gte: fourteenDaysAgo }
+              created_at: { gte: thirtyDaysAgo }
             },
             {
               OR: [
@@ -317,9 +317,9 @@ export async function GET(req: NextRequest) {
       }).catch(() => 0)
     ]);
 
-    // Build 14-day daily trends array
+    // Build 30-day daily trends array
     const dailyTrendsMap: Record<string, { date: string; rawDate: string; sent: number; opened: number; replies: number }> = {};
-    for (let i = 13; i >= 0; i--) {
+    for (let i = 29; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const key = d.toISOString().split("T")[0];

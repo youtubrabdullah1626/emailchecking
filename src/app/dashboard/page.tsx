@@ -202,7 +202,8 @@ export default function DashboardPage() {
     if (!stats?.dailyTrends || stats.dailyTrends.length === 0) return [];
     if (timeframe === "today") return stats.dailyTrends.slice(-1);
     if (timeframe === "7d") return stats.dailyTrends.slice(-7);
-    return stats.dailyTrends; // 14-30d
+    if (timeframe === "30d") return stats.dailyTrends.slice(-30);
+    return stats.dailyTrends; // all
   }, [stats?.dailyTrends, timeframe]);
 
   // Aggregate metrics based on selected timeframe with mathematical accuracy
@@ -667,7 +668,7 @@ export default function DashboardPage() {
                 </CardDescription>
               </div>
               <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
-                {stats?.funnel.replyRate ?? 0}% Total Yield
+                {timeframeStats.replyRate}% Total Yield
               </span>
             </div>
           </CardHeader>
@@ -712,9 +713,11 @@ export default function DashboardPage() {
                     <span className="text-foreground flex items-center gap-1.5">
                       <Send className="h-3.5 w-3.5 text-primary" /> 1. Emails Sent
                     </span>
-                    <span className="font-bold text-foreground">{stats?.funnel.sent ?? 0} (100%)</span>
+                    <span className="font-bold text-foreground">
+                      {timeframeStats.sent.toLocaleString()} ({timeframeStats.sent > 0 ? "100%" : "0%"})
+                    </span>
                   </div>
-                  <Progress value={100} className="h-2 bg-muted [&>div]:bg-primary" />
+                  <Progress value={timeframeStats.sent > 0 ? 100 : 0} className="h-2 bg-muted [&>div]:bg-primary" />
                 </div>
 
                 {/* Step 2: Delivered */}
@@ -724,10 +727,10 @@ export default function DashboardPage() {
                       <CheckCircle2 className="h-3.5 w-3.5 text-blue-500" /> 2. Delivered to Inbox
                     </span>
                     <span className="font-bold text-blue-600 dark:text-blue-400">
-                      {stats?.funnel.delivered ?? 0} ({stats && stats.funnel.sent > 0 ? "99.4%" : "0%"})
+                      {timeframeStats.sent.toLocaleString()} ({timeframeStats.sent > 0 ? "100%" : "0%"})
                     </span>
                   </div>
-                  <Progress value={stats && stats.funnel.sent > 0 ? 99 : 0} className="h-2 bg-muted [&>div]:bg-blue-500" />
+                  <Progress value={timeframeStats.sent > 0 ? 100 : 0} className="h-2 bg-muted [&>div]:bg-blue-500" />
                 </div>
 
                 {/* Step 3: Opened */}
@@ -737,10 +740,10 @@ export default function DashboardPage() {
                       <Eye className="h-3.5 w-3.5 text-indigo-500" /> 3. Prospect Opened
                     </span>
                     <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                      {stats?.funnel.opened ?? 0} ({stats?.funnel.openRate ?? 0}%)
+                      {timeframeStats.opened.toLocaleString()} ({timeframeStats.openRate}%)
                     </span>
                   </div>
-                  <Progress value={Math.min(stats?.funnel.openRate ?? 0, 100)} className="h-2 bg-muted [&>div]:bg-indigo-500" />
+                  <Progress value={Math.min(timeframeStats.openRate, 100)} className="h-2 bg-muted [&>div]:bg-indigo-500" />
                 </div>
 
                 {/* Step 4: Replied */}
@@ -750,10 +753,10 @@ export default function DashboardPage() {
                       <Reply className="h-3.5 w-3.5 text-emerald-500" /> 4. Real Reply Received
                     </span>
                     <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                      {stats?.funnel.replied ?? 0} ({stats?.funnel.replyRate ?? 0}%)
+                      {timeframeStats.replies.toLocaleString()} ({timeframeStats.replyRate}%)
                     </span>
                   </div>
-                  <Progress value={Math.min(stats?.funnel.replyRate ?? 0, 100)} className="h-2 bg-muted [&>div]:bg-emerald-500" />
+                  <Progress value={Math.min(timeframeStats.replyRate, 100)} className="h-2 bg-muted [&>div]:bg-emerald-500" />
                 </div>
               </>
             )}
